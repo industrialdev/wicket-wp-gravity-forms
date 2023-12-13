@@ -25,7 +25,6 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 				$this->language = 'fr';
 			}
 		}
-		$this->wicket_gf_main->write_log("TEST");
 	}
 
 	public function get_object_id( $object, $primary_property_value = null ) {
