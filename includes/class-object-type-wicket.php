@@ -10,13 +10,11 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 	private static $max_results = 50;
 	private $client;
 	private $language = 'en';
-	private $wicket_gf_main;
 
 	public function __construct( $id ) {
 		parent::__construct( $id );
 
 		$this->client = wicket_api_client();
-		$this->wicket_gf_main = new Wicket_Gf_Main();
 
 		if( defined( 'ICL_LANGUAGE_CODE' ) ) {
 			$this->language = ICL_LANGUAGE_CODE;
@@ -120,8 +118,8 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 		// Call get_special_values to ensure filter values have been converted to usable values
 		$filter_special_values = $this->get_special_values( $args );
 
-		// $this->wicket_gf_main->write_log("ARGS received");
-		// $this->wicket_gf_main->write_log($args);
+		// wicket_gf_write_log("ARGS received");
+		// wicket_gf_write_log($args);
 
 		// Example of args we might receive:
 		// Array(
@@ -357,15 +355,15 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 			]));
 			
 			try{
-				// $this->wicket_gf_main->write_log("wicket-gf: People Query:");
-				// $this->wicket_gf_main->write_log($people_query);
-				// $this->wicket_gf_main->write_log("wicket-gf: People Query Filters:");
-				// $this->wicket_gf_main->write_log($filters);
+				// wicket_gf_write_log("wicket-gf: People Query:");
+				// wicket_gf_write_log($people_query);
+				// wicket_gf_write_log("wicket-gf: People Query Filters:");
+				// wicket_gf_write_log($filters);
 				$get_people = $this->client->get('/people', ['query' => $people_query]);
 				$get_people = new \Wicket\ResponseHelper($get_people);
 			} catch(Exception $e) {
-				$this->wicket_gf_main->write_log("wicket-gf: Error was encountered in query()");
-				$this->wicket_gf_main->write_log($e);
+				wicket_gf_write_log("wicket-gf: Error was encountered in query()");
+				wicket_gf_write_log($e);
 				return [];
 			}
 
@@ -397,8 +395,8 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 				$get_orgs = $this->client->get('/organizations', ['query' => $org_query]);
 				$get_orgs = new \Wicket\ResponseHelper($get_orgs);
 			} catch(Exception $e) {
-				$this->wicket_gf_main->write_log("wicket-gf: Error was encountered in query()");
-				$this->wicket_gf_main->write_log($e);
+				wicket_gf_write_log("wicket-gf: Error was encountered in query()");
+				wicket_gf_write_log($e);
 				return [];
 			}
 
