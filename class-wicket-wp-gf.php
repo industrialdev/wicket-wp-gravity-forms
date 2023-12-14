@@ -129,8 +129,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     <pre x-effect="console.log(mappings)"></pre>
                     <template x-for="(mapping, index) in mappings">
                         <div class="wicket-gf-mapping-row wgf-flex wgf-mb-1">
-                            <input class="wicket-gf-mapping-row-key wgf-w-50 wgf-mr-2" type="text" x-effect="$el.value = index" x-on:blur="updateMappings" /> 
-                            <input class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" type="text" x-effect="$el.value = mapping" x-on:blur="updateMappings" />
+                            <input class="wicket-gf-mapping-row-key wgf-w-50 wgf-mr-2" type="text" x-effect="$el.value = index" x-on:blur="updateMappings" placeholder="<?php _e('Slug', 'wicket-gf');?>" /> 
+                            <input class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" type="text" x-effect="$el.value = mapping" x-on:blur="updateMappings" placeholder="<?php _e('Form ID', 'wicket-gf');?>" />
                             <button 
                                 class="button wgf-mr-1"
                                 x-on:click="mappings = {...mappings, '':''}"
