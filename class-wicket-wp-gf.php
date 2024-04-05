@@ -68,13 +68,13 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         }
 
         public static function gf_mapping_addon_load() {
-            if ( ! method_exists( 'GFForms', 'include_addon_framework' ) ) {
+            if ( ! method_exists( 'GFForms', 'include_feed_addon_framework' ) ) {
                 return;
             }
     
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-mapping-addon.php' );
     
-            GFAddOn::register( 'GFSimpleAddOn' );
+            GFAddOn::register( 'GFWicketMappingAddOn' );
         }
 
         public function conditionally_include_pa_object() {
@@ -162,6 +162,6 @@ if( !function_exists( 'wicket_gf_get_form_id_by_slug' ) ) {
 
 if( !function_exists( 'wicket_get_gf_mapping_addon' ) ) {
     function wicket_get_gf_mapping_addon() {
-        return GFSimpleAddOn::get_instance();
+        return GFWicketMappingAddOn::get_instance();
     }
 }

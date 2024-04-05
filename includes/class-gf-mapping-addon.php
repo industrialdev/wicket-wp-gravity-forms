@@ -1,29 +1,29 @@
 <?php
 
-GFForms::include_addon_framework();
+GFForms::include_feed_addon_framework();
 
 // GF Addon Framework Documentation: https://docs.gravityforms.com/category/developers/php-api/add-on-framework/
 
-class GFSimpleAddOn extends GFAddOn {
+class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	protected $_version = WICKET_WP_GF_VERSION;
 	protected $_min_gravityforms_version = '1.9';
-	protected $_slug = 'simpleaddon';
-	protected $_path = 'simpleaddon/simpleaddon.php';
+	protected $_slug = 'wicketmap';
+	protected $_path = 'wicketmap/wicketmap.php';
 	protected $_full_path = __FILE__;
-	protected $_title = 'Gravity Forms Simple Add-On';
-	protected $_short_title = 'Simple Add-On';
+	protected $_title = 'Gravity Forms to Wicket Member Mapping';
+	protected $_short_title = 'Wicket Member';
 
 	private static $_instance = null;
 
 	/**
 	 * Get an instance of this class.
 	 *
-	 * @return GFSimpleAddOn
+	 * @return GFWicketMappingAddOn
 	 */
 	public static function get_instance() {
 		if ( self::$_instance == null ) {
-			self::$_instance = new GFSimpleAddOn();
+			self::$_instance = new GFWicketMappingAddOn();
 		}
 
 		return self::$_instance;
@@ -34,8 +34,59 @@ class GFSimpleAddOn extends GFAddOn {
 	 */
 	public function init() {
 		parent::init();
-		add_filter( 'gform_submit_button', array( $this, 'form_submit_button' ), 10, 2 );
-		add_action( 'gform_after_submission', array( $this, 'after_submission' ), 10, 2 );
+	}
+
+	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
+
+	/**
+	 * Process the feed e.g. subscribe the user to a list.
+	 *
+	 * @param array $feed The feed object to be processed.
+	 * @param array $entry The entry object currently being processed.
+	 * @param array $form The form object currently being processed.
+	 *
+	 * @return bool|void
+	 */
+	public function process_feed( $feed, $entry, $form ) {
+		$feedName  = $feed['meta']['feedName'];
+		$mytextbox = $feed['meta']['mytextbox'];
+		$checkbox  = $feed['meta']['mycheckbox'];
+
+		// Retrieve the name => value pairs for all fields mapped in the 'mappedFields' field map.
+		$field_map = $this->get_field_map_fields( $feed, 'mappedFields' );
+
+		// Loop through the fields from the field map setting building an array of values to be passed to the third-party service.
+		$merge_vars = array();
+		foreach ( $field_map as $name => $field_id ) {
+
+			// Get the field value for the specified field id
+			$merge_vars[ $name ] = $this->get_field_value( $form, $entry, $field_id );
+
+		}
+
+		// Send the values to the third-party service.
+	}
+
+	/**
+	 * Custom format the phone type field values before they are returned by $this->get_field_value().
+	 *
+	 * @param array $entry The Entry currently being processed.
+	 * @param string $field_id The ID of the Field currently being processed.
+	 * @param GF_Field_Phone $field The Field currently being processed.
+	 *
+	 * @return string
+	 */
+	public function get_phone_field_value( $entry, $field_id, $field ) {
+
+		// Get the field value from the Entry Object.
+		$field_value = rgar( $entry, $field_id );
+
+		// If there is a value and the field phoneFormat setting is set to standard reformat the value.
+		if ( ! empty( $field_value ) && $field->phoneFormat == 'standard' && preg_match( '/^\D?(\d{3})\D?\D?(\d{3})\D?(\d{4})$/', $field_value, $matches ) ) {
+			$field_value = sprintf( '%s-%s-%s', $matches[1], $matches[2], $matches[3] );
+		}
+
+		return $field_value;
 	}
 
 
@@ -47,28 +98,29 @@ class GFSimpleAddOn extends GFAddOn {
 	 * @return array
 	 */
 	public function scripts() {
-		$scripts = array(
-			array(
-				'handle'  => 'my_script_js',
-				'src'     => $this->get_base_url() . '/js/my_script.js',
-				'version' => $this->_version,
-				'deps'    => array( 'jquery' ),
-				'strings' => array(
-					'first'  => esc_html__( 'First Choice', 'simpleaddon' ),
-					'second' => esc_html__( 'Second Choice', 'simpleaddon' ),
-					'third'  => esc_html__( 'Third Choice', 'simpleaddon' )
-				),
-				'enqueue' => array(
-					array(
-						'admin_page' => array( 'form_settings' ),
-						'tab'        => 'simpleaddon'
-					)
-				)
-			),
+		// $scripts = array(
+		// 	array(
+		// 		'handle'  => 'my_script_js',
+		// 		'src'     => $this->get_base_url() . '/js/my_script.js',
+		// 		'version' => $this->_version,
+		// 		'deps'    => array( 'jquery' ),
+		// 		'strings' => array(
+		// 			'first'  => esc_html__( 'First Choice', 'wicket-gf' ),
+		// 			'second' => esc_html__( 'Second Choice', 'wicket-gf' ),
+		// 			'third'  => esc_html__( 'Third Choice', 'wicket-gf' )
+		// 		),
+		// 		'enqueue' => array(
+		// 			array(
+		// 				'admin_page' => array( 'form_settings' ),
+		// 				'tab'        => 'wicketmap'
+		// 			)
+		// 		)
+		// 	),
 
-		);
+		// );
 
-		return array_merge( parent::scripts(), $scripts );
+		// return array_merge( parent::scripts(), $scripts );
+		return parent::scripts();
 	}
 
 	/**
@@ -77,41 +129,20 @@ class GFSimpleAddOn extends GFAddOn {
 	 * @return array
 	 */
 	public function styles() {
-		$styles = array(
-			array(
-				'handle'  => 'my_styles_css',
-				'src'     => $this->get_base_url() . '/css/my_styles.css',
-				'version' => $this->_version,
-				'enqueue' => array(
-					array( 'field_types' => array( 'poll' ) )
-				)
-			)
-		);
+		// $styles = array(
+		// 	array(
+		// 		'handle'  => 'my_styles_css',
+		// 		'src'     => $this->get_base_url() . '/css/my_styles.css',
+		// 		'version' => $this->_version,
+		// 		'enqueue' => array(
+		// 			array( 'field_types' => array( 'poll' ) )
+		// 		)
+		// 	)
+		// );
 
-		return array_merge( parent::styles(), $styles );
+		// return array_merge( parent::styles(), $styles );
+		return parent::styles();
 	}
-
-
-	// # FRONTEND FUNCTIONS --------------------------------------------------------------------------------------------
-
-	/**
-	 * Add the text in the plugin settings to the bottom of the form if enabled for this form.
-	 *
-	 * @param string $button The string containing the input tag to be filtered.
-	 * @param array $form The form currently being displayed.
-	 *
-	 * @return string
-	 */
-	function form_submit_button( $button, $form ) {
-		$settings = $this->get_form_settings( $form );
-		if ( isset( $settings['enabled'] ) && true == $settings['enabled'] ) {
-			$text   = $this->get_plugin_setting( 'mytextbox' );
-			$button = "<div>{$text}</div>" . $button;
-		}
-
-		return $button;
-	}
-
 
 	// # ADMIN FUNCTIONS -----------------------------------------------------------------------------------------------
 
@@ -130,12 +161,12 @@ class GFSimpleAddOn extends GFAddOn {
 	public function plugin_settings_fields() {
 		return array(
 			array(
-				'title'  => esc_html__( 'Simple Add-On Settings', 'simpleaddon' ),
+				'title'  => esc_html__( 'Wicket Member Mapping Settings', 'wicket-gf' ),
 				'fields' => array(
 					array(
 						'name'              => 'mytextbox',
-						'tooltip'           => esc_html__( 'This is the tooltip', 'simpleaddon' ),
-						'label'             => esc_html__( 'This is the label', 'simpleaddon' ),
+						'tooltip'           => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+						'label'             => esc_html__( 'This is the label', 'wicket-gf' ),
 						'type'              => 'text',
 						'class'             => 'small',
 						'feedback_callback' => array( $this, 'is_valid_setting' ),
@@ -145,29 +176,104 @@ class GFSimpleAddOn extends GFAddOn {
 		);
 	}
 
+	// public function feed_settings_fields( $form ) {
+  //     return array(
+  //         array(
+  //             'title'  => esc_html__( 'Wicket Member Mapping Settings', 'wicket-gf' ),
+  //             'fields' => array(
+  //                 array(
+  //                   //'name'                => 'Wicket Fields',
+  //                   'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
+  //                   'type'                => 'dynamic_field_map',
+  //                   //'limit'               => 20,
+  //                   //'exclude_field_types' => 'creditcard',
+  //                   'tooltip'             => '<h6>' . esc_html__( 'Wicket Fields', 'wicket_plugin' ) . '</h6>' . esc_html__( 'Map your GF fields to Wicket Member', 'wicket_plugin' ),
+  //                   //'validation_callback' => array( $this, 'validate_custom_meta' ),
+  //                 ),
+  //             ),
+  //         ),
+  //     );
+  // }
+
 	/**
-	 * Configures the settings which should be rendered on the Form Settings > Simple Add-On tab.
+	 * Configures the settings which should be rendered on the feed edit page in the Form Settings > Simple Feed Add-On area.
 	 *
 	 * @return array
 	 */
-	public function form_settings_fields( $form ) {
-      return array(
-          array(
-              'title'  => esc_html__( 'Simple Form Settings', 'simpleaddon' ),
-              'fields' => array(
-                  array(
-                    //'name'                => 'Wicket Fields',
-                    'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
-                    'type'                => 'dynamic_field_map',
-                    //'limit'               => 20,
-                    //'exclude_field_types' => 'creditcard',
-                    'tooltip'             => '<h6>' . esc_html__( 'Wicket Fields', 'wicket_plugin' ) . '</h6>' . esc_html__( 'Map your GF fields to Wicket', 'wicket_plugin' ),
-                    //'validation_callback' => array( $this, 'validate_custom_meta' ),
-                  ),
-              ),
-          ),
-      );
-  }
+	public function feed_settings_fields() {
+		return array(
+			array(
+				'title'  => esc_html__( 'Wicket Member Mapping Settings', 'wicket-gf' ),
+				'fields' => array(
+					array(
+									'label'   => esc_html__( 'Feed name', 'wicket-gf' ),
+									'type'    => 'text',
+									'name'    => 'feedName',
+									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+									'class'   => 'small',
+					),
+					array(
+									'label'   => esc_html__( 'Textbox', 'wicket-gf' ),
+									'type'    => 'text',
+									'name'    => 'mytextbox',
+									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+									'class'   => 'small',
+					),
+					array(
+									'label'   => esc_html__( 'Encrypted text', 'wicket-gf' ),
+									'type'    => 'text',
+									'name'    => 'encryptedtext',
+									'encrypt' => true,
+					),
+					array(
+									'label'   => esc_html__( 'My checkbox', 'wicket-gf' ),
+									'type'    => 'checkbox',
+									'name'    => 'mycheckbox',
+									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+									'choices' => array(
+													array(
+																	'label' => esc_html__( 'Enabled', 'wicket-gf' ),
+																	'name'  => 'mycheckbox',
+													),
+									),
+					),
+					array(
+									'name'      => 'mappedFields',
+									'label'     => esc_html__( 'Map Fields', 'wicket-gf' ),
+									'type'      => 'field_map',
+									'field_map' => array(
+													array(
+																	'name'       => 'email',
+																	'label'      => esc_html__( 'Email', 'wicket-gf' ),
+																	'required'   => 0,
+																	'field_type' => array( 'email', 'hidden' ),
+																	'tooltip'    => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+													),
+													array(
+																	'name'     => 'name',
+																	'label'    => esc_html__( 'Name', 'wicket-gf' ),
+																	'required' => 0,
+													),
+													array(
+																	'name'       => 'phone',
+																	'label'      => esc_html__( 'Phone', 'wicket-gf' ),
+																	'required'   => 0,
+																	'field_type' => 'phone',
+													),
+									),
+					),
+					array(
+									'name'           => 'condition',
+									'label'          => esc_html__( 'Condition', 'wicket-gf' ),
+									'type'           => 'feed_condition',
+									'checkbox_label' => esc_html__( 'Enable Condition', 'wicket-gf' ),
+									'instructions'   => esc_html__( 'Process this simple feed if', 'wicket-gf' ),
+					),
+				),
+			),
+		);
+	}
+	
 
 	/**
 	 * Define the markup for the my_custom_field_type type field.
@@ -176,7 +282,7 @@ class GFSimpleAddOn extends GFAddOn {
 	 * @param bool|true $echo Should the setting markup be echoed.
 	 */
 	public function settings_my_custom_field_type( $field, $echo = true ) {
-		echo '<div>' . esc_html__( 'My custom field contains a few settings:', 'simpleaddon' ) . '</div>';
+		echo '<div>' . esc_html__( 'My custom field contains a few settings:', 'wicket-gf' ) . '</div>';
 
 		// get the text field settings from the main field and then render the text field
 		$text_field = $field['args']['text'];
@@ -187,145 +293,21 @@ class GFSimpleAddOn extends GFAddOn {
 		$this->settings_checkbox( $checkbox_field );
 	}
 
-
-	// # SIMPLE CONDITION EXAMPLE --------------------------------------------------------------------------------------
-
 	/**
-	 * Define the markup for the custom_logic_type type field.
-	 *
-	 * @param array $field The field properties.
-	 * @param bool|true $echo Should the setting markup be echoed.
-	 */
-	public function settings_custom_logic_type( $field, $echo = true ) {
-
-		// Get the setting name.
-		$name = $field['name'];
-
-		// Define the properties for the checkbox to be used to enable/disable access to the simple condition settings.
-		$checkbox_field = array(
-			'name'    => $name,
-			'type'    => 'checkbox',
-			'choices' => array(
-				array(
-					'label' => esc_html__( 'Enabled', 'simpleaddon' ),
-					'name'  => $name . '_enabled',
-				),
-			),
-			'onclick' => "if(this.checked){jQuery('#{$name}_condition_container').show();} else{jQuery('#{$name}_condition_container').hide();}",
-		);
-
-		// Determine if the checkbox is checked, if not the simple condition settings should be hidden.
-		$is_enabled      = $this->get_setting( $name . '_enabled' ) == '1';
-		$container_style = ! $is_enabled ? "style='display:none;'" : '';
-
-		// Put together the field markup.
-		$str = sprintf( "%s<div id='%s_condition_container' %s>%s</div>",
-			$this->settings_checkbox( $checkbox_field, false ),
-			$name,
-			$container_style,
-			$this->simple_condition( $name )
-		);
-
-		echo $str;
-	}
-
-	/**
-	 * Build an array of choices containing fields which are compatible with conditional logic.
-	 *
-	 * @return array
-	 */
-	public function get_conditional_logic_fields() {
-		$form   = $this->get_current_form();
-		$fields = array();
-		foreach ( $form['fields'] as $field ) {
-			if ( $field->is_conditional_logic_supported() ) {
-				$inputs = $field->get_entry_inputs();
-
-				if ( $inputs ) {
-					$choices = array();
-
-					foreach ( $inputs as $input ) {
-						if ( rgar( $input, 'isHidden' ) ) {
-							continue;
-						}
-						$choices[] = array(
-							'value' => $input['id'],
-							'label' => GFCommon::get_label( $field, $input['id'], true )
-						);
-					}
-
-					if ( ! empty( $choices ) ) {
-						$fields[] = array( 'choices' => $choices, 'label' => GFCommon::get_label( $field ) );
-					}
-
-				} else {
-					$fields[] = array( 'value' => $field->id, 'label' => GFCommon::get_label( $field ) );
-				}
-
-			}
-		}
-
-		return $fields;
-	}
-
-	/**
-	 * Evaluate the conditional logic.
-	 *
-	 * @param array $form The form currently being processed.
-	 * @param array $entry The entry currently being processed.
+	 * Prevent feeds being listed or created if an api key isn't valid.
 	 *
 	 * @return bool
 	 */
-	public function is_custom_logic_met( $form, $entry ) {
-		if ( $this->is_gravityforms_supported( '2.0.7.4' ) ) {
-			// Use the helper added in Gravity Forms 2.0.7.4.
+	public function can_create_feed() {
 
-			return $this->is_simple_condition_met( 'custom_logic', $form, $entry );
-		}
+		// Get the plugin settings.
+		$settings = $this->get_plugin_settings();
 
-		// Older version of Gravity Forms, use our own method of validating the simple condition.
-		$settings = $this->get_form_settings( $form );
+		// Access a specific setting e.g. an api key
+		$key = rgar( $settings, 'apiKey' );
 
-		$name       = 'custom_logic';
-		$is_enabled = rgar( $settings, $name . '_enabled' );
-
-		if ( ! $is_enabled ) {
-			// The setting is not enabled so we handle it as if the rules are met.
-
-			return true;
-		}
-
-		// Build the logic array to be used by Gravity Forms when evaluating the rules.
-		$logic = array(
-			'logicType' => 'all',
-			'rules'     => array(
-				array(
-					'fieldId'  => rgar( $settings, $name . '_field_id' ),
-					'operator' => rgar( $settings, $name . '_operator' ),
-					'value'    => rgar( $settings, $name . '_value' ),
-				),
-			)
-		);
-
-		return GFCommon::evaluate_conditional_logic( $logic, $form, $entry );
+		return true;
 	}
-
-	/**
-	 * Performing a custom action at the end of the form submission process.
-	 *
-	 * @param array $entry The entry currently being processed.
-	 * @param array $form The form currently being processed.
-	 */
-	public function after_submission( $entry, $form ) {
-
-		// Evaluate the rules configured for the custom_logic setting.
-		$result = $this->is_custom_logic_met( $form, $entry );
-
-		if ( $result ) {
-			// Do something awesome because the rules were met.
-		}
-	}
-
 
 	// # HELPERS -------------------------------------------------------------------------------------------------------
 
