@@ -34,6 +34,14 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 */
 	public function init() {
 		parent::init();
+
+		// Uncomment to see field map choice details for the addon screen you're viewing
+		// add_filter( 'gform_field_map_choices', function( $fields, $form_id, $field_type, $exclude_field_types ) {
+		// 	wicket_gf_write_log( $fields, true );
+		
+		// 	return $fields;
+		// }, 10, 4 );
+
 	}
 
 	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
@@ -48,23 +56,22 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return bool|void
 	 */
 	public function process_feed( $feed, $entry, $form ) {
+		//wicket_gf_write_log( $feed, true );
 		$feedName  = $feed['meta']['feedName'];
-		$mytextbox = $feed['meta']['mytextbox'];
-		$checkbox  = $feed['meta']['mycheckbox'];
 
-		// Retrieve the name => value pairs for all fields mapped in the 'mappedFields' field map.
-		$field_map = $this->get_field_map_fields( $feed, 'mappedFields' );
-
+		// $metaData = $this->get_field_map_fields( $feed, 'mappedFields' ); // Method for the other field map type
+		$metaData = $this->get_dynamic_field_map_fields( $feed, 'wicketFieldMaps' );
 		// Loop through the fields from the field map setting building an array of values to be passed to the third-party service.
 		$merge_vars = array();
-		foreach ( $field_map as $name => $field_id ) {
+		foreach ( $metaData as $name => $field_id ) {
 
 			// Get the field value for the specified field id
 			$merge_vars[ $name ] = $this->get_field_value( $form, $entry, $field_id );
 
 		}
+		wicket_gf_write_log( "The mappings:", true );
+		wicket_gf_write_log( $merge_vars, true );
 
-		// Send the values to the third-party service.
 	}
 
 	/**
@@ -176,25 +183,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		);
 	}
 
-	// public function feed_settings_fields( $form ) {
-  //     return array(
-  //         array(
-  //             'title'  => esc_html__( 'Wicket Member Mapping Settings', 'wicket-gf' ),
-  //             'fields' => array(
-  //                 array(
-  //                   //'name'                => 'Wicket Fields',
-  //                   'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
-  //                   'type'                => 'dynamic_field_map',
-  //                   //'limit'               => 20,
-  //                   //'exclude_field_types' => 'creditcard',
-  //                   'tooltip'             => '<h6>' . esc_html__( 'Wicket Fields', 'wicket_plugin' ) . '</h6>' . esc_html__( 'Map your GF fields to Wicket Member', 'wicket_plugin' ),
-  //                   //'validation_callback' => array( $this, 'validate_custom_meta' ),
-  //                 ),
-  //             ),
-  //         ),
-  //     );
-  // }
-
 	/**
 	 * Configures the settings which should be rendered on the feed edit page in the Form Settings > Simple Feed Add-On area.
 	 *
@@ -212,55 +200,69 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
 									'class'   => 'small',
 					),
+					// array(
+					// 	'name'      => 'mappedFields',
+					// 	'label'     => esc_html__( 'Map Fields', 'wicket-gf' ),
+					// 	'type'      => 'field_map',
+					// 	'field_map' => array(
+					// 		array(
+					// 			'name'       => 'custom',
+					// 			'label'      => esc_html__( 'Custom', 'wicket-gf' ),
+					// 			'required'   => 0,
+					// 			'field_type' => 'my_custom_field_type',
+					// 			'tooltip'    => esc_html__( 'This is the tooltip', 'wicket-gf' ),
+					// 		),
+					// 		array(
+					// 			'name'     => 'name',
+					// 			'label'    => esc_html__( 'Name', 'wicket-gf' ),
+					// 			'required' => 0,
+					// 		),
+					// 		array(
+					// 			'name'       => 'phone',
+					// 			'label'      => esc_html__( 'Phone', 'wicket-gf' ),
+					// 			'required'   => 0,
+					// 			'field_type' => 'phone',
+					// 		),
+					// 	),
+					// ),
 					array(
-									'label'   => esc_html__( 'Textbox', 'wicket-gf' ),
-									'type'    => 'text',
-									'name'    => 'mytextbox',
-									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
-									'class'   => 'small',
-					),
-					array(
-									'label'   => esc_html__( 'Encrypted text', 'wicket-gf' ),
-									'type'    => 'text',
-									'name'    => 'encryptedtext',
-									'encrypt' => true,
-					),
-					array(
-									'label'   => esc_html__( 'My checkbox', 'wicket-gf' ),
-									'type'    => 'checkbox',
-									'name'    => 'mycheckbox',
-									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
-									'choices' => array(
-													array(
-																	'label' => esc_html__( 'Enabled', 'wicket-gf' ),
-																	'name'  => 'mycheckbox',
-													),
+						// Documentation for dynamic_field: https://docs.gravityforms.com/dynamic_field_map-field/
+						'name'                => 'wicketFieldMaps',
+						'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
+						'type'                => 'dynamic_field_map',
+						'field_map'           => array(
+							array(
+								'label'						=> 'Example 1',
+								'value'						=> 'example-1'
+							),
+							array(
+								'label'						=> 'Example 2',
+								'value'						=> 'example-2'
+							),
+							array(
+								'label'						=> 'Example 3',
+								'value'						=> 'example-3'
+							),
+							array(
+								'label'						=> 'Option Group',
+								'choices'					=> array(
+									array(
+										'label'						=> 'Example 4',
+										'value'						=> 'example-4'
 									),
-					),
-					array(
-									'name'      => 'mappedFields',
-									'label'     => esc_html__( 'Map Fields', 'wicket-gf' ),
-									'type'      => 'field_map',
-									'field_map' => array(
-													array(
-																	'name'       => 'email',
-																	'label'      => esc_html__( 'Email', 'wicket-gf' ),
-																	'required'   => 0,
-																	'field_type' => array( 'email', 'hidden' ),
-																	'tooltip'    => esc_html__( 'This is the tooltip', 'wicket-gf' ),
-													),
-													array(
-																	'name'     => 'name',
-																	'label'    => esc_html__( 'Name', 'wicket-gf' ),
-																	'required' => 0,
-													),
-													array(
-																	'name'       => 'phone',
-																	'label'      => esc_html__( 'Phone', 'wicket-gf' ),
-																	'required'   => 0,
-																	'field_type' => 'phone',
-													),
+									array(
+										'label'						=> 'Example 5',
+										'value'						=> 'example-5'
 									),
+									array(
+										'label'						=> 'Example 6',
+										'value'						=> 'example-6'
+									),
+								),
+							),
+						),
+						'enable_custom_key'	  => false,
+						'tooltip'             => '<h6>' . esc_html__( 'Wicket Fields', 'wicket_plugin' ) . '</h6>' . esc_html__( 'Map your GF fields to Wicket', 'wicket_plugin' ),
 					),
 					array(
 									'name'           => 'condition',
@@ -273,25 +275,26 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			),
 		);
 	}
-	
 
-	/**
-	 * Define the markup for the my_custom_field_type type field.
-	 *
-	 * @param array $field The field properties.
-	 * @param bool|true $echo Should the setting markup be echoed.
-	 */
-	public function settings_my_custom_field_type( $field, $echo = true ) {
-		echo '<div>' . esc_html__( 'My custom field contains a few settings:', 'wicket-gf' ) . '</div>';
-
-		// get the text field settings from the main field and then render the text field
-		$text_field = $field['args']['text'];
-		$this->settings_text( $text_field );
-
-		// get the checkbox field settings from the main field and then render the checkbox field
-		$checkbox_field = $field['args']['checkbox'];
-		$this->settings_checkbox( $checkbox_field );
+	public function settings_my_custom_field_type() {
+     
+    $this->settings_text(
+        array(
+            'label'         => 'Item 1',
+            'name'          => 'my_custom[1]',
+            'default_value' => 'Item 1'
+        )
+    );
+    $this->settings_text(
+        array(
+            'label'         => 'Item 2',
+            'name'          => 'my_custom[2]',
+            'default_value' => 'Item 2'
+        )
+    );
+ 
 	}
+	
 
 	/**
 	 * Prevent feeds being listed or created if an api key isn't valid.
