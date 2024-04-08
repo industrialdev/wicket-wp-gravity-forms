@@ -153,7 +153,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         public static function resync_wicket_member_fields() {
             wicket_write_log($_POST);
 
-            $to_return = [];
+            $to_return = array();
 
             // Get all Additinoal Info Schemas
             $all_schemas = wicket_get_schemas();
@@ -161,11 +161,109 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Return their keys for initial POC
             foreach( $all_schemas['data'] as $schema ) {
-                $to_return[] = $schema['attributes']['key'];
+                // Ensure needed attributes are present before adding to array
+                if( isset( $schema['id'] ) && isset( $schema['attributes'] ) ) {
+                    if( isset( $schema['attributes']['key'] ) ) {
+
+                        $is_repeater = false;
+                        $repeater_depth_mode = 0; // 0 for not found, 1 for atts->schema->items, 2 for atts->schema->props->entries->items
+
+                        // Check if this schema is a repeater
+                        if( isset( $schema['attributes']['schema'] ) ) {
+                            if( isset( $schema['attributes']['schema']['items'] ) ) {
+                                $is_repeater = true;
+                                $repeater_depth_mode = 1;
+                            }
+                            if( isset( $schema['attributes']['schema']['properties'] ) ) {
+                                if( isset( $schema['attributes']['schema']['properties']['entries'] ) ) {
+                                    if( isset( $schema['attributes']['schema']['properties']['entries']['items'] ) ) {
+                                        $is_repeater = true;
+                                        $repeater_depth_mode = 2;
+                                    }
+                                }
+                            }
+                        }
+
+                        if( !$is_repeater ) {
+                            $child_fields = array();
+                            if( isset( $schema['attributes']['schema'] ) ) {
+                                if( isset( $schema['attributes']['schema']['properties'] ) ) {
+                                    foreach( $schema['attributes']['schema']['properties'] as $property_name => $property_data ) {
+                                        // TODO: Add field required status
+                                        // TODO: Add friendly name
+                                        $child_fields[] = [
+                                            'name'           => $property_name,
+                                            'type'           => $property_data['type'] ?? '',
+                                            'default'        => $property_data['default'] ?? '',
+                                            'maximum'        => $property_data['maximum'] ?? '',
+                                            'minimum'        => $property_data['minimum'] ?? '',
+                                            'enum'           => $property_data['enum'] ?? array(),
+                                            'path_to_field'  => 'attributes/schema/properties',
+                                        ];
+                                    }
+
+                                    $to_return[] = array(
+                                        'schema_id'     => $schema['id'],
+                                        'key'           => $schema['attributes']['key'] ?? '',
+                                        'name_en'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['en'] ?? '',
+                                        'name_fr'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['fr'] ?? '',
+                                        'is_repeater'   => false,
+                                        'child_fields'  => $child_fields,
+                                    );
+                                }
+                            }
+                        } else {
+                            // If it IS a repeater
+                            $repeater_fields = array();
+                            if( isset( $schema['attributes']['schema'] ) ) {
+                                if( $repeater_depth_mode == 1 ) {
+                                    if( isset( $schema['attributes']['schema']['items']['properties'] ) ) {
+                                        foreach( $schema['attributes']['schema']['items']['properties'] as $property_name => $property_data ) {
+                                            $repeater_fields[] = [
+                                                'name'           => $property_name,
+                                                'type'           => $property_data['type'] ?? '',
+                                                'default'        => $property_data['default'] ?? '',
+                                                'maximum'        => $property_data['maximum'] ?? '',
+                                                'minimum'        => $property_data['minimum'] ?? '',
+                                                'enum'           => $property_data['enum'] ?? array(),
+                                                'path_to_field'  => 'attributes/schema/items/properties',
+                                            ];
+                                        }
+                                    }
+                                } else if( $repeater_depth_mode == 2 ) {
+                                    if( isset( $schema['attributes']['schema']['properties']['entries']['items']['properties'] ) ) {
+                                        foreach( $schema['attributes']['schema']['properties']['entries']['items']['properties'] as $property_name => $property_data ) {
+                                            $repeater_fields[] = [
+                                                'name'           => $property_name,
+                                                'type'           => $property_data['type'] ?? '',
+                                                'default'        => $property_data['default'] ?? '',
+                                                'maximum'        => $property_data['maximum'] ?? '',
+                                                'minimum'        => $property_data['minimum'] ?? '',
+                                                'enum'           => $property_data['enum'] ?? array(),
+                                                'path_to_field'  => 'attributes/schema/properties/entries/items/properties',
+                                            ];
+                                        }
+                                    }
+                                }
+                            }
+
+                            $to_return[] = array(
+                                'schema_id'     => $schema['id'],
+                                'key'           => $schema['attributes']['key'] ?? '',
+                                'name_en'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['en'] ?? '',
+                                'name_fr'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['fr'] ?? '',
+                                'is_repeater'   => true,
+                                'child_fields'  => $repeater_fields,
+                            );
+                        }
+                    }
+                }
             }
 
+            wicket_write_log($to_return);
 
-            return $to_return;
+            update_option( 'wicket_gf_member_fields', $to_return );
+            wp_send_json_success( $to_return );
         }
 
 

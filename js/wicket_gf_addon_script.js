@@ -1,6 +1,8 @@
 jQuery( document ).ready( function($) {
 
   $('#wicket-gf-addon-resync-fields-button').click(function(e) {
+    // TODO: Show a spinning loading icon inside the button so the user knows this is loading. Also prevent a second click
+
     // Call backend function to resync Wicket Member fields to the db-stored JSON array, then render a checkmark
     var formdata = new FormData();
     formdata.append("name", 'test');
@@ -16,6 +18,7 @@ jQuery( document ).ready( function($) {
       .then(response => response.text())
       .then(result => {
         console.log(result);
+        location.reload(); // Reload the page so the fields will load afresh from the new DB entry
       })
       .catch(error => console.log('error', error));
   })

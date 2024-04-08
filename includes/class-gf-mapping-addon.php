@@ -144,37 +144,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 						'name'                => 'wicketFieldMaps',
 						'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
 						'type'                => 'dynamic_field_map',
-						'field_map'           => array(
-							array(
-								'label'						=> 'Example 1',
-								'value'						=> 'example-1'
-							),
-							array(
-								'label'						=> 'Example 2',
-								'value'						=> 'example-2'
-							),
-							array(
-								'label'						=> 'Example 3',
-								'value'						=> 'example-3'
-							),
-							array(
-								'label'						=> 'Option Group',
-								'choices'					=> array(
-									array(
-										'label'						=> 'Example 4',
-										'value'						=> 'example-4'
-									),
-									array(
-										'label'						=> 'Example 5',
-										'value'						=> 'example-5'
-									),
-									array(
-										'label'						=> 'Example 6',
-										'value'						=> 'example-6'
-									),
-								),
-							),
-						),
+						'field_map'           => $this::get_member_key_options(),
 						'enable_custom_key'	  => false,
 						'tooltip'             => '<h6>' . esc_html__( 'Wicket Fields', 'wicket_plugin' ) . '</h6>' . esc_html__( 'Map your GF fields to Wicket', 'wicket_plugin' ),
 					),
@@ -188,6 +158,29 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				),
 			),
 		);
+	}
+
+	public function get_member_key_options() {
+		$wicket_member_data_fields = get_option('wicket_gf_member_fields');
+		$fields_to_return = array();
+		foreach( $wicket_member_data_fields as $schema ) {
+			$choices = array();
+			foreach( $schema['child_fields'] as $child_field ) {
+				// The value is set in a way where it can be split by the / characters when we process the feed, and 
+				// know exactly where to save that data in the Wicket Member schemas
+				$choices[] = array(
+					'label'    => $child_field['name'],
+					'value'    => $schema['schema_id'] . '/' . $child_field['path_to_field'] . '/' . $child_field['name'],
+				);
+			}
+
+			$fields_to_return[] = array(
+				'label'     => $schema['name_en'],
+				'choices'   => $choices,
+			);
+		}
+
+		return $fields_to_return;
 	}
 
 	/**
