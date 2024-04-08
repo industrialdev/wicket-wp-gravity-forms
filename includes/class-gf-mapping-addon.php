@@ -6,6 +6,8 @@ GFForms::include_feed_addon_framework();
 
 class GFWicketMappingAddOn extends GFFeedAddOn {
 
+	public $_async_feed_processing = true; // Makes this an async feed so the form can submit while this processes in the background
+
 	protected $_version = WICKET_WP_GF_VERSION;
 	protected $_min_gravityforms_version = '1.9';
 	protected $_slug = 'wicketmap';
@@ -41,7 +43,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		
 		// 	return $fields;
 		// }, 10, 4 );
-
 	}
 
 	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
@@ -74,29 +75,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	}
 
-	/**
-	 * Custom format the phone type field values before they are returned by $this->get_field_value().
-	 *
-	 * @param array $entry The Entry currently being processed.
-	 * @param string $field_id The ID of the Field currently being processed.
-	 * @param GF_Field_Phone $field The Field currently being processed.
-	 *
-	 * @return string
-	 */
-	public function get_phone_field_value( $entry, $field_id, $field ) {
-
-		// Get the field value from the Entry Object.
-		$field_value = rgar( $entry, $field_id );
-
-		// If there is a value and the field phoneFormat setting is set to standard reformat the value.
-		if ( ! empty( $field_value ) && $field->phoneFormat == 'standard' && preg_match( '/^\D?(\d{3})\D?\D?(\d{3})\D?(\d{4})$/', $field_value, $matches ) ) {
-			$field_value = sprintf( '%s-%s-%s', $matches[1], $matches[2], $matches[3] );
-		}
-
-		return $field_value;
-	}
-
-
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
 
 	/**
@@ -105,28 +83,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return array
 	 */
 	public function scripts() {
-		// $scripts = array(
-		// 	array(
-		// 		'handle'  => 'my_script_js',
-		// 		'src'     => $this->get_base_url() . '/js/my_script.js',
-		// 		'version' => $this->_version,
-		// 		'deps'    => array( 'jquery' ),
-		// 		'strings' => array(
-		// 			'first'  => esc_html__( 'First Choice', 'wicket-gf' ),
-		// 			'second' => esc_html__( 'Second Choice', 'wicket-gf' ),
-		// 			'third'  => esc_html__( 'Third Choice', 'wicket-gf' )
-		// 		),
-		// 		'enqueue' => array(
-		// 			array(
-		// 				'admin_page' => array( 'form_settings' ),
-		// 				'tab'        => 'wicketmap'
-		// 			)
-		// 		)
-		// 	),
-
-		// );
-
-		// return array_merge( parent::scripts(), $scripts );
 		return parent::scripts();
 	}
 
@@ -136,52 +92,10 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return array
 	 */
 	public function styles() {
-		// $styles = array(
-		// 	array(
-		// 		'handle'  => 'my_styles_css',
-		// 		'src'     => $this->get_base_url() . '/css/my_styles.css',
-		// 		'version' => $this->_version,
-		// 		'enqueue' => array(
-		// 			array( 'field_types' => array( 'poll' ) )
-		// 		)
-		// 	)
-		// );
-
-		// return array_merge( parent::styles(), $styles );
 		return parent::styles();
 	}
 
 	// # ADMIN FUNCTIONS -----------------------------------------------------------------------------------------------
-
-	/**
-	 * Creates a custom page for this add-on.
-	 */
-	public function plugin_page() {
-		echo 'This page appears in the Forms menu';
-	}
-
-	/**
-	 * Configures the settings which should be rendered on the add-on settings tab.
-	 *
-	 * @return array
-	 */
-	public function plugin_settings_fields() {
-		return array(
-			array(
-				'title'  => esc_html__( 'Wicket Member Mapping Settings', 'wicket-gf' ),
-				'fields' => array(
-					array(
-						'name'              => 'mytextbox',
-						'tooltip'           => esc_html__( 'This is the tooltip', 'wicket-gf' ),
-						'label'             => esc_html__( 'This is the label', 'wicket-gf' ),
-						'type'              => 'text',
-						'class'             => 'small',
-						'feedback_callback' => array( $this, 'is_valid_setting' ),
-					)
-				)
-			)
-		);
-	}
 
 	/**
 	 * Configures the settings which should be rendered on the feed edit page in the Form Settings > Simple Feed Add-On area.
@@ -276,23 +190,15 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		);
 	}
 
-	public function settings_my_custom_field_type() {
-     
-    $this->settings_text(
-        array(
-            'label'         => 'Item 1',
-            'name'          => 'my_custom[1]',
-            'default_value' => 'Item 1'
-        )
-    );
-    $this->settings_text(
-        array(
-            'label'         => 'Item 2',
-            'name'          => 'my_custom[2]',
-            'default_value' => 'Item 2'
-        )
-    );
- 
+	/**
+	 * Configures which columns should be displayed on the feed list page.
+	 *
+	 * @return array
+	 */
+	public function feed_list_columns() {
+		return array(
+			'feedName'  => esc_html__( 'Name', 'wicket-gf' ),
+		);
 	}
 	
 
@@ -310,6 +216,27 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		$key = rgar( $settings, 'apiKey' );
 
 		return true;
+	}
+
+	// # CUSTOM SETTIGNS ON ADDON SETTINGS PAGE -------------------------------------------------------------------------
+
+	public static function addon_custom_ui () {
+		?>                
+		
+		<div class="gform-settings__wrapper custom">
+			<div class="">
+				<a 
+					aria-label="<?php _e( 'Re-Sync Wicket Member Fields', 'wicket-gf' ); ?>" 
+					href="javascript:void(0)" 
+					class="preview-form gform-button gform-button--white" 
+					target="_self" 
+					rel="noopener"
+					id="wicket-gf-addon-resync-fields-button"
+				><?php _e( 'Re-Sync Wicket Member Fields', 'wicket-gf' ); ?></a>
+			</div>
+		</div>
+		
+		<?
 	}
 
 	// # HELPERS -------------------------------------------------------------------------------------------------------

@@ -56,6 +56,12 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Bootstrap the GF Addon for field mapping
             add_action( 'gform_loaded', array( $this, 'gf_mapping_addon_load' ), 5 );
 
+            // Enqueue scripts and styles
+            add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts_styles'));
+
+            // Register Rest Routes
+          	add_action('rest_api_init', array($this, 'register_rest_routes') );
+
             require_once( plugin_dir_path( __FILE__ ) . 'admin/class-wicket-gf-admin.php' );
 
             // Add Options Page for plugin
@@ -75,6 +81,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-mapping-addon.php' );
     
             GFAddOn::register( 'GFWicketMappingAddOn' );
+
+            // handle displaying content for our custom menu when selected
+            add_action( 'gform_form_settings_page_wicketmap', array( 'GFWicketMappingAddOn', 'addon_custom_ui' ), 20 );
         }
 
         public function conditionally_include_pa_object() {
@@ -87,6 +96,18 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     gp_populate_anything()->register_object_type( 'wicket', 'GPPA_Object_Type_Wicket' );
                 }
             }
+        }
+
+        public function enqueue_scripts_styles($screen) {
+            if( $screen == 'toplevel_page_gf_edit_forms' ) {
+                if( isset( $_GET['subview'] ) ) {
+                    if( $_GET['subview'] == 'wicketmap' ) {
+                        wp_enqueue_style( 'wicket-gf-addon-style', plugins_url( 'css/wicket_gf_addon_styles.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
+                        wp_enqueue_script( 'wicket-gf-addon-script', plugins_url( 'js/wicket_gf_addon_script.js', __FILE__ ), array( 'jquery' ), null, true );
+                    }
+                }
+            }
+            return;
         }
 
 		public static function shortcode($atts) {
@@ -116,6 +137,35 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             return do_shortcode(
                     "[gravityform id='".$form_id."' title='".$title."' description='".$description."' ajax='".$ajax."' tabindex='".$tabindex."' field_values='".$field_values."' theme='".$theme."']"
             );
+        }
+
+        public static function register_rest_routes() {
+          register_rest_route( 'wicket-gf/v1', 'resync-member-fields',array(
+            'methods'  => 'POST',
+            'callback' => array( 'Wicket_Gf_Main', 'resync_wicket_member_fields' ),
+            'permission_callback' => function() {
+              //return current_user_can('edit_posts');
+              return true;
+            }
+          ));
+        }
+
+        public static function resync_wicket_member_fields() {
+            wicket_write_log($_POST);
+
+            $to_return = [];
+
+            // Get all Additinoal Info Schemas
+            $all_schemas = wicket_get_schemas();
+            //wicket_write_log($all_schemas, true);
+
+            // Return their keys for initial POC
+            foreach( $all_schemas['data'] as $schema ) {
+                $to_return[] = $schema['attributes']['key'];
+            }
+
+
+            return $to_return;
         }
 
 
