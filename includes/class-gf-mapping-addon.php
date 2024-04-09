@@ -169,7 +169,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				// The value is set in a way where it can be split by the / characters when we process the feed, and 
 				// know exactly where to save that data in the Wicket Member schemas
 				$choices[] = array(
-					'label'    => $child_field['name'],
+					'label'    => $child_field['label_en'],
 					'value'    => $schema['schema_id'] . '/' . $child_field['path_to_field'] . '/' . $child_field['name'],
 				);
 			}

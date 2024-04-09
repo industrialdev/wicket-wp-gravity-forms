@@ -157,7 +157,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Get all Additinoal Info Schemas
             $all_schemas = wicket_get_schemas();
-            //wicket_write_log($all_schemas, true);
+            //wicket_write_log($all_schemas);
 
             // Return their keys for initial POC
             foreach( $all_schemas['data'] as $schema ) {
@@ -190,9 +190,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 if( isset( $schema['attributes']['schema']['properties'] ) ) {
                                     foreach( $schema['attributes']['schema']['properties'] as $property_name => $property_data ) {
                                         // TODO: Add field required status
-                                        // TODO: Add friendly name
+                                        
+                                        $labels = self::wicket_schema_get_label_by_property_name( $schema, $property_name );
+                                        $label_en = $labels['en'];
+                                        $label_fr = $labels['fr'];
+
                                         $child_fields[] = [
                                             'name'           => $property_name,
+                                            'label_en'       => $label_en,
+                                            'label_fr'       => $label_fr,
                                             'type'           => $property_data['type'] ?? '',
                                             'default'        => $property_data['default'] ?? '',
                                             'maximum'        => $property_data['maximum'] ?? '',
@@ -219,8 +225,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 if( $repeater_depth_mode == 1 ) {
                                     if( isset( $schema['attributes']['schema']['items']['properties'] ) ) {
                                         foreach( $schema['attributes']['schema']['items']['properties'] as $property_name => $property_data ) {
+                                            
+                                            $labels = self::wicket_schema_get_label_by_property_name( $schema, $property_name, $repeater_depth_mode );
+                                            $label_en = $labels['en'];
+                                            $label_fr = $labels['fr'];
+
                                             $repeater_fields[] = [
                                                 'name'           => $property_name,
+                                                'label_en'       => $label_en,
+                                                'label_fr'       => $label_fr,
                                                 'type'           => $property_data['type'] ?? '',
                                                 'default'        => $property_data['default'] ?? '',
                                                 'maximum'        => $property_data['maximum'] ?? '',
@@ -233,8 +246,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 } else if( $repeater_depth_mode == 2 ) {
                                     if( isset( $schema['attributes']['schema']['properties']['entries']['items']['properties'] ) ) {
                                         foreach( $schema['attributes']['schema']['properties']['entries']['items']['properties'] as $property_name => $property_data ) {
+                                            
+                                            $labels = self::wicket_schema_get_label_by_property_name( $schema, $property_name, $repeater_depth_mode );
+                                            $label_en = $labels['en'];
+                                            $label_fr = $labels['fr'];
+                                            
                                             $repeater_fields[] = [
                                                 'name'           => $property_name,
+                                                'label_en'       => $label_en,
+                                                'label_fr'       => $label_fr,
                                                 'type'           => $property_data['type'] ?? '',
                                                 'default'        => $property_data['default'] ?? '',
                                                 'maximum'        => $property_data['maximum'] ?? '',
@@ -264,6 +284,107 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             update_option( 'wicket_gf_member_fields', $to_return );
             wp_send_json_success( $to_return );
+        }
+
+        public static function wicket_schema_get_label_by_property_name( $schema, $property_name, $repeater_depth_mode = 0 ) {
+            // Repeater Depth Mode: 0 for no repeater, 1 for atts->schema->items, 2 for atts->schema->props->entries->items
+
+            $label_en = '';
+            $label_fr = '';
+
+            if( $repeater_depth_mode > 0 ) {
+                if( $repeater_depth_mode == 1 ) {
+                    if( isset( $schema['attributes']['ui_schema'] ) ) {
+                        if( isset( $schema['attributes']['ui_schema']['items'] ) ) {
+                            if( isset( $schema['attributes']['ui_schema']['items'][$property_name] ) ) {
+                                if( isset( $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n'] ) ) {
+                                    if( isset( $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n']['label'] ) ) {
+                                        if( isset( $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n']['label']['en'] ) ) {
+                                            $label_en = $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n']['label']['en'];
+                                        }
+                                        if( isset( $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n']['label']['fr'] ) ) {
+                                            $label_fr = $schema['attributes']['ui_schema']['items'][$property_name]['ui:i18n']['label']['fr'];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if( $repeater_depth_mode == 2 ) {
+                    if( isset( $schema['attributes']['ui_schema'] ) ) {
+                        if( isset( $schema['attributes']['ui_schema']['entries'] ) ) {
+                            if( isset( $schema['attributes']['ui_schema']['entries']['items'] ) ) {
+                                if( isset( $schema['attributes']['ui_schema']['entries']['items'][$property_name] ) ) {
+                                    if( isset( $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n'] ) ) {
+                                        if( isset( $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n']['label'] ) ) {
+                                            if( isset( $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n']['label']['en'] ) ) {
+                                                $label_en = $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n']['label']['en'];
+                                            }
+                                            if( isset( $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n']['label']['fr'] ) ) {
+                                                $label_fr = $schema['attributes']['ui_schema']['entries']['items'][$property_name]['ui:i18n']['label']['fr'];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Is not repeater
+                if( isset( $schema['attributes']['ui_schema'] ) ) {
+                    if( isset( $schema['attributes']['ui_schema'][$property_name] ) ) {
+                        if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n'] ) ) {
+                            if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label'] ) ) {
+                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['en'] ) ) {
+                                    $label_en = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['en'];
+                                }
+                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['fr'] ) ) {
+                                    $label_fr = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['fr'];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return array(
+                'en' => $label_en,
+                'fr' => $label_fr
+            );
+        }
+
+        public static function wicket_schema_get_items_sub_array( $schema ) {
+            if( isset( $schema['attributes'] ) ) {
+                if( isset( $schema['attributes']['ui_schema'] ) ) {
+                    foreach( $schema['attributes']['ui_schema'] as $key => $data ) {
+                        if( $key == 'items' ) {
+                            return $data;
+                        }
+                        foreach( $data as $key2 => $data2 ) {
+                            if( $key2 == 'items' ) {
+                                return $data2;
+                            }
+                            foreach( $data2 as $key3 => $data3 ) {
+                                if( $key3 == 'items' ) {
+                                    return $data3;
+                                }
+                                foreach( $data3 as $key4 => $data4 ) {
+                                    if( $key4 == 'items' ) {
+                                        return $data4;
+                                    }
+                                    foreach( $data4 as $key5 => $data5 ) {
+                                        if( $key5 == 'items' ) {
+                                            return $data5;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 
