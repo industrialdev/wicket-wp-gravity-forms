@@ -39,7 +39,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 		// Uncomment to see field map choice details for the addon screen you're viewing
 		// add_filter( 'gform_field_map_choices', function( $fields, $form_id, $field_type, $exclude_field_types ) {
-		// 	wicket_gf_write_log( $fields, true );
+		// 	wicket_write_log( $fields, true );
 		
 		// 	return $fields;
 		// }, 10, 4 );
@@ -57,7 +57,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return bool|void
 	 */
 	public function process_feed( $feed, $entry, $form ) {
-		//wicket_gf_write_log( $feed, true );
+		//wicket_write_log( $feed, true );
 		$feedName  = $feed['meta']['feedName'];
 
 		// $metaData = $this->get_field_map_fields( $feed, 'mappedFields' ); // Method for the other field map type
@@ -70,8 +70,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			$merge_vars[ $name ] = $this->get_field_value( $form, $entry, $field_id );
 
 		}
-		wicket_gf_write_log( "The mappings:", true );
-		wicket_gf_write_log( $merge_vars, true );
+		wicket_write_log( "The mappings:" );
+		wicket_write_log( $merge_vars );
 
 	}
 
