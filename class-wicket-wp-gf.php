@@ -233,7 +233,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         'maximum'        => $property_data['maximum'] ?? '',
                                         'minimum'        => $property_data['minimum'] ?? '',
                                         'enum'           => $property_data['enum'] ?? array(),
-                                        'path_to_field'  => 'attributes/schema/items/properties',
+                                        'path_to_field'  => $items_array['path_to_items'] . '/properties',
                                     ];
                                 }
                             }
@@ -309,12 +309,30 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 if( isset( $schema['attributes']['ui_schema'] ) ) {
                     foreach( $schema['attributes']['ui_schema'] as $key => $data ) {
                         if( $key == 'items' ) {
-                            return array(
-                                'is_repeater'     => true,
-                                'repeater_depth'  => 1,
-                                'items'           => $schema['attributes']['schema']['properties'][$key],
-                                'items_ui'        => $data
-                            );
+                            if( !isset( $schema['attributes']['schema']['properties'] ) ) {
+                                $items = $schema['attributes']['schema']['items']['properties'][$key];
+                                // Note: for some reason one field is giving "Undefined array key "items"" even
+                                // though items is indeed in the array. Maybe misconfigured in the MDP or has a space somewhere
+                                if( empty($items) ) {
+                                    wicket_write_log("No items for some reason:");
+                                    wicket_write_log($schema);
+                                }
+                                return array(
+                                    'is_repeater'     => true,
+                                    'repeater_depth'  => 1,
+                                    'items'           => $items,
+                                    'items_ui'        => $data,
+                                    'path_to_items'   => 'attributes/schema/properties/' . $key,
+                                );
+                            } else {
+                                return array(
+                                    'is_repeater'     => true,
+                                    'repeater_depth'  => 1,
+                                    'items'           => $schema['attributes']['schema']['properties'][$key],
+                                    'items_ui'        => $data,
+                                    'path_to_items'   => 'attributes/schema/properties/' . $key,
+                                );
+                            }
                         }
                         if( is_array( $data ) ) {
                             foreach( $data as $key2 => $data2 ) {
@@ -323,7 +341,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         'is_repeater'     => true,
                                         'repeater_depth'  => 2,
                                         'items'           => $schema['attributes']['schema']['properties'][$key][$key2],
-                                        'items_ui'        => $data2
+                                        'items_ui'        => $data2,
+                                        'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2,
                                     );
                                 }
                                 if( is_array( $data2 ) ) {
@@ -333,7 +352,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                 'is_repeater'     => true,
                                                 'repeater_depth'  => 3,
                                                 'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3],
-                                                'items_ui'        => $data3
+                                                'items_ui'        => $data3,
+                                                'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3,
                                             );
                                         }
                                         if( is_array( $data3 ) ) {
@@ -343,7 +363,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                         'is_repeater'     => true,
                                                         'repeater_depth'  => 4,
                                                         'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3][$key4],
-                                                        'items_ui'        => $data4
+                                                        'items_ui'        => $data4,
+                                                        'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3 . '/' . $key4,
                                                     );
                                                 }
                                                 if( is_array( $data4 ) ) {
@@ -353,7 +374,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                                 'is_repeater'     => true,
                                                                 'repeater_depth'  => 5,
                                                                 'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3][$key4][$key5],
-                                                                'items_ui'        => $data5
+                                                                'items_ui'        => $data5,
+                                                                'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3 . '/' . $key4 . '/' . $key5,
                                                             );
                                                         }
                                                     }

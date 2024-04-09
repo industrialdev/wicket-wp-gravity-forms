@@ -73,6 +73,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		wicket_write_log( "The mappings:" );
 		wicket_write_log( $merge_vars );
 
+		// TODO: watch out for fields that need to be processed together to sync properly, per note from Terry
+
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
@@ -209,6 +211,13 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		$key = rgar( $settings, 'apiKey' );
 
 		return true;
+	}
+
+	/**
+	 * Set the icon
+	 */
+	public function get_menu_icon() {
+		return file_get_contents( dirname( __FILE__ ) . '/../assets/wicket_icon_black.svg' );
 	}
 
 	// # CUSTOM SETTIGNS ON ADDON SETTINGS PAGE -------------------------------------------------------------------------
