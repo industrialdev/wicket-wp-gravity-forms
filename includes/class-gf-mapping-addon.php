@@ -144,7 +144,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 					array(
 						// Documentation for dynamic_field: https://docs.gravityforms.com/dynamic_field_map-field/
 						'name'                => 'wicketFieldMaps',
-						'label'               => esc_html__( 'Wicket Fields', 'wicket_plugin' ),
+						'label'               => esc_html__( 'Wicket Fields', 'wicket-gf' ),
+						'description' 			  => esc_html__( 'Note that by default changes will be made to the UUID of the currently logged in user, otherwise a person\'s UUID can be mapped to update a person record, or an org UUID can be mapped to update an org record.', 'wicket-gf' ),
 						'type'                => 'dynamic_field_map',
 						'field_map'           => $this::get_member_key_options(),
 						'enable_custom_key'	  => false,
@@ -223,6 +224,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	// # CUSTOM SETTIGNS ON ADDON SETTINGS PAGE -------------------------------------------------------------------------
 
 	public static function addon_custom_ui () {
+
+		if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ):
 		?>                
 		
 		<div class="gform-settings__wrapper custom">
@@ -239,6 +242,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		</div>
 		
 		<?
+		endif;
 	}
 
 	// # HELPERS -------------------------------------------------------------------------------------------------------

@@ -100,7 +100,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
         public function enqueue_scripts_styles($screen) {
             if( $screen == 'toplevel_page_gf_edit_forms' ) {
-                if( isset( $_GET['subview'] ) ) {
+                if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ) {
                     if( $_GET['subview'] == 'wicketmap' ) {
                         wp_enqueue_style( 'wicket-gf-addon-style', plugins_url( 'css/wicket_gf_addon_styles.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
                         wp_enqueue_script( 'wicket-gf-addon-script', plugins_url( 'js/wicket_gf_addon_script.js', __FILE__ ), array( 'jquery' ), null, true );
@@ -155,7 +155,58 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             $to_return = array();
 
-            // Get all Additinoal Info Schemas
+            // --------------------------------
+            // --------- UUID Options ---------
+            // --------------------------------
+            $to_return[] = array(
+                'schema_id'     => '',
+                'key'           => 'uuid_options',
+                'name_en'       => 'UUID Options',
+                'name_fr'       => 'Options UUID',
+                'is_repeater'   => false,
+                'child_fields'  => array(
+                    array( 
+                        'name'           => 'person_uuid',
+                        'label_en'       => 'Person UUID',
+                        'label_fr'       => 'Personne UUID',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'org_uuid',
+                        'label_en'       => 'Organization UUID',
+                        'label_fr'       => 'Organisation UUID',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                ),
+            );
+
+            $child_fields[] = [
+                'name'           => $property_name,
+                'label_en'       => $label_en,
+                'label_fr'       => $label_fr,
+                'type'           => $property_data['type'] ?? '',
+                'default'        => $property_data['default'] ?? '',
+                'maximum'        => $property_data['maximum'] ?? '',
+                'minimum'        => $property_data['minimum'] ?? '',
+                'enum'           => $property_data['enum'] ?? array(),
+                'path_to_field'  => 'attributes/schema/properties',
+            ];
+
+            // --------------------------------
+            // ------- Additional Info --------
+            // --------------------------------
+
+            // Get all Additional Info Schemas
             $all_schemas = wicket_get_schemas();
             //wicket_write_log($all_schemas);
 
@@ -250,6 +301,42 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     }
                 }
             }
+
+            // --------------------------------
+            // --------- Profile Data ---------
+            // --------------------------------
+
+            // --------------------------------
+            // ----------- Org Data -----------
+            // --------------------------------
+
+            // --------------------------------
+            // ---------- Membership ----------
+            // --------------------------------
+
+            // --------------------------------
+            // -------- Relationships ---------
+            // --------------------------------
+
+            // --------------------------------
+            // ------------ Groups ------------
+            // --------------------------------
+
+            // --------------------------------
+            // ---------- Touchpoints ---------
+            // --------------------------------
+
+            // --------------------------------
+            // ---------- Preferences ---------
+            // --------------------------------
+
+            // --------------------------------
+            // ----------- Messages -----------
+            // --------------------------------
+
+            // --------------------------------
+            // ----------- Security -----------
+            // --------------------------------
 
             update_option( 'wicket_gf_member_fields', $to_return );
             wp_send_json_success( $to_return );
