@@ -44,6 +44,12 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 	 * The main Wicket Gravity Forms class
 	 */
 	class Wicket_Gf_Main {
+
+         /**
+		 * Class variables
+		 */
+        private static $wicket_current_person = 'turtles';
+
         /**
 		 * Constructor
 		 */
@@ -61,6 +67,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Register Rest Routes
           	add_action('rest_api_init', array($this, 'register_rest_routes') );
+
+            // Grab user info *after the necessary WP info loads
+            add_action( 'plugins_loaded', array( $this, 'store_data_after_plugins_loaded' ) );
 
             require_once( plugin_dir_path( __FILE__ ) . 'admin/class-wicket-gf-admin.php' );
 
@@ -96,6 +105,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     gp_populate_anything()->register_object_type( 'wicket', 'GPPA_Object_Type_Wicket' );
                 }
             }
+        }
+
+        public function store_data_after_plugins_loaded() {
+            self::$wicket_current_person = wicket_current_person();
         }
 
         public function enqueue_scripts_styles($screen) {
@@ -161,8 +174,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             $to_return[] = array(
                 'schema_id'     => '',
                 'key'           => 'uuid_options',
-                'name_en'       => 'UUID Options',
-                'name_fr'       => 'Options UUID',
+                'name_en'       => '-- UUID Options --',
+                'name_fr'       => '-- Options UUID --',
                 'is_repeater'   => false,
                 'child_fields'  => array(
                     array( 
@@ -203,8 +216,241 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             ];
 
             // --------------------------------
+            // --------- Profile Data ---------
+            // --------------------------------
+
+            // Add standard fields that don't change
+            $to_return[] = array(
+                'schema_id'     => '',
+                'key'           => 'profile_options',
+                'name_en'       => '-- Profile Options --',
+                'name_fr'       => '-- Options Profil --',
+                'is_repeater'   => false,
+                'child_fields'  => array(
+                    array( 
+                        'name'           => 'given_name',
+                        'label_en'       => 'Given/First Name',
+                        'label_fr'       => 'Prénom',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'family_name',
+                        'label_en'       => 'Family/Last Name',
+                        'label_fr'       => 'Nom de famille',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'additional_name',
+                        'label_en'       => 'Additional Name',
+                        'label_fr'       => 'Nom supplémentaire',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'alternate_name',
+                        'label_en'       => 'Alternate Name',
+                        'label_fr'       => 'Nom alternatif',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'full_name',
+                        'label_en'       => 'Full Name',
+                        'label_fr'       => 'Nom et prénom',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'identifying_number',
+                        'label_en'       => 'Identifying Number',
+                        'label_fr'       => 'Numéro d\'identification',
+                        'type'           => 'number',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'slug',
+                        'label_en'       => 'Slug',
+                        'label_fr'       => 'Slug',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'gender',
+                        'label_en'       => 'Gender',
+                        'label_fr'       => 'Genre',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'honorific_prefix',
+                        'label_en'       => 'Prefix',
+                        'label_fr'       => 'Préfixe',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'honorific_suffix',
+                        'label_en'       => 'Suffix',
+                        'label_fr'       => 'Suffixe',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'preferred_pronoun',
+                        'label_en'       => 'Preferred Pronoun',
+                        'label_fr'       => 'Pronom préféré',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'job_title',
+                        'label_en'       => 'Job Title',
+                        'label_fr'       => 'Titre d\'emploi',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'birth_date',
+                        'label_en'       => 'Birth Date',
+                        'label_fr'       => 'Date de naissance',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'language',
+                        'label_en'       => 'Language',
+                        'label_fr'       => 'Langue',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'languages_spoken',
+                        'label_en'       => 'Languages Spoken',
+                        'label_fr'       => 'Langues parlées',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'languages_written',
+                        'label_en'       => 'Languages Written',
+                        'label_fr'       => 'Langues écrites',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                ),
+            );
+
+            // Add data_fields which is custom per tenant
+            $current_user_data_fields = wicket_current_person();
+            //wicket_write_log( self::$wicket_current_person );
+            if( !empty( self::$wicket_current_person ) ) {
+                $current_person_array = (array) self::$wicket_current_person;
+                wicket_write_log($current_person_array, true);
+                wicket_write_log($current_person_array['*attributes'], true);
+                // TODO: Complete this section
+                // if( isset( $current_person_array['*attributes'] ) ) {
+                //     if( isset( $current_person_array['*attributes']['data'] ) ) {
+                //         if( isset( $current_person_array['*attributes']['data_fields'] ) ) {
+                //             wicket_write_log("The ATTS were found", true);
+                //             //wicket_write_log($current_person_array['*attributes']['data_fields'], true);
+                //         }
+                //     }
+                // }
+            }
+
+
+            // --------------------------------
             // ------- Additional Info --------
             // --------------------------------
+
+            // Add a header
+            $to_return[] = array(
+                'schema_id'     => '',
+                'key'           => 'header_additional_info',
+                'name_en'       => '-- Additional Info: --',
+                'name_fr'       => '-- Information additionnelle: --',
+                'is_repeater'   => false,
+                'child_fields'  => array(
+                    array( 
+                        'name'           => '',
+                        'label_en'       => '',
+                        'label_fr'       => '',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                ),
+            );
+
 
             // Get all Additional Info Schemas
             $all_schemas = wicket_get_schemas();
@@ -234,6 +480,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         if( empty( $label_fr ) ) {
                                             $label_fr = $property_name;
                                         }
+
+                                        $label_en = $label_en;
+                                        $label_fr = $label_fr;
 
                                         $child_fields[] = [
                                             'name'           => $property_name,
@@ -275,6 +524,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         $label_fr = $property_name;
                                     }
 
+                                    $label_en = $label_en;
+                                    $label_fr = $label_fr;
+
                                     $repeater_fields[] = [
                                         'name'           => $property_name,
                                         'label_en'       => $label_en,
@@ -301,10 +553,6 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     }
                 }
             }
-
-            // --------------------------------
-            // --------- Profile Data ---------
-            // --------------------------------
 
             // --------------------------------
             // ----------- Org Data -----------
@@ -401,8 +649,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 // Note: for some reason one field is giving "Undefined array key "items"" even
                                 // though items is indeed in the array. Maybe misconfigured in the MDP or has a space somewhere
                                 if( empty($items) ) {
-                                    wicket_write_log("No items for some reason:");
-                                    wicket_write_log($schema);
+                                    // wicket_write_log("No items for some reason:");
+                                    // wicket_write_log($schema);
                                 }
                                 return array(
                                     'is_repeater'     => true,

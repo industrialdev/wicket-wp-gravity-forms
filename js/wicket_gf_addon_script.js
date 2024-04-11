@@ -1,5 +1,6 @@
 jQuery( document ).ready( function($) {
 
+  // Handle re-sync button click
   $('#wicket-gf-addon-resync-fields-button').click(function(e) {
     // TODO: Show a spinning loading icon inside the button so the user knows this is loading. Also prevent a second click
 
@@ -18,7 +19,13 @@ jQuery( document ).ready( function($) {
       .then(response => response.text())
       .then(result => {
         console.log(result);
-        location.reload(); // Reload the page so the fields will load afresh from the new DB entry
+
+        let queryString = window.location.search;
+        let urlParams = new URLSearchParams(queryString);
+        if( urlParams.get('norefresh') == '' || !urlParams.get('norefresh') ) {
+          location.reload(); // Reload the page so the fields will load afresh from the new DB entry
+        }
+
       })
       .catch(error => console.log('error', error));
   })
