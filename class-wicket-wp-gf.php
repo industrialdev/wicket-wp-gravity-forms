@@ -48,7 +48,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
          /**
 		 * Class variables
 		 */
-        private static $wicket_current_person = 'turtles';
+        private static $wicket_current_person;
+        private static $wicket_client;
+
 
         /**
 		 * Constructor
@@ -109,6 +111,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
         public function store_data_after_plugins_loaded() {
             self::$wicket_current_person = wicket_current_person();
+            self::$wicket_client = wicket_api_client();
         }
 
         public function enqueue_scripts_styles($screen) {
@@ -406,24 +409,16 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 ),
             );
 
-            // Add data_fields which is custom per tenant
+            // Add data_fields which are custom per tenant
             $current_user_data_fields = wicket_current_person();
-            //wicket_write_log( self::$wicket_current_person );
             if( !empty( self::$wicket_current_person ) ) {
-                $current_person_array = (array) self::$wicket_current_person;
-                wicket_write_log($current_person_array, true);
-                wicket_write_log($current_person_array['*attributes'], true);
-                // TODO: Complete this section
-                // if( isset( $current_person_array['*attributes'] ) ) {
-                //     if( isset( $current_person_array['*attributes']['data'] ) ) {
-                //         if( isset( $current_person_array['*attributes']['data_fields'] ) ) {
-                //             wicket_write_log("The ATTS were found", true);
-                //             //wicket_write_log($current_person_array['*attributes']['data_fields'], true);
-                //         }
-                //     }
-                // }
-            }
+                if( !empty( self::$wicket_current_person->data_fields ) ) {
+                    // wicket_write_log('Data fields:', true);
+                    // wicket_write_log(self::$wicket_current_person->data_fields, true);
 
+                    // TODO: Add handling of data_fields
+                }
+            }
 
             // --------------------------------
             // ------- Additional Info --------
@@ -558,6 +553,188 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // ----------- Org Data -----------
             // --------------------------------
 
+            // Add standard fields that don't change
+            $to_return[] = array(
+                'schema_id'     => '',
+                'key'           => 'org_options',
+                'name_en'       => '-- Organization Options --',
+                'name_fr'       => '-- Options Organisation --',
+                'is_repeater'   => false,
+                'child_fields'  => array(
+                    array( 
+                        'name'           => 'type',
+                        'label_en'       => 'Type',
+                        'label_fr'       => 'Type',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'legal_name',
+                        'label_en'       => 'Legal Name',
+                        'label_fr'       => 'Legal Name',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'legal_name_en',
+                        'label_en'       => 'Legal Name (En)',
+                        'label_fr'       => 'Legal Name (En)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'legal_name_fr',
+                        'label_en'       => 'Legal Name (Fr)',
+                        'label_fr'       => 'Legal Name (Fr)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'legal_name_es',
+                        'label_en'       => 'Legal Name (Es)',
+                        'label_fr'       => 'Legal Name (Es)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'alternate_name',
+                        'label_en'       => 'Alternate Name',
+                        'label_fr'       => 'Nom alternatif',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'alternate_name_en',
+                        'label_en'       => 'Alternate Name (En)',
+                        'label_fr'       => 'Nom alternatif (En)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'alternate_name_fr',
+                        'label_en'       => 'Alternate Name (Fr)',
+                        'label_fr'       => 'Nom alternatif (Fr)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'alternate_name_es',
+                        'label_en'       => 'Alternate Name (Es)',
+                        'label_fr'       => 'Nom alternatif (Es)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'description',
+                        'label_en'       => 'Description',
+                        'label_fr'       => 'Description',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'description_en',
+                        'label_en'       => 'Description (En)',
+                        'label_fr'       => 'Description (En)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'description_fr',
+                        'label_en'       => 'Description (Fr)',
+                        'label_fr'       => 'Description (Fr)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'description_es',
+                        'label_en'       => 'Description (Es)',
+                        'label_fr'       => 'Description (Es)',
+                        'type'           => 'text',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                    array( 
+                        'name'           => 'identifying_number',
+                        'label_en'       => 'Identifying Number',
+                        'label_fr'       => 'Numéro d\'identification',
+                        'type'           => 'number',
+                        'default'        => '',
+                        'maximum'        => '',
+                        'minimum'        => '',
+                        'enum'           => array(),
+                        'path_to_field'  => '',
+                    ),
+                ),
+            );
+
+            // Add data_fields which are custom per tenant
+            $example_org = self::$wicket_client->get('organizations?page_number=1&page_size=1');
+            $org_data_fields = array();
+            if( isset( $example_org['data'] ) ) {
+                if( is_array( $example_org['data'] ) ) {
+                    if( isset( $example_org['data'][0]['attributes'] ) ) {
+                        if( isset( $example_org['data'][0]['attributes'] ) ) {
+                            if( isset( $example_org['data'][0]['attributes']['data_fields'] ) ) {
+                                $org_data_fields = $example_org['data'][0]['attributes']['data_fields'];
+                            }
+                        }
+                    }
+                }
+            }
+            wicket_write_log($org_data_fields);
+            // TODO: Add handling of org data_fields
+
             // --------------------------------
             // ---------- Membership ----------
             // --------------------------------
@@ -587,7 +764,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // --------------------------------
 
             update_option( 'wicket_gf_member_fields', $to_return );
-            wp_send_json_success( $to_return );
+            wp_send_json_success();
         }
 
         public static function wicket_schema_get_label_by_property_name( $schema, $property_name, $repeater_items_array = array() ) {
