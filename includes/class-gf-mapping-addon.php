@@ -96,12 +96,29 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	}
 
-	private function member_api_update( $schema, $fields ) {
+	private function member_api_update( $schema, $fields, $person_uuid = '', $org_uuid = '' ) {
+		$wicket_client = wicket_api_client();
+    
+		if( !empty( $person_uuid ) ) {
+			$wicket_person = wicket_get_person_by_id($person_uuid);
+		} else {
+			$wicket_person = wicket_current_person();
+		}
+
 		$count_dashes = explode( '-', $schema );
 		if( count( $count_dashes ) >= 4 ) {
 			// This is a schema with a save path
 
 			// Grab the current schema data for either current UUID or mapped UUID
+			wicket_write_log('wicket person:');
+			wicket_write_log($wicket_person);
+			// TODO: Ensure get_ai_field_from_data_fields() is correctly searching for our schema name in data_fields
+			$current_schema_values = self::get_ai_field_from_data_fields($wicket_person->data_fields, $schema);
+			if( isset( $current_schema_values['value'] ) ) {
+				$current_schema_values = $current_schema_values['value'];
+			}
+			wicket_write_log('Schema values:');
+			wicket_write_log($current_schema_values);
 
 			// Loop through the pending changes
 			foreach( $fields as $field ) {
@@ -140,6 +157,16 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 						break;
 			}
 		}
+	}
+
+	private function get_ai_field_from_data_fields($data_fields, $key) {
+		// get matches
+		$matches = array_filter($data_fields, function($field) use ($key) {
+			return isset($field['key']) && $field['key'] == $key;
+		});
+	
+		// return first match
+		return reset($matches);
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
