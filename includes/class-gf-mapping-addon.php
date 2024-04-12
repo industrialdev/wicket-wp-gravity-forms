@@ -72,38 +72,74 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		}
 		wicket_write_log( "The mappings:" );
 		wicket_write_log( $merge_vars );
-		// wicket_write_log( "The feed:" );
-		// wicket_write_log( $feed );
-		// wicket_write_log( "The entry:" );
-		// wicket_write_log( $entry );
 
 		// TODO: watch out for fields that need to be processed together to sync properly, per note from Terry
 
-		// Loop through the field mappings
+		// Loop through the field mappings to organize them by same type (e.g. profile) and same schema to batch API calls
+		$grouped_updates = array();
 		foreach( $merge_vars as $member_field => $incoming_value ) {
 			$path_to_save = explode( '/', $member_field );
-			
-			// TODO: First organize the updates into same type (e.g. profile) and
-			// same schema so we save on API calls, then pass to a function for updating them
 
-			if( count( $path_to_save ) > 2 ) {
-				// A path to save has been provided
-
-			} else if( count( $path_to_save ) == 2 ) {
-				// We've been given a single field name with a property type (e.g. profile)
-				switch ($path_to_save[0]) {
-					case 'profile':
-							// TODO: Call function for updating profile fields referring to $path_to_save[1] and the $incoming_value
-							break;
-					case 'something':
-							//
-							break;
-			}
-			} else {
-				// We've been given a single field name
-			}
+			$grouped_updates[ $path_to_save[0] ][] = array(
+				'field'         => $member_field,
+				'value'         => $incoming_value,
+			);
 		}
 
+		wicket_write_log( 'The organized array:' );
+		wicket_write_log( $grouped_updates );
+
+		// Loop through the grouped array to make the API calls
+		foreach( $grouped_updates as $group_type => $items ) {
+			self::member_api_update( $group_type, $items );
+		}
+
+	}
+
+	private function member_api_update( $schema, $fields ) {
+		$count_dashes = explode( '-', $schema );
+		if( count( $count_dashes ) >= 4 ) {
+			// This is a schema with a save path
+
+			// Grab the current schema data for either current UUID or mapped UUID
+
+			// Loop through the pending changes
+			foreach( $fields as $field ) {
+				$path_to_save_to = explode( '/', $field['field'] );
+				wicket_write_log('Schema path to save to:');
+				wicket_write_log($path_to_save_to);
+			}
+
+			// Apply those changes to the current info array
+
+			// Call the API
+
+		} else {
+			// This is a field for a specific data type (e.g. profile)
+			switch ($schema) {
+				case 'profile':
+						// Grab the current profile info for either current UUID or mapped UUID
+
+						// Loop through the pending changes
+						foreach( $fields as $field ) {
+							// Grab the actual field ID
+							$actual_field_id_array = explode( '/', $field['field'] );
+							$actual_field_id = $actual_field_id_array[ count( $actual_field_id_array ) - 1 ];
+							wicket_write_log('Field ID: ' . $actual_field_id);
+
+							// Apply those changes to the current info array
+
+							// Call the API
+						}
+					
+						
+						
+						break;
+				case 'more':
+						//
+						break;
+			}
+		}
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
