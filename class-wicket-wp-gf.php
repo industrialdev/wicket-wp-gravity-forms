@@ -224,7 +224,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Add standard fields that don't change
             $to_return[] = array(
-                'schema_id'     => '',
+                'schema_id'     => 'profile',
                 'key'           => 'profile_options',
                 'name_en'       => '-- Profile Options --',
                 'name_fr'       => '-- Options Profil --',

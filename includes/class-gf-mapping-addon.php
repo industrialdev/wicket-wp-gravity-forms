@@ -6,7 +6,7 @@ GFForms::include_feed_addon_framework();
 
 class GFWicketMappingAddOn extends GFFeedAddOn {
 
-	public $_async_feed_processing = true; // Makes this an async feed so the form can submit while this processes in the background
+	public $_async_feed_processing = false; // Makes this an async feed so the form can submit while this processes in the background
 
 	protected $_version = WICKET_WP_GF_VERSION;
 	protected $_min_gravityforms_version = '1.9';
@@ -72,8 +72,37 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		}
 		wicket_write_log( "The mappings:" );
 		wicket_write_log( $merge_vars );
+		// wicket_write_log( "The feed:" );
+		// wicket_write_log( $feed );
+		// wicket_write_log( "The entry:" );
+		// wicket_write_log( $entry );
 
 		// TODO: watch out for fields that need to be processed together to sync properly, per note from Terry
+
+		// Loop through the field mappings
+		foreach( $merge_vars as $member_field => $incoming_value ) {
+			$path_to_save = explode( '/', $member_field );
+			
+			// TODO: First organize the updates into same type (e.g. profile) and
+			// same schema so we save on API calls, then pass to a function for updating them
+
+			if( count( $path_to_save ) > 2 ) {
+				// A path to save has been provided
+
+			} else if( count( $path_to_save ) == 2 ) {
+				// We've been given a single field name with a property type (e.g. profile)
+				switch ($path_to_save[0]) {
+					case 'profile':
+							// TODO: Call function for updating profile fields referring to $path_to_save[1] and the $incoming_value
+							break;
+					case 'something':
+							//
+							break;
+			}
+			} else {
+				// We've been given a single field name
+			}
+		}
 
 	}
 
@@ -116,31 +145,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 									'tooltip' => esc_html__( 'This is the tooltip', 'wicket-gf' ),
 									'class'   => 'small',
 					),
-					// array(
-					// 	'name'      => 'mappedFields',
-					// 	'label'     => esc_html__( 'Map Fields', 'wicket-gf' ),
-					// 	'type'      => 'field_map',
-					// 	'field_map' => array(
-					// 		array(
-					// 			'name'       => 'custom',
-					// 			'label'      => esc_html__( 'Custom', 'wicket-gf' ),
-					// 			'required'   => 0,
-					// 			'field_type' => 'my_custom_field_type',
-					// 			'tooltip'    => esc_html__( 'This is the tooltip', 'wicket-gf' ),
-					// 		),
-					// 		array(
-					// 			'name'     => 'name',
-					// 			'label'    => esc_html__( 'Name', 'wicket-gf' ),
-					// 			'required' => 0,
-					// 		),
-					// 		array(
-					// 			'name'       => 'phone',
-					// 			'label'      => esc_html__( 'Phone', 'wicket-gf' ),
-					// 			'required'   => 0,
-					// 			'field_type' => 'phone',
-					// 		),
-					// 	),
-					// ),
 					array(
 						// Documentation for dynamic_field: https://docs.gravityforms.com/dynamic_field_map-field/
 						'name'                => 'wicketFieldMaps',
@@ -171,9 +175,17 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			foreach( $schema['child_fields'] as $child_field ) {
 				// The value is set in a way where it can be split by the / characters when we process the feed, and 
 				// know exactly where to save that data in the Wicket Member schemas
+				$value = '';
+				if( isset( $schema['schema_id'] ) && !empty( $schema['schema_id'] )) {
+					$value .= $schema['schema_id'] . '/';
+				}
+				if( isset( $child_field['path_to_field'] ) && !empty( $child_field['path_to_field'] ) ) {
+					$value .= $child_field['path_to_field'] . '/';
+				}
+				$value .= $child_field['name'];
 				$choices[] = array(
 					'label'    => $child_field['label_en'],
-					'value'    => $schema['schema_id'] . '/' . $child_field['path_to_field'] . '/' . $child_field['name'],
+					'value'    => $value,
 				);
 			}
 
