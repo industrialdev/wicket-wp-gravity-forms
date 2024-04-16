@@ -110,25 +110,13 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			// This is a schema with a save path
 
 			// Grab the current schema data for either current UUID or mapped UUID
-			wicket_write_log('wicket person:');
-			wicket_write_log($wicket_person);
+
 			// TODO: Ensure get_ai_field_from_data_fields() is correctly searching for our schema name in data_fields
 			$current_schema_values = self::get_ai_field_from_data_fields($wicket_person->data_fields, $schema);
-			if( isset( $current_schema_values['value'] ) ) {
-				$current_schema_values = $current_schema_values['value'];
-			}
-			wicket_write_log('Schema values:');
-			wicket_write_log($current_schema_values);
-
-			// Loop through the pending changes
-			foreach( $fields as $field ) {
-				$path_to_save_to = explode( '/', $field['field'] );
-				wicket_write_log('Schema path to save to:');
-				wicket_write_log($path_to_save_to);
-			}
 
 			// Apply those changes to the current info array
-
+			$new_schema_values = self::apply_changes_to_schema( $current_schema_values, $fields );
+		
 			// Call the API
 
 		} else {
@@ -142,7 +130,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 							// Grab the actual field ID
 							$actual_field_id_array = explode( '/', $field['field'] );
 							$actual_field_id = $actual_field_id_array[ count( $actual_field_id_array ) - 1 ];
-							wicket_write_log('Field ID: ' . $actual_field_id);
 
 							// Apply those changes to the current info array
 
@@ -159,14 +146,66 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		}
 	}
 
+	/**
+	 * Applies a batch of field changes to a schema values array
+	 * 
+	 * @param Array   $current_schema_values Array likely pulled via get_ai_field_from_data_fields()
+	 * @param Array   $changes_to_apply An array of field changes to apply
+	 * @param integer $repeater_index_to_update (optional) If provided, tells the function to update an existing
+	 * repeater entry at that index rather than creating a new repeater entry.
+	 * 
+	 * @return Array Returns an updated version of the originally supplied $current_schema_values.
+	 */
+	private function apply_changes_to_schema( $current_schema_values, $changes_to_apply, $repeater_index_to_update = null ) {
+		wicket_write_log( 'Current schema values:' );
+		wicket_write_log($current_schema_values);
+		wicket_write_log('Changes to apply:');
+		wicket_write_log($changes_to_apply);
+
+		// Loop through the pending changes
+		foreach( $changes_to_apply as $field ) {
+			$path_to_save_to = explode( '/', $field['field'] );
+
+			$temp = &$current_schema_values; // Create reference
+			$new_repeater_entry_created = false;
+			$new_repeater_index = 0;
+			foreach($path_to_save_to as $step) {
+				if( $step == 'properties' ) {
+					// Skip any path steps that aren't used to save in data_fields, such as properties
+					continue;
+				} else if( isset( $temp[$step] ) && !$new_repeater_entry_created ) {
+					$temp = &$temp[$step];
+				} else if( $step == 'items' && isset( $temp[ 0 ] ) && !$new_repeater_entry_created ) {
+					$new_repeater_index = count( $temp );
+					$temp = &$temp[ $new_repeater_index ];
+					$new_repeater_entry_created = true;
+				} else if( $new_repeater_entry_created ) {
+					$temp = &$temp[$step];
+				}
+			}
+			$temp = $field['value'];
+			unset($temp); // Unlink reference
+		}
+		wicket_write_log('Updated schema:');
+		wicket_write_log($current_schema_values);
+
+		// TODO: Handle the 'id' at the end
+
+		//return $current_schema_values;
+	}
+
 	private function get_ai_field_from_data_fields($data_fields, $key) {
-		// get matches
-		$matches = array_filter($data_fields, function($field) use ($key) {
-			return isset($field['key']) && $field['key'] == $key;
-		});
-	
-		// return first match
-		return reset($matches);
+		foreach( $data_fields as $field ) {
+			if( isset( $field['$schema'] ) ) {
+				if( str_contains( $field['$schema'], $key ) ) {
+					if( isset( $field['value'] ) ) {
+						return $field['value'];
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------

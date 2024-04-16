@@ -820,6 +820,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             if( isset( $schema['attributes'] ) ) {
                 if( isset( $schema['attributes']['ui_schema'] ) ) {
                     foreach( $schema['attributes']['ui_schema'] as $key => $data ) {
+                        // Note: wp_list_pluck() could be used, except that we need to build the path_to_items as we go
                         if( $key == 'items' ) {
                             if( !isset( $schema['attributes']['schema']['properties'] ) ) {
                                 $items = $schema['attributes']['schema']['items']['properties'][$key];
