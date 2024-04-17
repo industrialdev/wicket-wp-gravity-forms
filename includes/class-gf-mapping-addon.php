@@ -59,6 +59,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	public function process_feed( $feed, $entry, $form ) {
 		//wicket_write_log( $feed, true );
 		$feedName  = $feed['meta']['feedName'];
+		//wicket_write_log( get_option( 'wicket_gf_member_fields') );
 
 		// $metaData = $this->get_field_map_fields( $feed, 'mappedFields' ); // Method for the other field map type
 		$metaData = $this->get_dynamic_field_map_fields( $feed, 'wicketFieldMaps' );
@@ -162,6 +163,10 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		wicket_write_log('Changes to apply:');
 		wicket_write_log($changes_to_apply);
 
+		$new_schema_entry = empty( $current_schema_values );
+
+		// TODO: Handle when the current_schema_values are empty (i.e. nothing's been saved in the MDP for that schema yet)
+
 		// Loop through the pending changes
 		foreach( $changes_to_apply as $field ) {
 			$path_to_save_to = explode( '/', $field['field'] );
@@ -170,17 +175,29 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			$new_repeater_entry_created = false;
 			$new_repeater_index = 0;
 			foreach($path_to_save_to as $step) {
+				$count_dashes = explode( '-', $step );
+				$step_is_schema_uuid = count( $count_dashes ) >= 4;
+
 				if( $step == 'properties' ) {
 					// Skip any path steps that aren't used to save in data_fields, such as properties
 					continue;
-				} else if( isset( $temp[$step] ) && !$new_repeater_entry_created ) {
+				} else if( isset( $temp[$step] ) && !$new_repeater_entry_created && !$new_schema_entry ) {
 					$temp = &$temp[$step];
-				} else if( $step == 'items' && isset( $temp[ 0 ] ) && !$new_repeater_entry_created ) {
+				} else if( $step == 'items' && isset( $temp[ 0 ] ) && !$new_repeater_entry_created  && !$new_schema_entry) {
 					$new_repeater_index = count( $temp );
 					$temp = &$temp[ $new_repeater_index ];
 					$new_repeater_entry_created = true;
-				} else if( $new_repeater_entry_created ) {
+				} else if( $new_repeater_entry_created && !$new_schema_entry ) {
 					$temp = &$temp[$step];
+				} 
+				// Handle cases when we're creating a fresh entry for an unused schema
+				else if( $new_schema_entry && ( $step_is_schema_uuid || $step == 'attributes' || $step == 'schema' ) ) {
+					// Skip values that very likely won't be used to save in data_fields
+					continue;
+				} else if( $new_schema_entry && $step != 'items' ) {
+					$temp = &$temp[$step];
+				} else if( $new_schema_entry && $step == 'items' ) {
+					$temp = &$temp[ 0 ];
 				}
 			}
 			$temp = $field['value'];
@@ -195,6 +212,11 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	}
 
 	private function get_ai_field_from_data_fields($data_fields, $key) {
+		wicket_write_log('Get AI fields called with fields:');
+		wicket_write_log($data_fields);
+		wicket_write_log('And key:');
+		wicket_write_log($key);
+
 		foreach( $data_fields as $field ) {
 			if( isset( $field['$schema'] ) ) {
 				if( str_contains( $field['$schema'], $key ) ) {

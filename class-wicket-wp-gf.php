@@ -504,6 +504,14 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                             }
                         } else {
                             // If it IS a repeater
+                            if( $schema['attributes']['key'] == 'education_details' ) {
+                                wicket_write_log("Education details:");
+                                wicket_write_log($schema);
+                            }
+                            // TODO: Pack more information about objects into the array and possibly reference the array position in the GF mapping
+                            // value instead of the breadcrumbs
+                                // TODO: Create helper function for fetching definitions out of a $schema array
+
                             $repeater_fields = array();
                             if( isset( $items_array['items']['properties'] ) ) {
                                 foreach( $items_array['items']['properties'] as $property_name => $property_data ) {
