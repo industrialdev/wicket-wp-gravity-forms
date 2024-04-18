@@ -510,7 +510,6 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                             }
                             // TODO: Pack more information about objects into the array and possibly reference the array position in the GF mapping
                             // value instead of the breadcrumbs
-                                // TODO: Create helper function for fetching definitions out of a $schema array
 
                             $repeater_fields = array();
                             if( isset( $items_array['items']['properties'] ) ) {
@@ -537,19 +536,61 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         wicket_write_log($property_data);
                                         wicket_write_log('The field object data we get to work with AFTER:');
                                         wicket_write_log($object_data);
-                                    }
+                                        wicket_write_log('Property name and data:');
+                                        wicket_write_log($property_name);
+                                        wicket_write_log($property_data);
+                                        wicket_write_log("Labels:");
+                                        wicket_write_log($labels);
 
-                                    $repeater_fields[] = [
-                                        'name'           => $property_name,
-                                        'label_en'       => $label_en,
-                                        'label_fr'       => $label_fr,
-                                        'type'           => $property_data['type'] ?? '',
-                                        'default'        => $property_data['default'] ?? '',
-                                        'maximum'        => $property_data['maximum'] ?? '',
-                                        'minimum'        => $property_data['minimum'] ?? '',
-                                        'enum'           => $property_data['enum'] ?? array(),
-                                        'path_to_field'  => $items_array['path_to_items'] . '/properties',
-                                    ];
+                                        if( isset( $object_data['oneOf'] ) ) {
+                                            foreach( $object_data['oneOf'] as $object_field_name => $object_field_data ) {
+                                                wicket_write_log("Object field received:");
+                                                wicket_write_log($object_field_name);
+                                                wicket_write_log($object_field_data);
+                                                if( isset( $object_field_data['properties'] ) ) {
+                                                    if( is_array( $object_field_data['properties'] ) ) {
+                                                        foreach( $object_field_data['properties'] as $object_field_prop_name => $object_field_prop_data ) {
+                                                            $repeater_fields[] = [
+                                                                'name'           => $object_field_prop_name,
+                                                                'label_en'       => $label_en . ' | ' . $object_field_name . ' | ' . $object_field_prop_name,
+                                                                'label_fr'       => $label_fr . ' | ' . $object_field_prop_name,
+                                                                'type'           => $object_field_prop_data['type'] ?? '',
+                                                                'default'        => $object_field_prop_data['default'] ?? '',
+                                                                'maximum'        => $object_field_prop_data['maximum'] ?? '',
+                                                                'minimum'        => $object_field_prop_data['minimum'] ?? '',
+                                                                'enum'           => $object_field_prop_data['enum'] ?? array(),
+                                                                'path_to_field'  => $items_array['path_to_items'] . '/' . $property_name,
+                                                            ];
+                                                        }
+                                                    }
+                                                } else {
+                                                    // $repeater_fields[] = [
+                                                    //     'name'           => $property_name,
+                                                    //     'label_en'       => $label_en . ' | ' . ,
+                                                    //     'label_fr'       => $label_fr,
+                                                    //     'type'           => $property_data['type'] ?? '',
+                                                    //     'default'        => $property_data['default'] ?? '',
+                                                    //     'maximum'        => $property_data['maximum'] ?? '',
+                                                    //     'minimum'        => $property_data['minimum'] ?? '',
+                                                    //     'enum'           => $property_data['enum'] ?? array(),
+                                                    //     'path_to_field'  => $items_array['path_to_items'] . '/' . $property_name,
+                                                    // ];
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        $repeater_fields[] = [
+                                            'name'           => $property_name,
+                                            'label_en'       => $label_en,
+                                            'label_fr'       => $label_fr,
+                                            'type'           => $property_data['type'] ?? '',
+                                            'default'        => $property_data['default'] ?? '',
+                                            'maximum'        => $property_data['maximum'] ?? '',
+                                            'minimum'        => $property_data['minimum'] ?? '',
+                                            'enum'           => $property_data['enum'] ?? array(),
+                                            'path_to_field'  => $items_array['path_to_items'] . '/properties',
+                                        ];
+                                    }
                                 }
                             }
 
@@ -969,7 +1010,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         if( $one_of_key == '$ref' ) {
                             $needed_def = self::get_end_of_string_by( $one_of_val, '/' );
                             $definition = self::wicket_schema_get_definition( $schema, $needed_def, true );
-                            $property_data['oneOf'][$i] = $definition;
+                            $property_data['oneOf'][$needed_def] = $definition;
                         }
                     }
                     $i++;
