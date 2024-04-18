@@ -505,8 +505,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         } else {
                             // If it IS a repeater
                             if( $schema['attributes']['key'] == 'education_details' ) {
-                                wicket_write_log("Education details:");
-                                wicket_write_log($schema);
+                                //wicket_write_log("Education details:");
+                                //wicket_write_log($schema);
                             }
                             // TODO: Pack more information about objects into the array and possibly reference the array position in the GF mapping
                             // value instead of the breadcrumbs
@@ -529,6 +529,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
                                     $label_en = $label_en;
                                     $label_fr = $label_fr;
+
+                                    if( $property_data['type'] == 'object' ) {
+                                        wicket_write_log('Object detected: ' . $property_name);
+                                        $object_data = self::expand_field_object( $schema, $property_name, $property_data );
+                                        wicket_write_log('The field object data we had to work with BEFORE:');
+                                        wicket_write_log($property_data);
+                                        wicket_write_log('The field object data we get to work with AFTER:');
+                                        wicket_write_log($object_data);
+                                    }
 
                                     $repeater_fields[] = [
                                         'name'           => $property_name,
@@ -917,6 +926,81 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 'items'           => array(),
                 'items_ui'        => array()
             );
+        }
+
+        public static function wicket_schema_get_definition( $schema, $term, $follow_refs = false ) {
+            if( isset( $schema['attributes'] ) ) {
+                if( isset( $schema['attributes']['schema'] ) ) {
+                    if( isset( $schema['attributes']['schema']['definitions'] ) ) {
+                        if( isset( $schema['attributes']['schema']['definitions'][$term] ) ) {
+                            $the_term = $schema['attributes']['schema']['definitions'][$term];
+                            if( !$follow_refs ) {
+                                return $the_term ;
+                            } else {
+                                if( isset( $the_term['properties'] ) ) {
+                                    foreach( $the_term['properties'] as $sub_term_key => $sub_term_val  ) {
+                                        if( is_array( $sub_term_val ) ) {
+                                            foreach( $sub_term_val as $sub_sub_term_key => $sub_sub_term_val ) {
+                                                if( $sub_sub_term_key == '$ref' ) {
+                                                    // Get the next needed definition
+                                                    $needed_def = self::get_end_of_string_by( $sub_sub_term_val, '/' ); 
+                                                    $definition = self::wicket_schema_get_definition( $schema, $needed_def, true );
+                                                    $the_term['properties'][$sub_term_key] = $definition;
+
+                                                    // TODO: Potentially handle further nested definitions
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                return $the_term;   
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static function expand_field_object( $schema, $property_name, $property_data ) {
+            if( isset( $property_data['oneOf'] ) ) {
+                $i = 0;
+                foreach( $property_data['oneOf'] as $one_of ) {
+                    foreach( $one_of as $one_of_key => $one_of_val ) {
+                        if( $one_of_key == '$ref' ) {
+                            $needed_def = self::get_end_of_string_by( $one_of_val, '/' );
+                            $definition = self::wicket_schema_get_definition( $schema, $needed_def, true );
+                            $property_data['oneOf'][$i] = $definition;
+                        }
+                    }
+                    $i++;
+                }
+            }
+            // TODO: Handle potential other field object cases that use a different structure than 'oneOf'
+
+            return $property_data;
+        }
+
+        public static function get_end_of_string_by( $string, $delimiter ) {
+            $array = explode( $delimiter, $string );
+            return $array[ count( $array ) - 1 ];
+        }
+
+        // Credit: https://stackoverflow.com/a/263621
+        public static function array_depth($array) {
+            $max_indentation = 1;
+        
+            $array_str = print_r($array, true);
+            $lines = explode("\n", $array_str);
+        
+            foreach ($lines as $line) {
+                $indentation = (strlen($line) - strlen(ltrim($line))) / 4;
+        
+                if ($indentation > $max_indentation) {
+                    $max_indentation = $indentation;
+                }
+            }
+        
+            return (int) ceil(($max_indentation - 1) / 2) + 1;
         }
 
 
