@@ -79,7 +79,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		// Loop through the field mappings to organize them by same type (e.g. profile) and same schema to batch API calls
 		$grouped_updates = array();
 		foreach( $merge_vars as $member_field => $incoming_value ) {
-			$path_to_save = explode( '/', $member_field );
+			$path_to_save = explode( ':', $member_field );
 
 			$grouped_updates[ $path_to_save[0] ][] = array(
 				'field'         => $member_field,
@@ -111,9 +111,10 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			// This is a schema with a save path
 
 			// Grab the current schema data for either current UUID or mapped UUID
-
-			// TODO: Ensure get_ai_field_from_data_fields() is correctly searching for our schema name in data_fields
 			$current_schema_values = self::get_ai_field_from_data_fields($wicket_person->data_fields, $schema);
+
+			wicket_write_log('Current schema values:');
+			wicket_write_log($current_schema_values);
 
 			// Apply those changes to the current info array
 			$new_schema_values = self::apply_changes_to_schema( $current_schema_values, $fields );
@@ -167,16 +168,22 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 		// TODO: Handle when the current_schema_values are empty (i.e. nothing's been saved in the MDP for that schema yet)
 
+		$expanded_changes_to_apply = self::expand_form_mappings( $changes_to_apply );
+		wicket_write_log("Expanded changes to apply:");
+		wicket_write_log($expanded_changes_to_apply);
+		
 		// Loop through the pending changes
-		foreach( $changes_to_apply as $field ) {
-			$path_to_save_to = explode( '/', $field['field'] );
+		foreach( $expanded_changes_to_apply as $field ) {
+			$path_to_save_to = explode( '/', $field['path_to_field'] );
 
 			$temp = &$current_schema_values; // Create reference
 			$new_repeater_entry_created = false;
 			$new_repeater_index = 0;
+			$current_key = '';
 			foreach($path_to_save_to as $step) {
 				$count_dashes = explode( '-', $step );
 				$step_is_schema_uuid = count( $count_dashes ) >= 4;
+				$current_key = $step;
 
 				if( $step == 'properties' ) {
 					// Skip any path steps that aren't used to save in data_fields, such as properties
@@ -200,7 +207,13 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 					$temp = &$temp[ 0 ];
 				}
 			}
-			$temp = $field['value'];
+			
+			// If we didn't end on the name of this sub-field, create it under the last key found
+			if( $current_key != $field['name'] ) {
+				$temp[ $field['name'] ] = $field['value'];
+			} else {
+				$temp = $field['value'];
+			}
 			unset($temp); // Unlink reference
 		}
 		wicket_write_log('Updated schema:');
@@ -211,12 +224,36 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		//return $current_schema_values;
 	}
 
-	private function get_ai_field_from_data_fields($data_fields, $key) {
-		wicket_write_log('Get AI fields called with fields:');
-		wicket_write_log($data_fields);
-		wicket_write_log('And key:');
-		wicket_write_log($key);
+	private function expand_form_mappings( $mappings ) {
+		$output = array();
+		$wicket_member_data_fields = get_option('wicket_gf_member_fields');
 
+		foreach( $mappings as $mapping ) {
+			$split_by_schema = explode( ':', $mapping['field'] );
+			$schema_name = $split_by_schema[0];
+			$field_data = self::follow_trail_down_array( $split_by_schema[1], '/', $wicket_member_data_fields ) ?? array();
+			$field_data['value'] = $mapping['value'];
+			$output[] = $field_data;
+		}
+
+		return $output;
+	}
+
+	// Credit: https://stackoverflow.com/a/9628276
+	private function follow_trail_down_array( $breadcrumbs, $divider, $array ) {
+		$exploded = explode( $divider, $breadcrumbs );
+
+		$temp = &$array;
+		foreach($exploded as $key) {
+			$temp = &$temp[$key];
+		}
+		$value = $temp;
+		unset($temp);
+
+		return $value;
+	}
+
+	private function get_ai_field_from_data_fields($data_fields, $key) {
 		foreach( $data_fields as $field ) {
 			if( isset( $field['$schema'] ) ) {
 				if( str_contains( $field['$schema'], $key ) ) {
@@ -226,8 +263,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				}
 			}
 		}
-
-		return false;
+	
+		// User doesn't have this data field saved yet
+		return array();
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
@@ -294,19 +332,33 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	public function get_member_key_options() {
 		$wicket_member_data_fields = get_option('wicket_gf_member_fields');
 		$fields_to_return = array();
-		foreach( $wicket_member_data_fields as $schema ) {
+		foreach( $wicket_member_data_fields as $schema_index => $schema ) {
 			$choices = array();
-			foreach( $schema['child_fields'] as $child_field ) {
-				// The value is set in a way where it can be split by the / characters when we process the feed, and 
-				// know exactly where to save that data in the Wicket Member schemas
-				$value = '';
+			foreach( $schema['child_fields'] as $child_field_index => $child_field ) {
+				$value_array = array();
+
+				// When we were building a file path instead of referencing the db array location:
+					// The value is set in a way where it can be split by the / characters when we process the feed, and 
+					// know exactly where to save that data in the Wicket Member schemas
+					// if( isset( $schema['schema_id'] ) && !empty( $schema['schema_id'] )) {
+					// 	$value .= $schema['schema_id'] . '/';
+					// }
+					// if( isset( $child_field['path_to_field'] ) && !empty( $child_field['path_to_field'] ) ) {
+					// 	$value .= $child_field['path_to_field'] . '/';
+					// }
+					// $value .= $child_field['name'];
+
+				// Reference the db array location for later use:
+				$value_array[] = $schema_index;
+				$value_array[] = 'child_fields';
+				$value_array[] = $child_field_index;
+				$value         = implode( '/', $value_array ); 
+
+				// Prefix with schema or type so we can easily group later:
 				if( isset( $schema['schema_id'] ) && !empty( $schema['schema_id'] )) {
-					$value .= $schema['schema_id'] . '/';
-				}
-				if( isset( $child_field['path_to_field'] ) && !empty( $child_field['path_to_field'] ) ) {
-					$value .= $child_field['path_to_field'] . '/';
-				}
-				$value .= $child_field['name'];
+					$value = $schema['schema_id'] . ":" . $value;
+				}	
+
 				$choices[] = array(
 					'label'    => $child_field['label_en'],
 					'value'    => $value,
@@ -361,6 +413,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	public static function addon_custom_ui () {
 
+		$show_debug_info = true; // Change as desired
+
 		if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ):
 		?>                
 		
@@ -376,6 +430,12 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				><?php _e( 'Re-Sync Wicket Member Fields', 'wicket-gf' ); ?></a>
 			</div>
 		</div>
+
+		<?php if($show_debug_info): ?>
+		<pre>
+			<?php wicket_write_log( get_option('wicket_gf_member_fields'), true ); ?>
+		</pre>
+		<?php endif; ?>
 		
 		<?
 		endif;

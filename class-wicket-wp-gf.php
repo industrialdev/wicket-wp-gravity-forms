@@ -532,15 +532,6 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     if( $property_data['type'] == 'object' ) {
                                         wicket_write_log('Object detected: ' . $property_name);
                                         $object_data = self::expand_field_object( $schema, $property_name, $property_data );
-                                        wicket_write_log('The field object data we had to work with BEFORE:');
-                                        wicket_write_log($property_data);
-                                        wicket_write_log('The field object data we get to work with AFTER:');
-                                        wicket_write_log($object_data);
-                                        wicket_write_log('Property name and data:');
-                                        wicket_write_log($property_name);
-                                        wicket_write_log($property_data);
-                                        wicket_write_log("Labels:");
-                                        wicket_write_log($labels);
 
                                         if( isset( $object_data['oneOf'] ) ) {
                                             foreach( $object_data['oneOf'] as $object_field_name => $object_field_data ) {
@@ -564,6 +555,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                         }
                                                     }
                                                 } else {
+                                                    // TODO: Handle if this is a possible scenario
                                                     // $repeater_fields[] = [
                                                     //     'name'           => $property_name,
                                                     //     'label_en'       => $label_en . ' | ' . ,
