@@ -57,6 +57,14 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return bool|void
 	 */
 	public function process_feed( $feed, $entry, $form ) {
+
+		// NOTE: Per Terry, watch out for these scenarios that could cause save-to-MDP issues:
+				/* Any field that is marked required (this can be at any level of nesting)
+				 * Repeater entries
+				 * oneOf fields - these are how we handle conditionals which means based one value in the section, a different set of fields could be provided.
+				 * Fields expecting a certain format or validation. */
+
+
 		//wicket_write_log( $feed, true );
 		$feedName  = $feed['meta']['feedName'];
 		//wicket_write_log( get_option( 'wicket_gf_member_fields') );
