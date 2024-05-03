@@ -18,6 +18,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	private static $_instance = null;
 
+	// Togglable debug categories
+	private $_debug_schema_changes_before_and_after = false;
+
 	/**
 	 * Get an instance of this class.
 	 *
@@ -82,8 +85,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		wicket_write_log( "The mappings:" );
 		wicket_write_log( $merge_vars );
 
-		// TODO: watch out for fields that need to be processed together to sync properly, per note from Terry
-
 		// Loop through the field mappings to organize them by same type (e.g. profile) and same schema to batch API calls
 		$grouped_updates = array();
 		foreach( $merge_vars as $member_field => $incoming_value ) {
@@ -95,8 +96,11 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			);
 		}
 
-		wicket_write_log( 'The organized array:' );
-		wicket_write_log( $grouped_updates );
+		if( $this->_debug_schema_changes_before_and_after ) {
+			wicket_write_log( 'The organized array:' );
+			wicket_write_log( $grouped_updates );
+		}
+		
 
 		// Loop through the grouped array to make the API calls
 		foreach( $grouped_updates as $group_type => $items ) {
@@ -121,11 +125,16 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			// Grab the current schema data for either current UUID or mapped UUID
 			$current_schema_values = self::get_ai_field_from_data_fields($wicket_person->data_fields, $schema);
 
-			wicket_write_log('Current schema values:');
-			wicket_write_log($current_schema_values);
+			if( $this->_debug_schema_changes_before_and_after ) {
+				wicket_write_log('Current schema values:');
+				wicket_write_log($current_schema_values);
+			}
 
 			// Apply those changes to the current info array
 			$new_schema_values = self::apply_changes_to_schema( $current_schema_values, $fields );
+
+			// Validate the new schema values to be written
+			$new_schema_values_validation = self::validate_schema_changes( $schema, $new_schema_values );
 		
 			// Call the API
 
@@ -167,18 +176,22 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 * @return Array Returns an updated version of the originally supplied $current_schema_values.
 	 */
 	private function apply_changes_to_schema( $current_schema_values, $changes_to_apply, $repeater_index_to_update = null ) {
-		wicket_write_log( 'Current schema values:' );
-		wicket_write_log($current_schema_values);
-		wicket_write_log('Changes to apply:');
-		wicket_write_log($changes_to_apply);
+		if( $this->_debug_schema_changes_before_and_after ) {
+			wicket_write_log( 'Current schema values:' );
+			wicket_write_log($current_schema_values);
+			wicket_write_log('Changes to apply:');
+			wicket_write_log($changes_to_apply);
+		}
 
 		$new_schema_entry = empty( $current_schema_values );
 
 		// TODO: Handle when the current_schema_values are empty (i.e. nothing's been saved in the MDP for that schema yet)
 
 		$expanded_changes_to_apply = self::expand_form_mappings( $changes_to_apply );
-		wicket_write_log("Expanded changes to apply:");
-		wicket_write_log($expanded_changes_to_apply);
+		if( $this->_debug_schema_changes_before_and_after ) {
+			wicket_write_log("Expanded changes to apply:");
+			wicket_write_log($expanded_changes_to_apply);
+		}
 		
 		// Loop through the pending changes
 		foreach( $expanded_changes_to_apply as $field ) {
@@ -224,12 +237,12 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			}
 			unset($temp); // Unlink reference
 		}
-		wicket_write_log('Updated schema:');
-		wicket_write_log($current_schema_values);
+		if( $this->_debug_schema_changes_before_and_after ) {
+			wicket_write_log('Updated schema:');
+			wicket_write_log($current_schema_values);
+		}
 
-		// TODO: Handle the 'id' at the end
-
-		//return $current_schema_values;
+		return $current_schema_values;
 	}
 
 	private function expand_form_mappings( $mappings ) {
@@ -274,6 +287,25 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	
 		// User doesn't have this data field saved yet
 		return array();
+	}
+
+	private function validate_schema_changes( $schema, $new_schema_values ) {
+		// TODO: This function needs to check all fields stored in the db for the provided
+		// schema and ensure nothing that is required is going to go unprovided
+
+		wicket_write_log("Validate schema changes called:");
+		wicket_write_log($schema);
+		wicket_write_log($new_schema_values);
+
+		$wicket_member_data_fields = get_option('wicket_gf_member_fields');
+		$schema_fields = array();
+		foreach( $wicket_member_data_fields as $schema_type ) {
+			if( $schema_type['schema_id'] == $schema ) {
+				$schema_fields = $schema_type;
+			}
+		}
+		wicket_write_log('This schema\'s fields:');
+		wicket_write_log($schema_fields);
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
@@ -365,10 +397,17 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				// Prefix with schema or type so we can easily group later:
 				if( isset( $schema['schema_id'] ) && !empty( $schema['schema_id'] )) {
 					$value = $schema['schema_id'] . ":" . $value;
-				}	
+				}
+
+				$label = $child_field['label_en'];
+				if( isset( $child_field['required'] ) ) {
+					if( $child_field['required'] ) {
+						$label .= '*';
+					}
+				}
 
 				$choices[] = array(
-					'label'    => $child_field['label_en'],
+					'label'    => $label,
 					'value'    => $value,
 				);
 			}

@@ -461,6 +461,12 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         if( !$items_array['is_repeater']) {
                             $child_fields = array();
                             if( isset( $schema['attributes']['schema'] ) ) {
+
+                                $required_fields = array();
+                                if( isset( $schema['attributes']['schema']['required'] ) ) {
+                                    $required_fields = $schema['attributes']['schema']['required'];
+                                }
+
                                 if( isset( $schema['attributes']['schema']['properties'] ) ) {
                                     foreach( $schema['attributes']['schema']['properties'] as $property_name => $property_data ) {
                                         // TODO: Add field required status
@@ -479,12 +485,18 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         $label_en = $label_en;
                                         $label_fr = $label_fr;
 
+                                        $is_required = in_array( $property_name, $required_fields );
+
+                                        // wicket_write_log($property_name . ':');
+                                        // wicket_write_log($property_data);
+
                                         $child_fields[] = [
                                             'name'           => $property_name,
                                             'label_en'       => $label_en,
                                             'label_fr'       => $label_fr,
                                             'type'           => $property_data['type'] ?? '',
                                             'default'        => $property_data['default'] ?? '',
+                                            'required'       => $is_required,
                                             'maximum'        => $property_data['maximum'] ?? '',
                                             'minimum'        => $property_data['minimum'] ?? '',
                                             'enum'           => $property_data['enum'] ?? array(),
@@ -538,15 +550,22 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                 wicket_write_log("Object field received:");
                                                 wicket_write_log($object_field_name);
                                                 wicket_write_log($object_field_data);
+                                                $required_fields = array();
+                                                if( isset( $object_field_data['required'] ) ) {
+                                                    $required_fields = $object_field_data['required'];
+                                                }
                                                 if( isset( $object_field_data['properties'] ) ) {
                                                     if( is_array( $object_field_data['properties'] ) ) {
                                                         foreach( $object_field_data['properties'] as $object_field_prop_name => $object_field_prop_data ) {
+                                                            $is_required = in_array( $object_field_prop_name, $required_fields );
+                                                            
                                                             $repeater_fields[] = [
                                                                 'name'           => $object_field_prop_name,
                                                                 'label_en'       => $label_en . ' | ' . $object_field_name . ' | ' . $object_field_prop_name,
                                                                 'label_fr'       => $label_fr . ' | ' . $object_field_prop_name,
                                                                 'type'           => $object_field_prop_data['type'] ?? '',
                                                                 'default'        => $object_field_prop_data['default'] ?? '',
+                                                                'required'       => $is_required,
                                                                 'maximum'        => $object_field_prop_data['maximum'] ?? '',
                                                                 'minimum'        => $object_field_prop_data['minimum'] ?? '',
                                                                 'enum'           => $object_field_prop_data['enum'] ?? array(),
@@ -571,12 +590,20 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                             }
                                         }
                                     } else {
+                                        $required_fields = array();
+                                        if( isset( $property_data['required'] ) ) {
+                                            $required_fields = $property_data['required'];
+                                        }
+
+                                        $is_required = in_array( $property_name, $required_fields );
+
                                         $repeater_fields[] = [
                                             'name'           => $property_name,
                                             'label_en'       => $label_en,
                                             'label_fr'       => $label_fr,
                                             'type'           => $property_data['type'] ?? '',
                                             'default'        => $property_data['default'] ?? '',
+                                            'required'       => $is_required,
                                             'maximum'        => $property_data['maximum'] ?? '',
                                             'minimum'        => $property_data['minimum'] ?? '',
                                             'enum'           => $property_data['enum'] ?? array(),
