@@ -78,6 +78,10 @@ if (class_exists('GF_Field')) {
             } else if( searchMode == 'groups' ) {
               document.querySelector('.orgss-org-settings').style.display = "none";
               document.querySelector('.orgss-groups-settings').style.display = "block";
+            } else {
+              // Fail back to org mode
+              document.querySelector('.orgss-org-settings').style.display = "block";
+              document.querySelector('.orgss-groups-settings').style.display = "none";
             }
           }
 
@@ -139,6 +143,7 @@ if (class_exists('GF_Field')) {
       $relationship_mode = 'person_to_organization';
       $new_org_type_override = '';
 
+      // TODO: Make this support multiple org search/select elements on one page, if necessary
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
           if( get_class( $field ) == 'GFWicketFieldOrgSearchSelect' ) {
