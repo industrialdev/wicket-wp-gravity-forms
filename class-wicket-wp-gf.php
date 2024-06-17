@@ -64,6 +64,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Bootstrap the GF Addon for field mapping
             add_action( 'gform_loaded', array( $this, 'gf_mapping_addon_load' ), 5 );
 
+            // Custom GF fields
+            add_action( 'gform_loaded', array( $this, 'gf_load_custom_fields' ), 5 );
+
             // Enqueue scripts and styles
             add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts_styles'));
 
@@ -95,6 +98,13 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // handle displaying content for our custom menu when selected
             add_action( 'gform_form_settings_page_wicketmap', array( 'GFWicketMappingAddOn', 'addon_custom_ui' ), 20 );
+        }
+
+        public static function gf_load_custom_fields() {
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
+
+            add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
+            add_action( 'gform_editor_js', ['GFWicketFieldOrgSearchSelect','editor_script'] );
         }
 
         public function conditionally_include_pa_object() {
