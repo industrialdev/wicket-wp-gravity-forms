@@ -458,34 +458,35 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	// # CUSTOM SETTIGNS ON ADDON SETTINGS PAGE -------------------------------------------------------------------------
 
-	public static function addon_custom_ui () {
+	public static function addon_custom_ui() {
 
 		$show_debug_info = true; // Change as desired
 
-		if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ):
-		?>                
-		
-		<div class="gform-settings__wrapper custom">
-			<div class="">
-				<a 
-					aria-label="<?php _e( 'Re-Sync Wicket Member Fields', 'wicket-gf' ); ?>" 
-					href="javascript:void(0)" 
-					class="preview-form gform-button gform-button--white" 
-					target="_self" 
-					rel="noopener"
-					id="wicket-gf-addon-resync-fields-button"
-				><?php _e( 'Re-Sync Wicket Member Fields', 'wicket-gf' ); ?></a>
-			</div>
-		</div>
+		if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ) {
+			
+			echo '
+					<div class="gform-settings__wrapper custom">
+						<div class="">
+							<a 
+								aria-label="' . __( 'Re-Sync Wicket Member Fields', 'wicket-gf' ) . '"  
+								href="javascript:void(0)" 
+								class="preview-form gform-button gform-button--white" 
+								target="_self" 
+								rel="noopener"
+								id="wicket-gf-addon-resync-fields-button"
+							>'. __( 'Re-Sync Wicket Member Fields', 'wicket-gf' ) . '</a>
+						</div>
+					</div>
+			';
 
-		<?php if($show_debug_info): ?>
-		<pre>
-			<?php wicket_write_log( get_option('wicket_gf_member_fields'), true ); ?>
-		</pre>
-		<?php endif; ?>
-		
-		<?
-		endif;
+			if($show_debug_info) { 
+				echo '
+					<pre>
+						'. wicket_write_log( get_option('wicket_gf_member_fields'), true ) . '
+					</pre>
+				';
+			}
+		}
 	}
 
 	// # HELPERS -------------------------------------------------------------------------------------------------------
