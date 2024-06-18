@@ -105,6 +105,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
             add_action( 'gform_editor_js', ['GFWicketFieldOrgSearchSelect','editor_script'] );
+
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
         }
 
         public function conditionally_include_pa_object() {
