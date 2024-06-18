@@ -1,0 +1,16 @@
+{
+  "name": "industrialdev/wicket-wp-gravity-forms",
+  "description": "Wicket Gravity Forms Plugin",
+  "keywords": ["wordpress", "plugin"],
+  "homepage": "https://github.com/industrialdev/wicket-wp-gravity-forms",
+  "authors": [
+    {
+      "name": "Wicket",
+      "homepage": "https://wicket.io"
+    }
+  ],
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=8.0"
+  }
+}
