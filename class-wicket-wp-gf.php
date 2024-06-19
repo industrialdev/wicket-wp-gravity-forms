@@ -101,13 +101,19 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         }
 
         public static function gf_load_custom_fields() {
+            // Load global editor scripts
             add_action( 'gform_editor_js', ['Wicket_Gf_Main','gf_editor_global_custom_scripts'] );
 
+            // Custom field: org search/select
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
             add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
             add_action( 'gform_editor_js', ['GFWicketFieldOrgSearchSelect','editor_script'] );
 
+            // Custom field: individual profile widget
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
+
+            // Apply pre-form-render actions based on our settings above as needed
+            add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'] );
         }
 
         public static function gf_editor_global_custom_scripts() {
@@ -117,6 +123,38 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
             <?php
+        }
+
+        public static function gf_custom_pre_render( $form ) {
+            // Echo what we want to add
+            if( get_option('wicket_gf_pagination_sidebar_layout') ) {
+                ob_start(); ?>
+
+                <style>
+                    form[id^=gform_] {
+                        display: flex;
+                    }
+                    .gf_page_steps {
+                        display: flex;
+                        flex-direction: column;
+                        min-width: 250px;
+                    }
+                    .gf_page_steps .gf_step_active {
+                        background: #efefef;
+                        padding: 5px;
+                        border-radius: 999px;
+                        margin-left: -5px !important;
+                    }
+                    .gform_body {
+                        flex-grow: 1;
+                    }
+                </style>
+
+                <?php echo ob_get_clean();
+            }
+
+            // Return the form untouched
+            return $form;
         }
 
         public function conditionally_include_pa_object() {

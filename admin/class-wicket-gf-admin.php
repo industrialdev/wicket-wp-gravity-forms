@@ -33,6 +33,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 		{
 				add_option('wicket_gf_slug_mapping', '');
 				register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', null);
+				register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
 		}
 
 		// Create an options page
@@ -56,7 +57,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 								}
 						</script>
 
-						<h2 class="wgf-text-2xl wgf-font-bold wgf-mb-2"><?php _e('Wicket Gravity Forms', 'wicket-gf'); ?></h2>
+						<h2 class="wgf-text-2xl wgf-font-bold wgf-mb-4"><?php _e('Wicket Gravity Forms', 'wicket-gf'); ?></h2>
 
 						<h3 class="wgf-text-xl wgf-font-semibold wgf-mb-2"><?php _e('Form Slug ID Mapping', 'wicket-gf'); ?></h3>
 
@@ -130,11 +131,23 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 						</script>
 						
 
-						<form method="post" action="options.php"> 
+						<form method="post" action="options.php" class="wgf-mt-4"> 
 								<?php settings_fields('wicket_gf_options_group'); ?>
 								
-								<input hidden type="text" id="wicket_gf_slug_mapping" name="wicket_gf_slug_mapping" value="<?php echo get_option('wicket_gf_slug_mapping'); ?>" style="width:40%;" />
+								<input hidden type="text" id="wicket_gf_slug_mapping" name="wicket_gf_slug_mapping" value="<?php echo get_option('wicket_gf_slug_mapping'); ?>" />
 
+								<h3 class="wgf-text-xl wgf-font-semibold wgf-mb-2"><?php _e('General Gravity Forms Settings', 'wicket-gf'); ?></h3>
+						
+								<div class="wicket_pagination_settings" style="">
+									<input 
+										type="checkbox" 
+										name="wicket_gf_pagination_sidebar_layout" 
+										id="wicket_gf_pagination_sidebar_layout"
+										<?php if(get_option('wicket_gf_pagination_sidebar_layout')){echo 'checked';} ?>
+									>
+									<label for="wicket_gf_pagination_sidebar_layout" class="inline">Use Sidebar Pagination Layout</label>					
+								</div>
+								
 								<?php submit_button(); ?>
 						</form> 
 				</div>
