@@ -101,12 +101,22 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         }
 
         public static function gf_load_custom_fields() {
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
+            add_action( 'gform_editor_js', ['Wicket_Gf_Main','gf_editor_global_custom_scripts'] );
 
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
             add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
             add_action( 'gform_editor_js', ['GFWicketFieldOrgSearchSelect','editor_script'] );
 
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
+        }
+
+        public static function gf_editor_global_custom_scripts() {
+            ?>
+
+            <!-- Include Alpine here for easier development of custom JS in the GF editor -->
+            <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+            <?php
         }
 
         public function conditionally_include_pa_object() {

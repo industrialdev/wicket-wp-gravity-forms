@@ -37,22 +37,10 @@ if (class_exists('GF_Field')) {
 
       $id = (int) $this->id;
 
-      $search_mode = 'org';
-
-      // TODO: Make this support multiple org search/select elements on one page, if necessary
-      foreach( $form['fields'] as $field ) {
-        if( gettype( $field ) == 'object' ) {
-          if( get_class( $field ) == 'GFWicketFieldOrgSearchSelect' ) {
-            if( isset( $field->orgss_search_mode ) ) {
-              $search_mode = $field->orgss_search_mode;
-            }
-          }
-        }
-      }
-
       if( component_exists('widget-profile-individual') ) {
         return get_component( 'widget-profile-individual', [ 
-          'classes'                             => [],
+          'classes'                    => [],
+          'user_info_data_field_name'  => 'input_' . $id,
         ], false );
       } else {
         return '<p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p>';
@@ -61,20 +49,25 @@ if (class_exists('GF_Field')) {
     }
 
     // Override how to Save the field value
-    // public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
-    //   if (empty($value)) {
-    //     $value = '';
-    //   } else {
-    //     // Do things
-    //   }
-    //   return $value;
-    // }
+    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
+      $value_array = json_decode($value);
+      $user_id = $value_array->attributes->uuid;
+      $wicket_settings = get_wicket_settings(); 
 
-    public function validate( $value, $form ) {      
-      if (strlen(trim($value)) <= 0) {
-        $this->failed_validation = true;
-        if ( ! empty( $this->errorMessage ) ) {
-            $this->validation_message = $this->errorMessage;
+      $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id;
+
+      return $link_to_user_profile;
+      //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
+    }
+
+    public function validate( $value, $form ) {
+      $value_array = json_decode($value, true);
+      if( isset( $value_array['incompleteRequiredFields'] ) ) {
+        if( count( $value_array['incompleteRequiredFields'] ) > 0 ) {
+          $this->failed_validation = true;
+          if ( ! empty( $this->errorMessage ) ) {
+              $this->validation_message = $this->errorMessage;
+          }
         }
       }
     }

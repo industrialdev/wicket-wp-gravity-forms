@@ -11,15 +11,17 @@ if (class_exists('GF_Field')) {
       if ( $position == 25 ) { ?>
         <?php ob_start(); ?>
 
-        <div class="wicket_orgss_setting" style="display:none;">
+        <div class="wicket_orgss_setting" style="display:none;" x-data="{
+          searchMode: 'org'
+        }">
           <label>Search Mode</label>
-          <select name="orgss_search_mode" class="orgss_search_mode">
-            <option value="org">Organizations</option>
+          <select name="orgss_search_mode" class="orgss_search_mode" x-model="searchMode">
+            <option value="org" selected>Organizations</option>
             <option value="groups">Groups (Beta, In Development)</option>
           </select>
 
-          <div class="orgss-org-settings">
-          <label style="margin-top: 1em;display: block;">Organization Type</label>
+          <div x-show=" searchMode == 'org' " class="orgss-org-settings">
+            <label style="margin-top: 1em;display: block;">Organization Type</label>
             <input type="text" name="orgss_search_org_type" class="orgss_search_org_type" />
             <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em></p>
 
@@ -33,7 +35,7 @@ if (class_exists('GF_Field')) {
             <input type="text" name="orgss_new_org_type_override" class="orgss_new_org_type_override" value="" />
             <p style="margin-top: 2px;margin-bottom: 1em;"><em>If left blank, the user will be allowed to select the organization type themselves from the frontend.</em></p>
           </div>
-          <div class="orgss-groups-settings">
+          <div x-show=" searchMode == 'groups' class="orgss-groups-settings">
           </div>
         </div>
 
@@ -88,37 +90,15 @@ if (class_exists('GF_Field')) {
             jQuery( '.orgss_new_org_type_override' ).val( rgar( field, 'orgss_new_org_type_override' ) );
         });
 
-
-          // Conditionally display org or groups fields
-          let searchModeElement = document.querySelector('select[name="orgss_search_mode"]');
-          jQuery(document).on('gform_load_field_settings', checkAndUpdateSearchMode);
-          searchModeElement.addEventListener('change', checkAndUpdateSearchMode );
-
-          function checkAndUpdateSearchMode (event) {
-            let searchMode = searchModeElement.value;
-            // Update the GF value for this field
-            if( event.type == "change" ) {
-              SetFieldProperty('orgss_search_mode', searchMode);
-            }
-
-            if( searchMode == 'org' ) {
-              document.querySelector('.orgss-org-settings').style.display = "block";
-              document.querySelector('.orgss-groups-settings').style.display = "none";
-            } else if( searchMode == 'groups' ) {
-              document.querySelector('.orgss-org-settings').style.display = "none";
-              document.querySelector('.orgss-groups-settings').style.display = "block";
-            } else {
-              // Fail back to org mode
-              document.querySelector('.orgss-org-settings').style.display = "block";
-              document.querySelector('.orgss-groups-settings').style.display = "none";
-            }
-          }
-
           // Listen for and update other fields
+          let searchModeElement = document.querySelector('select[name="orgss_search_mode"]');
           let orgss_search_org_type = document.querySelector('.orgss_search_org_type');
           let orgss_relationship_type_upon_org_creation = document.querySelector('.orgss_relationship_type_upon_org_creation');
           let orgss_relationship_mode = document.querySelector('.orgss_relationship_mode');
           let orgss_new_org_type_override = document.querySelector('.orgss_new_org_type_override');
+          searchModeElement.addEventListener('change', function(event){
+            SetFieldProperty('orgss_search_mode', searchModeElement.value);
+          });
           orgss_search_org_type.addEventListener('change', function (event) {
             SetFieldProperty('orgss_search_org_type', orgss_search_org_type.value);
           });
