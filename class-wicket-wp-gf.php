@@ -112,6 +112,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Custom field: individual profile widget
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
 
+            // Custom field: additional info widget
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-ai.php' );
+            add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetAi','custom_settings'], 10, 2 );
+            add_action( 'gform_editor_js', ['GFWicketFieldWidgetAi','editor_script'] );
+
             // Apply pre-form-render actions based on our settings above as needed
             add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'] );
         }
@@ -122,6 +127,47 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             <!-- Include Alpine here for easier development of custom JS in the GF editor -->
             <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+            <script>
+                // Check if we're currently looking at one of our elements, and if so show the settings for it,
+                // otherwise hide the settings
+                let orgss_settings_panes = document.querySelectorAll('.wicket_orgss_setting');
+                let wwidget_ai_settings = document.querySelectorAll('.wicket_widget_ai_setting');
+                let gf_fields_wrapper = document.querySelector('#gform_fields');
+                let gf_edit_field_button = document.querySelector('.gfield-field-action.gfield-edit');
+
+                jQuery(document).on('gform_load_field_settings', conditionallyShowElementControls);
+                gf_fields_wrapper.addEventListener('click', conditionallyShowElementControls);
+                gf_edit_field_button.addEventListener('click', conditionallyShowElementControls);
+
+                function conditionallyShowElementControls (event) {
+                    let selectedField = GetSelectedField(); // GF editor function
+                    //console.log(event.target);
+                    //console.log(selectedField);
+
+                    // Org search/select
+                    if( selectedField.type == "wicket_org_search_select" ) {
+                        for (let orgss_settings_pane of orgss_settings_panes) {
+                            orgss_settings_pane.style.display = "block";
+                        }
+                    } else {
+                        for (let orgss_settings_pane of orgss_settings_panes) {
+                            orgss_settings_pane.style.display = "none";
+                        }
+                    }
+                    // AI widget
+                    if( selectedField.type == "wicket_widget_ai" ) {
+                        for (let wwidget_ai_setting of wwidget_ai_settings) {
+                            wwidget_ai_setting.style.display = "block";
+                        }
+                    } else {
+                        for (let wwidget_ai_setting of wwidget_ai_settings) {
+                            wwidget_ai_setting.style.display = "none";
+                        }
+                    }
+
+                }
+            </script>
+
             <?php
         }
 
@@ -130,25 +176,39 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             if( get_option('wicket_gf_pagination_sidebar_layout') ) {
                 ob_start(); ?>
 
-                <style>
-                    form[id^=gform_] {
-                        display: flex;
+                <script>
+                    window.addEventListener('load', function () {
+                    if (document.querySelector('body') !== null) {
+
+                        // Check and see if the page is using the steps version of pagination,
+                        // and if so re-format it
+                        let paginationStepsCheck = document.querySelector('.gf_page_steps');
+                        if( paginationStepsCheck != null ) {
+                            document.head.insertAdjacentHTML("beforeend", `
+                            <style>
+                                form[id^=gform_] {
+                                    display: flex;
+                                }
+                                .gf_page_steps {
+                                    display: flex;
+                                    flex-direction: column;
+                                    min-width: 250px;
+                                }
+                                .gf_page_steps .gf_step_active {
+                                    background: #efefef;
+                                    padding: 5px;
+                                    border-radius: 999px;
+                                    margin-left: -5px !important;
+                                }
+                                .gform_body {
+                                    flex-grow: 1;
+                                }
+                            </style>`);
+                        }
                     }
-                    .gf_page_steps {
-                        display: flex;
-                        flex-direction: column;
-                        min-width: 250px;
-                    }
-                    .gf_page_steps .gf_step_active {
-                        background: #efefef;
-                        padding: 5px;
-                        border-radius: 999px;
-                        margin-left: -5px !important;
-                    }
-                    .gform_body {
-                        flex-grow: 1;
-                    }
-                </style>
+                    });
+
+                </script>
 
                 <?php echo ob_get_clean();
             }

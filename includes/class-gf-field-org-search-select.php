@@ -35,7 +35,7 @@ if (class_exists('GF_Field')) {
             <input type="text" name="orgss_new_org_type_override" class="orgss_new_org_type_override" value="" />
             <p style="margin-top: 2px;margin-bottom: 1em;"><em>If left blank, the user will be allowed to select the organization type themselves from the frontend.</em></p>
           </div>
-          <div x-show=" searchMode == 'groups' class="orgss-groups-settings">
+          <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
           </div>
         </div>
 
@@ -49,30 +49,6 @@ if (class_exists('GF_Field')) {
       ?>
       <script type='text/javascript'>
         // TODO: Listen for initial element add and load the default values for certain fields into the GF data
-
-        // Check if we're currently looking at our element, and if so show the settings for it
-        let orgss_settings_panes = document.querySelectorAll('.wicket_orgss_setting');
-        let gf_fields_wrapper = document.querySelector('#gform_fields');
-        let gf_edit_field_button = document.querySelector('.gfield-field-action.gfield-edit');
-
-        jQuery(document).on('gform_load_field_settings', conditionallyShowElementControls);
-        gf_fields_wrapper.addEventListener('click', conditionallyShowElementControls);
-        gf_edit_field_button.addEventListener('click', conditionallyShowElementControls);
-
-        function conditionallyShowElementControls (event) {
-          let selectedField = GetSelectedField(); // GF editor function
-
-          if( selectedField.type == "wicket_org_search_select" ) {
-            for (let orgss_settings_pane of orgss_settings_panes) {
-              orgss_settings_pane.style.display = "block";
-            }
-          } else {
-            for (let orgss_settings_pane of orgss_settings_panes) {
-              orgss_settings_pane.style.display = "none";
-            }
-          }
-
-        }
 
         //adding setting to fields of type "text" so GF is aware of them
         fieldSettings.text += ', .orgss_search_mode';
