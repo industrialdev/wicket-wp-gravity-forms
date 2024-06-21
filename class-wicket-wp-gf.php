@@ -104,6 +104,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Load global editor scripts
             add_action( 'gform_editor_js', ['Wicket_Gf_Main','gf_editor_global_custom_scripts'] );
 
+            // Load global custom fields applied to all field types
+            add_action( 'gform_field_standard_settings', ['Wicket_Gf_Main','gf_editor_global_custom_fields'], 10, 2 );
+
             // Custom field: org search/select
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
             add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
@@ -174,8 +177,23 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             <?php
         }
 
+        public static function gf_editor_global_custom_fields( $position, $form_id ) {
+            //create settings on position 25 (right after Field Label)
+            if ( $position == 25 ) { 
+                ob_start(); ?>
+
+                <div class="wicket_global_custom_settings">
+					<input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);" onkeypress="SetFieldProperty('hide_label', this.checked);">
+					<label for="hide_label" class="inline">Hide Label</label>
+                </div>
+
+                <?php echo ob_get_clean(); 
+            }
+        }
+
         public static function gf_custom_pre_render( $form ) {
             // Echo what we want to add
+            // Add sidebar layout styles if toggled in Wicket GF options
             if( get_option('wicket_gf_pagination_sidebar_layout') ) {
                 ob_start(); ?>
 
@@ -214,6 +232,21 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 </script>
 
                 <?php echo ob_get_clean();
+            }
+
+            // Loop fields and hide label if toggled with our custom checkbox
+            foreach( $form['fields'] as $field ) {
+                if( isset( $field['hide_label'] ) ) {
+                    if( $field['hide_label'] ) {
+                        echo '
+                        <style>
+                            .gform_wrapper.gravity-theme label[for="input_'.$field['formId'].'_'.$field['id'].'"].gfield_label {
+                                display: none;
+                            }
+                        </style>
+                        ';
+                    }
+                }
             }
 
             // Return the form untouched
