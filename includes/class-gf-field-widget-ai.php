@@ -40,7 +40,7 @@ if (class_exists('GF_Field')) {
              x-init="start" 
              x-on:gf-wwidget-ai-field-settings.window="loadFieldSettings">
           <label>Additional Info Schemas:</label>
-          <template x-for="(schema, index) in schemaArray" :key="index" x-effect="console.log('Changed:');console.log(schemaArray);">
+          <template x-for="(schema, index) in schemaArray" :key="index">
             <div class="schema-grouping">
               <div class="inputs-wrapper">
                 <input @keyup="updateSchemaArray(index, 'schema-id', $el.value)" type="text" placeholder="Schema ID" x-bind:value="typeof schema[0] === 'undefined' ? '' : schema[0]" />

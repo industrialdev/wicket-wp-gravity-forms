@@ -140,12 +140,13 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 let wwidget_ai_settings = document.querySelectorAll('.wicket_widget_ai_setting');
                 let gf_fields_wrapper = document.querySelector('#gform_fields');
                 let gf_edit_field_button = document.querySelector('.gfield-field-action.gfield-edit');
+                let wicket_global_settings_hide_label = document.querySelector('.wicket_global_custom_settings #hide_label');
 
                 jQuery(document).on('gform_load_field_settings', conditionallyShowElementControls);
                 gf_fields_wrapper.addEventListener('click', conditionallyShowElementControls);
                 gf_edit_field_button.addEventListener('click', conditionallyShowElementControls);
 
-                function conditionallyShowElementControls (event) {
+                function conditionallyShowElementControls (event, field, form) {
                     let selectedField = GetSelectedField(); // GF editor function
                     //console.log(event.target);
                     //console.log(selectedField);
@@ -171,6 +172,17 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         }
                     }
 
+                    // Reload values of global custom settings on tab change so they're correctly reflected
+                    // Using try/catch in case property doesn't exist on GF object
+                    try {
+                        if( rgar( field, 'hide_label' ) ) {
+                            wicket_global_settings_hide_label.checked = true;
+                        }
+                    }
+                    catch(err) {
+                        wicket_global_settings_hide_label.checked = false;
+                    }
+                                        
                 }
             </script>
 
