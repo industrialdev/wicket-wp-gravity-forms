@@ -213,14 +213,25 @@ if (class_exists('GF_Field')) {
 
     public function validate( $value, $form ) {
       $value_array = json_decode($value, true);
-      if( isset( $value_array['incompleteRequiredFields'] ) ) {
-        if( count( $value_array['incompleteRequiredFields'] ) > 0 ) {
-          $this->failed_validation = true;
-          if ( ! empty( $this->errorMessage ) ) {
-              $this->validation_message = $this->errorMessage;
-          }
-        }
-      }
+      //wicket_write_log('Value array:');
+      //wicket_write_log($value_array);
+
+      $notFound   = $value_array['notFound'];
+      $validation = $value_array['validation'];
+      $invalid    = $value_array['invalid'];
+
+      // TODO: Determine which of these means the input is invalid and fire
+      // the GF invalid triggers
+
+
+      // if( isset( $value_array['incompleteRequiredFields'] ) ) {
+      //   if( count( $value_array['incompleteRequiredFields'] ) > 0 ) {
+      //     $this->failed_validation = true;
+      //     if ( ! empty( $this->errorMessage ) ) {
+      //         $this->validation_message = $this->errorMessage;
+      //     }
+      //   }
+      // }
     }
 
     // Functions for how the field value gets displayed on the backend
