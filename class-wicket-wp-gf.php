@@ -117,6 +117,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetAi','custom_settings'], 10, 2 );
             add_action( 'gform_editor_js', ['GFWicketFieldWidgetAi','editor_script'] );
 
+            // Custom field: person preferences widget
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-prefs.php' );
+
             // Apply pre-form-render actions based on our settings above as needed
             add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'] );
         }

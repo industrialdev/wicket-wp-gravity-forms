@@ -202,10 +202,10 @@ if (class_exists('GF_Field')) {
     // Override how to Save the field value
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
       $value_array = json_decode($value);
-      $user_id = $value_array->attributes->uuid;
+      $user_id = wicket_current_person_uuid();
       $wicket_settings = get_wicket_settings(); 
 
-      $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id;
+      $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/additional_info';
 
       return $link_to_user_profile;
       //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
@@ -220,18 +220,12 @@ if (class_exists('GF_Field')) {
       $validation = $value_array['validation'];
       $invalid    = $value_array['invalid'];
 
-      // TODO: Determine which of these means the input is invalid and fire
-      // the GF invalid triggers
-
-
-      // if( isset( $value_array['incompleteRequiredFields'] ) ) {
-      //   if( count( $value_array['incompleteRequiredFields'] ) > 0 ) {
-      //     $this->failed_validation = true;
-      //     if ( ! empty( $this->errorMessage ) ) {
-      //         $this->validation_message = $this->errorMessage;
-      //     }
-      //   }
-      // }
+      if( count( $invalid ) > 0 ) {
+        $this->failed_validation = true;
+        if ( ! empty( $this->errorMessage ) ) {
+            $this->validation_message = $this->errorMessage;
+        }
+      }
     }
 
     // Functions for how the field value gets displayed on the backend
