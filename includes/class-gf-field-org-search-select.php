@@ -59,11 +59,27 @@ if (class_exists('GF_Field')) {
 
         //binding to the load field settings event to load current field values
         jQuery(document).on('gform_load_field_settings', function(event, field, form){
-            jQuery( '.orgss_search_mode' ).val( rgar( field, 'orgss_search_mode' ) );
-            jQuery( '.orgss_search_org_type' ).val( rgar( field, 'orgss_search_org_type' ) );
-            jQuery( '.orgss_relationship_type_upon_org_creation' ).val( rgar( field, 'orgss_relationship_type_upon_org_creation' ) );
-            jQuery( '.orgss_relationship_mode' ).val( rgar( field, 'orgss_relationship_mode' ) );
-            jQuery( '.orgss_new_org_type_override' ).val( rgar( field, 'orgss_new_org_type_override' ) );
+          let orgss_search_mode_value = rgar( field, 'orgss_search_mode' );
+          let orgss_search_org_type_value = rgar( field, 'orgss_search_org_type' );
+          let orgss_relationship_type_upon_org_creation_value = rgar( field, 'orgss_relationship_type_upon_org_creation' );
+          let orgss_relationship_mode_value = rgar( field, 'orgss_relationship_mode' );
+          let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
+
+          if( (orgss_search_mode_value +
+          orgss_search_org_type_value + 
+          orgss_relationship_type_upon_org_creation_value + 
+          orgss_relationship_mode_value +
+          orgss_new_org_type_override_value).length <= 0 ) {
+            // No values have been saved, so the element must have been freshly added,
+            // meaning we should not override the field default values
+          } else {
+            // We have existing values, so we'll load them
+            jQuery( '.orgss_search_mode' ).val( orgss_search_mode_value );
+            jQuery( '.orgss_search_org_type' ).val( orgss_search_org_type_value );
+            jQuery( '.orgss_relationship_type_upon_org_creation' ).val( orgss_relationship_type_upon_org_creation_value );
+            jQuery( '.orgss_relationship_mode' ).val( orgss_relationship_mode_value );
+            jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
+          }
         });
 
           // Listen for and update other fields
