@@ -20,8 +20,8 @@ if (class_exists('GF_Field')) {
             <option value="groups">Groups (Beta, In Development)</option>
           </select>
 
-          <div x-show=" searchMode == 'org' " class="orgss-org-settings">
-            <label style="margin-top: 1em;display: block;">Organization Type</label>
+          <div x-show=" searchMode == 'org' " class="orgss-org-settings" style="padding: 1em 0;">
+            <label style="display: block;">Organization Type</label>
             <input type="text" name="orgss_search_org_type" class="orgss_search_org_type" />
             <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em></p>
 
@@ -33,7 +33,16 @@ if (class_exists('GF_Field')) {
 
             <label style="margin-top: 1em;display: block;">Org Type When User Creates New Org</label>
             <input type="text" name="orgss_new_org_type_override" class="orgss_new_org_type_override" value="" />
-            <p style="margin-top: 2px;margin-bottom: 1em;"><em>If left blank, the user will be allowed to select the organization type themselves from the frontend.</em></p>
+            <p style="margin-top: 2px;"><em>If left blank, the user will be allowed to select the organization type themselves from the frontend.</em></p>
+          
+            <label style="margin-top: 1em;display: block;">Org name singular</label>
+            <input type="text" name="orgss_org_term_singular" class="orgss_org_term_singular" value="" />
+            <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organization" or "Chapter". Can be left blank to use default.</em></p>
+
+            <label style="margin-top: 1em;display: block;">Org name plural</label>
+            <input type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" value="" />
+            <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters". Can be left blank to use default.</em></p>
+
           </div>
           <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
           </div>
@@ -48,61 +57,98 @@ if (class_exists('GF_Field')) {
     public static function editor_script(){
       ?>
       <script type='text/javascript'>
-        // TODO: Listen for initial element add and load the default values for certain fields into the GF data
+        	// When the page is ready
+        window.addEventListener('load', function () {
+          if (document.querySelector('body') !== null) { // Some element that should be rendered by now before we execute code
 
-        //adding setting to fields of type "text" so GF is aware of them
-        fieldSettings.text += ', .orgss_search_mode';
-        fieldSettings.text += ', .orgss_search_org_type';
-        fieldSettings.text += ', .orgss_relationship_type_upon_org_creation';
-        fieldSettings.text += ', .orgss_relationship_mode';
-        fieldSettings.text += ', .orgss_new_org_type_override';
+          //adding setting to fields of type "text" so GF is aware of them
+          fieldSettings.text += ', .orgss_search_mode';
+          fieldSettings.text += ', .orgss_search_org_type';
+          fieldSettings.text += ', .orgss_relationship_type_upon_org_creation';
+          fieldSettings.text += ', .orgss_relationship_mode';
+          fieldSettings.text += ', .orgss_new_org_type_override';
+          fieldSettings.text += ', .orgss_org_term_singular';
+          fieldSettings.text += ', .orgss_org_term_plural';
 
-        //binding to the load field settings event to load current field values
-        jQuery(document).on('gform_load_field_settings', function(event, field, form){
-          let orgss_search_mode_value = rgar( field, 'orgss_search_mode' );
-          let orgss_search_org_type_value = rgar( field, 'orgss_search_org_type' );
-          let orgss_relationship_type_upon_org_creation_value = rgar( field, 'orgss_relationship_type_upon_org_creation' );
-          let orgss_relationship_mode_value = rgar( field, 'orgss_relationship_mode' );
-          let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
-
-          if( (orgss_search_mode_value +
-          orgss_search_org_type_value + 
-          orgss_relationship_type_upon_org_creation_value + 
-          orgss_relationship_mode_value +
-          orgss_new_org_type_override_value).length <= 0 ) {
-            // No values have been saved, so the element must have been freshly added,
-            // meaning we should not override the field default values
-          } else {
-            // We have existing values, so we'll load them
-            jQuery( '.orgss_search_mode' ).val( orgss_search_mode_value );
-            jQuery( '.orgss_search_org_type' ).val( orgss_search_org_type_value );
-            jQuery( '.orgss_relationship_type_upon_org_creation' ).val( orgss_relationship_type_upon_org_creation_value );
-            jQuery( '.orgss_relationship_mode' ).val( orgss_relationship_mode_value );
-            jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
-          }
-        });
-
-          // Listen for and update other fields
+          // Input fields
           let searchModeElement = document.querySelector('select[name="orgss_search_mode"]');
           let orgss_search_org_type = document.querySelector('.orgss_search_org_type');
           let orgss_relationship_type_upon_org_creation = document.querySelector('.orgss_relationship_type_upon_org_creation');
           let orgss_relationship_mode = document.querySelector('.orgss_relationship_mode');
           let orgss_new_org_type_override = document.querySelector('.orgss_new_org_type_override');
-          searchModeElement.addEventListener('change', function(event){
+          let orgss_org_term_singular = document.querySelector('.orgss_org_term_singular');
+          let orgss_org_term_plural = document.querySelector('.orgss_org_term_plural');
+
+          // Listen for and update other fields
+          searchModeElement.addEventListener('change', (e) => {
             SetFieldProperty('orgss_search_mode', searchModeElement.value);
           });
-          orgss_search_org_type.addEventListener('change', function (event) {
+          orgss_search_org_type.addEventListener('change', (e) => {
             SetFieldProperty('orgss_search_org_type', orgss_search_org_type.value);
           });
-          orgss_relationship_type_upon_org_creation.addEventListener('change', function (event) {
+          orgss_relationship_type_upon_org_creation.addEventListener('change', (e) => {
             SetFieldProperty('orgss_relationship_type_upon_org_creation', orgss_relationship_type_upon_org_creation.value);
           });
-          orgss_relationship_mode.addEventListener('change', function (event) {
+          orgss_relationship_mode.addEventListener('change', (e) => {
             SetFieldProperty('orgss_relationship_mode', orgss_relationship_mode.value);
           });
-          orgss_new_org_type_override.addEventListener('change', function (event) {
+          orgss_new_org_type_override.addEventListener('change', (e) => {
             SetFieldProperty('orgss_new_org_type_override', orgss_new_org_type_override.value);
           });
+          orgss_org_term_singular.addEventListener('change', (e) => {
+            SetFieldProperty('orgss_org_term_singular', orgss_org_term_singular.value);
+          });
+          orgss_org_term_plural.addEventListener('change', (e) => {
+            SetFieldProperty('orgss_org_term_plural', orgss_org_term_plural.value);
+          }); 
+
+          //binding to the load field settings event to load current field values
+          jQuery(document).on('gform_load_field_settings', function(event, field, form){
+            let orgss_search_mode_value = rgar( field, 'orgss_search_mode' );
+            let orgss_search_org_type_value = rgar( field, 'orgss_search_org_type' );
+            let orgss_relationship_type_upon_org_creation_value = rgar( field, 'orgss_relationship_type_upon_org_creation' );
+            let orgss_relationship_mode_value = rgar( field, 'orgss_relationship_mode' );
+            let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
+            let orgss_org_term_singular_value = rgar( field, 'orgss_org_term_singular' );
+            let orgss_org_term_plural_value = rgar( field, 'orgss_org_term_plural' );
+
+            // Determine if this is a brand new field or if it has values already
+            if( (orgss_search_mode_value +
+            orgss_search_org_type_value + 
+            orgss_relationship_type_upon_org_creation_value + 
+            orgss_relationship_mode_value +
+            orgss_new_org_type_override_value +
+            orgss_org_term_singular_value +
+            orgss_org_term_plural_value).length <= 0 ) {
+              // No values have been saved, so the element must have been freshly added,
+              // meaning we should not override the field default values
+              // Instead we'll initially save the defaults so this field isn't blank
+              orgss_save_default_field_values();
+            } else {
+              // We have existing values, so we'll load them
+              jQuery( '.orgss_search_mode' ).val( orgss_search_mode_value );
+              jQuery( '.orgss_search_org_type' ).val( orgss_search_org_type_value );
+              jQuery( '.orgss_relationship_type_upon_org_creation' ).val( orgss_relationship_type_upon_org_creation_value );
+              jQuery( '.orgss_relationship_mode' ).val( orgss_relationship_mode_value );
+              jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
+              jQuery( '.orgss_org_term_singular' ).val( orgss_org_term_singular_value );
+              jQuery( '.orgss_org_term_plural' ).val( orgss_org_term_plural_value );
+            }
+          });
+
+          // TODO: Sync these default values with the ones from the component if possible
+          function orgss_save_default_field_values(event = null) {
+            SetFieldProperty('orgss_search_mode', 'org');
+            SetFieldProperty('orgss_search_org_type', '');
+            SetFieldProperty('orgss_relationship_type_upon_org_creation', 'employee');
+            SetFieldProperty('orgss_relationship_mode', 'person_to_organization');
+            SetFieldProperty('orgss_new_org_type_override', '');
+            SetFieldProperty('orgss_org_term_singular', 'Organization');
+            SetFieldProperty('orgss_org_term_plural', 'Organizations');
+            }
+          }
+        });
+
       </script>
       <?php
     }
@@ -144,24 +190,27 @@ if (class_exists('GF_Field')) {
       $relationship_mode = 'person_to_organization';
       $new_org_type_override = '';
 
-      // TODO: Make this support multiple org search/select elements on one page, if necessary
+      //wicket_write_log($form, true);
+
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
           if( get_class( $field ) == 'GFWicketFieldOrgSearchSelect' ) {
-            if( isset( $field->orgss_search_mode ) ) {
-              $search_mode = $field->orgss_search_mode;
-            }
-            if( isset( $field->orgss_search_org_type ) ) {
-              $search_org_type = $field->orgss_search_org_type;
-            }
-            if( isset( $field->orgss_relationship_type_upon_org_creation ) ) {
-              $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
-            }
-            if( isset( $field->orgss_relationship_mode ) ) {
-              $relationship_mode = $field->orgss_relationship_mode;
-            }
-            if( isset( $field->orgss_new_org_type_override ) ) {
-              $new_org_type_override = $field->orgss_new_org_type_override;
+            if( $field->id == $id ) {
+              if( isset( $field->orgss_search_mode ) ) {
+                $search_mode = $field->orgss_search_mode;
+              }
+              if( isset( $field->orgss_search_org_type ) ) {
+                $search_org_type = $field->orgss_search_org_type;
+              }
+              if( isset( $field->orgss_relationship_type_upon_org_creation ) ) {
+                $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
+              }
+              if( isset( $field->orgss_relationship_mode ) ) {
+                $relationship_mode = $field->orgss_relationship_mode;
+              }
+              if( isset( $field->orgss_new_org_type_override ) ) {
+                $new_org_type_override = $field->orgss_new_org_type_override;
+              }
             }
           }
         }
@@ -176,6 +225,7 @@ if (class_exists('GF_Field')) {
           'relationship_mode'                   => $relationship_mode,
           'new_org_type_override'               => $new_org_type_override,
           'selected_uuid_hidden_field_name'     => 'input_' . $id,
+          'key'                                 => $id,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
