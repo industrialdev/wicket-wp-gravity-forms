@@ -184,11 +184,13 @@ if (class_exists('GF_Field')) {
 
       $id = (int) $this->id;
 
-      $search_mode = 'org';
-      $search_org_type = '';
+      $search_mode                         = 'org';
+      $search_org_type                     = '';
       $relationship_type_upon_org_creation = 'employee';
-      $relationship_mode = 'person_to_organization';
-      $new_org_type_override = '';
+      $relationship_mode                   = 'person_to_organization';
+      $new_org_type_override               = '';
+      $org_term_singular                   = 'Organization';
+      $org_term_plural                     = 'Organizations';
 
       //wicket_write_log($form, true);
 
@@ -211,6 +213,12 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_new_org_type_override ) ) {
                 $new_org_type_override = $field->orgss_new_org_type_override;
               }
+              if( isset( $field->orgss_org_term_singular ) ) {
+                $org_term_singular = $field->orgss_org_term_singular;
+              }
+              if( isset( $field->orgss_org_term_plural ) ) {
+                $org_term_plural = $field->orgss_org_term_plural;
+              }
             }
           }
         }
@@ -226,6 +234,8 @@ if (class_exists('GF_Field')) {
           'new_org_type_override'               => $new_org_type_override,
           'selected_uuid_hidden_field_name'     => 'input_' . $id,
           'key'                                 => $id,
+          'org_term_singular'                   => $org_term_singular,
+          'org_term_plural'                     => $org_term_plural,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
