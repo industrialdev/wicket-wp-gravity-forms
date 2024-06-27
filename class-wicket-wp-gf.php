@@ -88,6 +88,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Allow all tags in gform fields that WP's wp_kses_post() allows
             add_filter( 'gform_allowable_tags', '__return_true' );
+            add_filter('wp_kses_allowed_html',array($this, 'update_kses_tags'), 1);
         }
 
         public static function gf_mapping_addon_load() {
@@ -295,6 +296,43 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             }
             return;
+        }
+
+        public static function update_kses_tags( $allowedposttags ){
+            $allowed_atts = array(
+                'align'      => array(),
+                'class'      => array(),
+                'type'       => array(),
+                'id'         => array(),
+                'dir'        => array(),
+                'lang'       => array(),
+                'style'      => array(),
+                'xml:lang'   => array(),
+                'src'        => array(),
+                'alt'        => array(),
+                'href'       => array(),
+                'rel'        => array(),
+                'rev'        => array(),
+                'target'     => array(),
+                'novalidate' => array(),
+                'type'       => array(),
+                'value'      => array(),
+                'name'       => array(),
+                'tabindex'   => array(),
+                'action'     => array(),
+                'method'     => array(),
+                'for'        => array(),
+                'width'      => array(),
+                'height'     => array(),
+                'data'       => array(),
+                'title'      => array(),
+            );
+
+            // Enable our desired tag types
+            $allowedposttags['script']   = $allowed_atts;
+            $allowedposttags['style']    = $allowed_atts;
+ 
+            return $allowedposttags;
         }
 
 		public static function shortcode($atts) {
