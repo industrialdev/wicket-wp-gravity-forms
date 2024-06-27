@@ -85,6 +85,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Add settings link to plugins page listing
             $plugin = plugin_basename(__FILE__);
             add_filter("plugin_action_links_$plugin", array('Wicket_Gf_Admin', 'add_settings_link') );
+
+            // Allow all tags in gform fields that WP's wp_kses_post() allows
+            add_filter( 'gform_allowable_tags', '__return_true' );
         }
 
         public static function gf_mapping_addon_load() {
