@@ -89,6 +89,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Allow all tags in gform fields that WP's wp_kses_post() allows
             add_filter( 'gform_allowable_tags', '__return_true' );
             add_filter('wp_kses_allowed_html',array($this, 'update_kses_tags'), 1);
+
+            // Modifying GF Entry screens
+            add_action( 'gform_entries_first_column', array($this, 'entries_list_first_column_content'), 10, 5 );
+            add_action("gform_print_entry_header", array($this, 'custom_entry_header', 10, 2));
+            add_filter( 'gform_get_field_value', array($this, 'gf_change_user_name'), 3 );
         }
 
         public static function gf_mapping_addon_load() {
@@ -129,6 +134,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Apply pre-form-render actions based on our settings above as needed
             add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'] );
+            
         }
 
         public static function gf_editor_global_custom_scripts() {
@@ -296,6 +302,18 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             }
             return;
+        }
+
+        public function entries_list_first_column_content( $form_id, $field_id, $value, $entry, $query_string ) {
+            echo 'Sample text.';
+        } 
+
+        public function gf_change_user_name( $value ) {
+            //self::write_log($value);
+            //self::write_log($entry);
+            wicket_write_log($value);
+
+            return $value;
         }
 
         public static function update_kses_tags( $allowedposttags ){

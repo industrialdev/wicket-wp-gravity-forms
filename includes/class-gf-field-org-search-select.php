@@ -43,6 +43,9 @@ if (class_exists('GF_Field')) {
             <input type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" value="" />
             <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters". Can be left blank to use default.</em></p>
 
+            <input type="checkbox" id="orgss_disable_org_creation" class="orgss_disable_org_creation">
+					  <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
+          
           </div>
           <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
           </div>
@@ -78,6 +81,7 @@ if (class_exists('GF_Field')) {
           let orgss_new_org_type_override = document.querySelector('.orgss_new_org_type_override');
           let orgss_org_term_singular = document.querySelector('.orgss_org_term_singular');
           let orgss_org_term_plural = document.querySelector('.orgss_org_term_plural');
+          let orgss_disable_org_creation = document.querySelector('.orgss_disable_org_creation');
 
           // Listen for and update other fields
           searchModeElement.addEventListener('change', (e) => {
@@ -101,6 +105,9 @@ if (class_exists('GF_Field')) {
           orgss_org_term_plural.addEventListener('change', (e) => {
             SetFieldProperty('orgss_org_term_plural', orgss_org_term_plural.value);
           }); 
+          orgss_disable_org_creation.addEventListener('change', (e) => {
+            SetFieldProperty('orgss_disable_org_creation', orgss_disable_org_creation.checked);
+          }); 
 
           //binding to the load field settings event to load current field values
           jQuery(document).on('gform_load_field_settings', function(event, field, form){
@@ -111,6 +118,7 @@ if (class_exists('GF_Field')) {
             let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
             let orgss_org_term_singular_value = rgar( field, 'orgss_org_term_singular' );
             let orgss_org_term_plural_value = rgar( field, 'orgss_org_term_plural' );
+            let orgss_disable_org_creation_value = rgar( field, 'orgss_disable_org_creation' );
 
             // Determine if this is a brand new field or if it has values already
             if( (orgss_search_mode_value +
@@ -133,6 +141,11 @@ if (class_exists('GF_Field')) {
               jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
               jQuery( '.orgss_org_term_singular' ).val( orgss_org_term_singular_value );
               jQuery( '.orgss_org_term_plural' ).val( orgss_org_term_plural_value );
+              if(orgss_disable_org_creation_value) {
+                jQuery( '.orgss_disable_org_creation' ).prop( "checked", true );
+              } else {
+                jQuery( '.orgss_disable_org_creation' ).prop( "checked", false );
+              }
             }
           });
 
@@ -145,6 +158,7 @@ if (class_exists('GF_Field')) {
             SetFieldProperty('orgss_new_org_type_override', '');
             SetFieldProperty('orgss_org_term_singular', 'Organization');
             SetFieldProperty('orgss_org_term_plural', 'Organizations');
+            SetFieldProperty('orgss_disable_org_creationl', false);
             }
           }
         });
@@ -191,6 +205,7 @@ if (class_exists('GF_Field')) {
       $new_org_type_override               = '';
       $org_term_singular                   = 'Organization';
       $org_term_plural                     = 'Organizations';
+      $disable_org_creation                = false;
 
       //wicket_write_log($form, true);
 
@@ -219,6 +234,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_org_term_plural ) ) {
                 $org_term_plural = $field->orgss_org_term_plural;
               }
+              if( isset( $field->orgss_org_term_plural ) ) {
+                $disable_org_creation = $field->orgss_disable_org_creation;
+              }
             }
           }
         }
@@ -236,6 +254,7 @@ if (class_exists('GF_Field')) {
           'key'                                 => $id,
           'org_term_singular'                   => $org_term_singular,
           'org_term_plural'                     => $org_term_plural,
+          'disable_create_org_ui'               => $disable_org_creation,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
