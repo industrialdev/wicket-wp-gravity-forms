@@ -377,9 +377,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             $field_values = $a['field_values'];
             $theme = $a['theme'];
 
-            return do_shortcode(
-                    "[gravityform id='".$form_id."' title='".$title."' description='".$description."' ajax='".$ajax."' tabindex='".$tabindex."' field_values='".$field_values."' theme='".$theme."']"
-            );
+            return '<div class="container wicket-gf-shortcode">' .
+                    do_shortcode(
+                            "[gravityform id='".$form_id."' title='".$title."' description='".$description."' ajax='".$ajax."' tabindex='".$tabindex."' field_values='".$field_values."' theme='".$theme."']"
+                    ) . 
+                    '</div';
         }
 
         public static function register_rest_routes() {
