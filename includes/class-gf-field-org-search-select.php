@@ -43,6 +43,10 @@ if (class_exists('GF_Field')) {
             <input type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" value="" />
             <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters". Can be left blank to use default.</em></p>
 
+            <label style="margin-top: 1em;display: block;">'New Org Created' checkbox ID</label>
+            <input type="text" name="orgss_checkbox_id_new_org" class="orgss_checkbox_id_new_org" value="" placeholder="E.g. choice_5_12_1" />
+            <p style="margin-top: 2px;"><em>ID of checkbox to be checked if a new org gets created.</em></p>
+            
             <input type="checkbox" id="orgss_disable_org_creation" class="orgss_disable_org_creation">
 					  <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
           
@@ -64,7 +68,7 @@ if (class_exists('GF_Field')) {
         window.addEventListener('load', function () {
           if (document.querySelector('body') !== null) { // Some element that should be rendered by now before we execute code
 
-          //adding setting to fields of type "text" so GF is aware of them
+          //adding setting to fields of type "text" so GF is aware of them. Not sure if this is necessary.
           fieldSettings.text += ', .orgss_search_mode';
           fieldSettings.text += ', .orgss_search_org_type';
           fieldSettings.text += ', .orgss_relationship_type_upon_org_creation';
@@ -72,6 +76,7 @@ if (class_exists('GF_Field')) {
           fieldSettings.text += ', .orgss_new_org_type_override';
           fieldSettings.text += ', .orgss_org_term_singular';
           fieldSettings.text += ', .orgss_org_term_plural';
+          fieldSettings.text += ', .orgss_checkbox_id_new_org';
 
           // Input fields
           let searchModeElement = document.querySelector('select[name="orgss_search_mode"]');
@@ -82,6 +87,7 @@ if (class_exists('GF_Field')) {
           let orgss_org_term_singular = document.querySelector('.orgss_org_term_singular');
           let orgss_org_term_plural = document.querySelector('.orgss_org_term_plural');
           let orgss_disable_org_creation = document.querySelector('.orgss_disable_org_creation');
+          let orgss_checkbox_id_new_org = document.querySelector('.orgss_checkbox_id_new_org');
 
           // Listen for and update other fields
           searchModeElement.addEventListener('change', (e) => {
@@ -105,6 +111,9 @@ if (class_exists('GF_Field')) {
           orgss_org_term_plural.addEventListener('change', (e) => {
             SetFieldProperty('orgss_org_term_plural', orgss_org_term_plural.value);
           }); 
+          orgss_checkbox_id_new_org.addEventListener('change', (e) => {
+            SetFieldProperty('orgss_checkbox_id_new_org', orgss_checkbox_id_new_org.value);
+          }); 
           orgss_disable_org_creation.addEventListener('change', (e) => {
             SetFieldProperty('orgss_disable_org_creation', orgss_disable_org_creation.checked);
           }); 
@@ -118,6 +127,7 @@ if (class_exists('GF_Field')) {
             let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
             let orgss_org_term_singular_value = rgar( field, 'orgss_org_term_singular' );
             let orgss_org_term_plural_value = rgar( field, 'orgss_org_term_plural' );
+            let orgss_checkbox_id_new_org_value = rgar( field, 'orgss_checkbox_id_new_org' );
             let orgss_disable_org_creation_value = rgar( field, 'orgss_disable_org_creation' );
 
             // Determine if this is a brand new field or if it has values already
@@ -127,7 +137,8 @@ if (class_exists('GF_Field')) {
             orgss_relationship_mode_value +
             orgss_new_org_type_override_value +
             orgss_org_term_singular_value +
-            orgss_org_term_plural_value).length <= 0 ) {
+            orgss_org_term_plural_value +
+            orgss_checkbox_id_new_org_value).length <= 0 ) {
               // No values have been saved, so the element must have been freshly added,
               // meaning we should not override the field default values
               // Instead we'll initially save the defaults so this field isn't blank
@@ -141,6 +152,7 @@ if (class_exists('GF_Field')) {
               jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
               jQuery( '.orgss_org_term_singular' ).val( orgss_org_term_singular_value );
               jQuery( '.orgss_org_term_plural' ).val( orgss_org_term_plural_value );
+              jQuery( '.orgss_checkbox_id_new_org' ).val( orgss_checkbox_id_new_org_value );
               if(orgss_disable_org_creation_value) {
                 jQuery( '.orgss_disable_org_creation' ).prop( "checked", true );
               } else {
@@ -158,7 +170,8 @@ if (class_exists('GF_Field')) {
             SetFieldProperty('orgss_new_org_type_override', '');
             SetFieldProperty('orgss_org_term_singular', 'Organization');
             SetFieldProperty('orgss_org_term_plural', 'Organizations');
-            SetFieldProperty('orgss_disable_org_creationl', false);
+            SetFieldProperty('orgss_checkbox_id_new_org', '');
+            SetFieldProperty('orgss_disable_org_creation', false);
             }
           }
         });
@@ -206,6 +219,7 @@ if (class_exists('GF_Field')) {
       $org_term_singular                   = 'Organization';
       $org_term_plural                     = 'Organizations';
       $disable_org_creation                = false;
+      $checkbox_id_new_org                 = '';
 
       //wicket_write_log($form, true);
 
@@ -234,8 +248,11 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_org_term_plural ) ) {
                 $org_term_plural = $field->orgss_org_term_plural;
               }
-              if( isset( $field->orgss_org_term_plural ) ) {
+              if( isset( $field->orgss_disable_org_creation ) ) {
                 $disable_org_creation = $field->orgss_disable_org_creation;
+              }
+              if( isset( $field->orgss_checkbox_id_new_org ) ) {
+                $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
               }
             }
           }
@@ -251,6 +268,7 @@ if (class_exists('GF_Field')) {
           'relationship_mode'                   => $relationship_mode,
           'new_org_type_override'               => $new_org_type_override,
           'selected_uuid_hidden_field_name'     => 'input_' . $id,
+          'checkbox_id_new_org'                 => $checkbox_id_new_org,
           'key'                                 => $id,
           'org_term_singular'                   => $org_term_singular,
           'org_term_plural'                     => $org_term_plural,
