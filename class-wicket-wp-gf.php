@@ -349,6 +349,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Enable our desired tag types
             $allowedposttags['script']   = $allowed_atts;
             $allowedposttags['style']    = $allowed_atts;
+            $allowedposttags['iframe']   = $allowed_atts;
  
             return $allowedposttags;
         }
