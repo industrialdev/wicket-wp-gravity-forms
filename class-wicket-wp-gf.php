@@ -124,6 +124,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Custom field: individual profile widget
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
 
+            // Custom field: org profile widget
+            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile-org.php' );
+            add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetProfileOrg','custom_settings'], 10, 2 );
+            add_action( 'gform_editor_js', ['GFWicketFieldWidgetProfileOrg','editor_script'] );
+
             // Custom field: additional info widget
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-ai.php' );
             add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetAi','custom_settings'], 10, 2 );
@@ -148,6 +153,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 // otherwise hide the settings
                 let orgss_settings_panes = document.querySelectorAll('.wicket_orgss_setting');
                 let wwidget_ai_settings = document.querySelectorAll('.wicket_widget_ai_setting');
+                let wwidget_org_profile_settings = document.querySelectorAll('.wicket_widget_org_profile_setting');
                 let gf_fields_wrapper = document.querySelector('#gform_fields');
                 let gf_edit_field_button = document.querySelector('.gfield-field-action.gfield-edit');
                 let wicket_global_settings_hide_label = document.querySelector('.wicket_global_custom_settings #hide_label');
@@ -179,6 +185,16 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                     } else {
                         for (let wwidget_ai_setting of wwidget_ai_settings) {
                             wwidget_ai_setting.style.display = "none";
+                        }
+                    }
+                    // Org profile widget
+                    if( selectedField.type == "wicket_widget_profile_org" ) {
+                        for (let wwidget_org_profile_setting of wwidget_org_profile_settings) {
+                            wwidget_org_profile_setting.style.display = "block";
+                        }
+                    } else {
+                        for (let wwidget_org_profile_setting of wwidget_org_profile_settings) {
+                            wwidget_org_profile_setting.style.display = "none";
                         }
                     }
 
