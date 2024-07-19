@@ -11,47 +11,80 @@ if (class_exists('GF_Field')) {
       if ( $position == 25 ) { ?>
         <?php ob_start(); ?>
 
-        <div class="wicket_orgss_setting" style="display:none;" x-data="{
-          searchMode: 'org'
-        }">
+        <div 
+          class="wicket_orgss_setting"
+          style="display:none;" 
+          x-data="orgssData"
+          x-on:gf-orgss-field-settings.window="loadFieldSettings" >
           <label>Search Mode</label>
-          <select name="orgss_search_mode" class="orgss_search_mode" x-model="searchMode">
+          <select
+            name="orgss_search_mode"
+            class="orgss_search_mode" 
+            x-model="searchMode" 
+          >
             <option value="org" selected>Organizations</option>
             <option value="groups">Groups (Beta, In Development)</option>
           </select>
 
           <div x-show=" searchMode == 'org' " class="orgss-org-settings" style="padding: 1em 0;">
             <label style="display: block;">Organization Type</label>
-            <input type="text" name="orgss_search_org_type" class="orgss_search_org_type" />
+            <input 
+              @keyup="SetFieldProperty('orgss_search_org_type', $el.value)" x-bind:value="orgss_search_org_type"
+              type="text" name="orgss_search_org_type" class="orgss_search_org_type" />
             <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em></p>
 
             <label style="margin-top: 1em;display: block;">Relationship Type Upon Org Creation</label>
-            <input type="text" name="orgss_relationship_type_upon_org_creation" class="orgss_relationship_type_upon_org_creation" value="employee" />
+            <input 
+              @keyup="SetFieldProperty('orgss_relationship_type_upon_org_creation', $el.value)" x-bind:value="orgss_relationship_type_upon_org_creation"
+              type="text" name="orgss_relationship_type_upon_org_creation" class="orgss_relationship_type_upon_org_creation" />
 
             <label style="margin-top: 1em;display: block;">Relationship Mode</label>
-            <input type="text" name="orgss_relationship_mode" class="orgss_relationship_mode" value="person_to_organization" />
+            <input 
+              @keyup="SetFieldProperty('orgss_relationship_mode', $el.value)" x-bind:value="orgss_relationship_mode"
+              type="text" name="orgss_relationship_mode" class="orgss_relationship_mode" />
 
             <label style="margin-top: 1em;display: block;">Org Type When User Creates New Org</label>
-            <input type="text" name="orgss_new_org_type_override" class="orgss_new_org_type_override" value="" />
+            <input 
+              @keyup="SetFieldProperty('orgss_new_org_type_override', $el.value)" x-bind:value="orgss_new_org_type_override"
+              type="text" name="orgss_new_org_type_override" class="orgss_new_org_type_override" />
             <p style="margin-top: 2px;"><em>If left blank, the user will be allowed to select the organization type themselves from the frontend.</em></p>
           
             <label style="margin-top: 1em;display: block;">Org name singular</label>
-            <input type="text" name="orgss_org_term_singular" class="orgss_org_term_singular" value="" />
+            <input 
+              @keyup="SetFieldProperty('orgss_org_term_singular', $el.value)" x-bind:value="orgss_org_term_singular"
+              type="text" name="orgss_org_term_singular" class="orgss_org_term_singular" />
             <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organization" or "Chapter". Can be left blank to use default.</em></p>
 
             <label style="margin-top: 1em;display: block;">Org name plural</label>
-            <input type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" value="" />
+            <input 
+              @keyup="SetFieldProperty('orgss_org_term_plural', $el.value)" x-bind:value="orgss_org_term_plural"
+              type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" />
             <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters". Can be left blank to use default.</em></p>
 
             <label style="margin-top: 1em;display: block;">'New Org Created' checkbox ID</label>
-            <input type="text" name="orgss_checkbox_id_new_org" class="orgss_checkbox_id_new_org" value="" placeholder="E.g. choice_5_12_1" />
+            <input 
+              @keyup="SetFieldProperty('orgss_checkbox_id_new_org', $el.value)" x-bind:value="orgss_checkbox_id_new_org"
+              type="text" name="orgss_checkbox_id_new_org" class="orgss_checkbox_id_new_org" placeholder="E.g. choice_5_12_1" />
             <p style="margin-top: 2px;"><em>ID of checkbox to be checked if a new org gets created.</em></p>
             
-            <input type="checkbox" id="orgss_disable_org_creation" class="orgss_disable_org_creation">
+            <input 
+              @change="SetFieldProperty('orgss_disable_org_creation', $el.checked)" x-bind:value="orgss_disable_org_creation"
+              type="checkbox" id="orgss_disable_org_creation" class="orgss_disable_org_creation">
 					  <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
+
+            <input 
+              @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked)" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
+              type="checkbox" id="orgss_disable_selecting_orgs_with_active_membership" class="orgss_disable_selecting_orgs_with_active_membership">
+					  <label for="orgss_disable_selecting_orgs_with_active_membership" class="inline">Disable ability to select orgs with active membership?</label>
+
+            <input 
+              @change="SetFieldProperty('orgss_grant_roster_man_on_purchase', $el.checked)" x-bind:value="orgss_grant_roster_man_on_purchase"
+              type="checkbox" id="orgss_grant_roster_man_on_purchase" class="orgss_grant_roster_man_on_purchase">
+					  <label for="orgss_grant_roster_man_on_purchase" class="inline">Grant roster management on next purchase?</label>
           
           </div>
           <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
+            <div>Group settings coming soon.</div>
           </div>
         </div>
 
@@ -63,121 +96,87 @@ if (class_exists('GF_Field')) {
 
     public static function editor_script(){
       ?>
-      <script type='text/javascript'>
-        	// When the page is ready
-        window.addEventListener('load', function () {
-          if (document.querySelector('body') !== null) { // Some element that should be rendered by now before we execute code
+      <script>
+      document.addEventListener('alpine:init', () => {
+          Alpine.data('orgssData', () => ({
+          searchMode: 'org',
+          orgss_search_org_type: '',
+          orgss_relationship_type_upon_org_creation: 'employee',
+          orgss_relationship_mode: 'person_to_organization',
+          orgss_new_org_type_override: '',
+          orgss_org_term_singular: '',
+          orgss_org_term_plural: '',
+          orgss_checkbox_id_new_org: '',
+          orgss_disable_org_creation: false,
+          orgss_disable_selecting_orgs_with_active_membership: false,
+          orgss_grant_roster_man_on_purchase: false,
 
-          //adding setting to fields of type "text" so GF is aware of them. Not sure if this is necessary.
-          fieldSettings.text += ', .orgss_search_mode';
-          fieldSettings.text += ', .orgss_search_org_type';
-          fieldSettings.text += ', .orgss_relationship_type_upon_org_creation';
-          fieldSettings.text += ', .orgss_relationship_mode';
-          fieldSettings.text += ', .orgss_new_org_type_override';
-          fieldSettings.text += ', .orgss_org_term_singular';
-          fieldSettings.text += ', .orgss_org_term_plural';
-          fieldSettings.text += ', .orgss_checkbox_id_new_org';
-
-          // Input fields
-          let searchModeElement = document.querySelector('select[name="orgss_search_mode"]');
-          let orgss_search_org_type = document.querySelector('.orgss_search_org_type');
-          let orgss_relationship_type_upon_org_creation = document.querySelector('.orgss_relationship_type_upon_org_creation');
-          let orgss_relationship_mode = document.querySelector('.orgss_relationship_mode');
-          let orgss_new_org_type_override = document.querySelector('.orgss_new_org_type_override');
-          let orgss_org_term_singular = document.querySelector('.orgss_org_term_singular');
-          let orgss_org_term_plural = document.querySelector('.orgss_org_term_plural');
-          let orgss_disable_org_creation = document.querySelector('.orgss_disable_org_creation');
-          let orgss_checkbox_id_new_org = document.querySelector('.orgss_checkbox_id_new_org');
-
-          // Listen for and update other fields
-          searchModeElement.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_search_mode', searchModeElement.value);
-          });
-          orgss_search_org_type.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_search_org_type', orgss_search_org_type.value);
-          });
-          orgss_relationship_type_upon_org_creation.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_relationship_type_upon_org_creation', orgss_relationship_type_upon_org_creation.value);
-          });
-          orgss_relationship_mode.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_relationship_mode', orgss_relationship_mode.value);
-          });
-          orgss_new_org_type_override.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_new_org_type_override', orgss_new_org_type_override.value);
-          });
-          orgss_org_term_singular.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_org_term_singular', orgss_org_term_singular.value);
-          });
-          orgss_org_term_plural.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_org_term_plural', orgss_org_term_plural.value);
-          }); 
-          orgss_checkbox_id_new_org.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_checkbox_id_new_org', orgss_checkbox_id_new_org.value);
-          }); 
-          orgss_disable_org_creation.addEventListener('change', (e) => {
-            SetFieldProperty('orgss_disable_org_creation', orgss_disable_org_creation.checked);
-          }); 
-
-          //binding to the load field settings event to load current field values
-          jQuery(document).on('gform_load_field_settings', function(event, field, form){
-            let orgss_search_mode_value = rgar( field, 'orgss_search_mode' );
-            let orgss_search_org_type_value = rgar( field, 'orgss_search_org_type' );
-            let orgss_relationship_type_upon_org_creation_value = rgar( field, 'orgss_relationship_type_upon_org_creation' );
-            let orgss_relationship_mode_value = rgar( field, 'orgss_relationship_mode' );
-            let orgss_new_org_type_override_value = rgar( field, 'orgss_new_org_type_override' );
-            let orgss_org_term_singular_value = rgar( field, 'orgss_org_term_singular' );
-            let orgss_org_term_plural_value = rgar( field, 'orgss_org_term_plural' );
-            let orgss_checkbox_id_new_org_value = rgar( field, 'orgss_checkbox_id_new_org' );
-            let orgss_disable_org_creation_value = rgar( field, 'orgss_disable_org_creation' );
-
-            // Determine if this is a brand new field or if it has values already
-            if( (orgss_search_mode_value +
-            orgss_search_org_type_value + 
-            orgss_relationship_type_upon_org_creation_value + 
-            orgss_relationship_mode_value +
-            orgss_new_org_type_override_value +
-            orgss_org_term_singular_value +
-            orgss_org_term_plural_value +
-            orgss_checkbox_id_new_org_value).length <= 0 ) {
-              // No values have been saved, so the element must have been freshly added,
-              // meaning we should not override the field default values
-              // Instead we'll initially save the defaults so this field isn't blank
-              orgss_save_default_field_values();
-            } else {
-              // We have existing values, so we'll load them
-              jQuery( '.orgss_search_mode' ).val( orgss_search_mode_value );
-              jQuery( '.orgss_search_org_type' ).val( orgss_search_org_type_value );
-              jQuery( '.orgss_relationship_type_upon_org_creation' ).val( orgss_relationship_type_upon_org_creation_value );
-              jQuery( '.orgss_relationship_mode' ).val( orgss_relationship_mode_value );
-              jQuery( '.orgss_new_org_type_override' ).val( orgss_new_org_type_override_value );
-              jQuery( '.orgss_org_term_singular' ).val( orgss_org_term_singular_value );
-              jQuery( '.orgss_org_term_plural' ).val( orgss_org_term_plural_value );
-              jQuery( '.orgss_checkbox_id_new_org' ).val( orgss_checkbox_id_new_org_value );
-              if(orgss_disable_org_creation_value) {
-                jQuery( '.orgss_disable_org_creation' ).prop( "checked", true );
-              } else {
-                jQuery( '.orgss_disable_org_creation' ).prop( "checked", false );
-              }
+          loadFieldSettings(event) {
+            let fieldData = event.detail;
+            
+            if( Object.hasOwn(fieldData, 'orgss_search_org_type') ) {
+              this.orgss_search_org_type = fieldData.orgss_search_org_type;
             }
-          });
-
-          // TODO: Sync these default values with the ones from the component if possible
-          function orgss_save_default_field_values(event = null) {
-            SetFieldProperty('orgss_search_mode', 'org');
-            SetFieldProperty('orgss_search_org_type', '');
-            SetFieldProperty('orgss_relationship_type_upon_org_creation', 'employee');
-            SetFieldProperty('orgss_relationship_mode', 'person_to_organization');
-            SetFieldProperty('orgss_new_org_type_override', '');
-            SetFieldProperty('orgss_org_term_singular', 'Organization');
-            SetFieldProperty('orgss_org_term_plural', 'Organizations');
-            SetFieldProperty('orgss_checkbox_id_new_org', '');
-            SetFieldProperty('orgss_disable_org_creation', false);
+            if( Object.hasOwn(fieldData, 'orgss_relationship_type_upon_org_creation') ) {
+              this.orgss_relationship_type_upon_org_creation = fieldData.orgss_relationship_type_upon_org_creation;
             }
-          }
+            if( Object.hasOwn(fieldData, 'orgss_relationship_mode') ) {
+              this.orgss_relationship_mode = fieldData.orgss_relationship_mode;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_new_org_type_override') ) {
+              this.orgss_new_org_type_override = fieldData.orgss_new_org_type_override;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_org_term_singular') ) {
+              this.orgss_org_term_singular = fieldData.orgss_org_term_singular;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_org_term_plural') ) {
+              this.orgss_org_term_plural = fieldData.orgss_org_term_plural;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_checkbox_id_new_org') ) {
+              this.orgss_checkbox_id_new_org = fieldData.orgss_checkbox_id_new_org;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_disable_org_creation') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_disable_org_creation = fieldData.orgss_disable_org_creation ? true : false;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_disable_selecting_orgs_with_active_membership') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_disable_selecting_orgs_with_active_membership = fieldData.orgss_disable_selecting_orgs_with_active_membership ? true : false;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_grant_roster_man_on_purchase') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_grant_roster_man_on_purchase = fieldData.orgss_grant_roster_man_on_purchase ? true : false;
+            }
+          },
+        }))
+      });
+
+      // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
+      jQuery(document).on('gform_load_field_settings', (event, field, form) => {
+        let detailPayload = {
+          orgss_search_mode: rgar( field, 'orgss_search_mode' ),
+          orgss_search_org_type: rgar( field, 'orgss_search_org_type' ),
+          orgss_relationship_type_upon_org_creation: rgar( field, 'orgss_relationship_type_upon_org_creation' ),
+          orgss_relationship_mode: rgar( field, 'orgss_relationship_mode' ),
+          orgss_new_org_type_override: rgar( field, 'orgss_new_org_type_override' ),
+          orgss_org_term_singular: rgar( field, 'orgss_org_term_singular' ),
+          orgss_org_term_plural: rgar( field, 'orgss_org_term_plural' ),
+          orgss_checkbox_id_new_org: rgar( field, 'orgss_checkbox_id_new_org' ),
+          orgss_disable_org_creation: rgar( field, 'orgss_disable_org_creation' ),
+          orgss_disable_selecting_orgs_with_active_membership: rgar( field, 'orgss_disable_selecting_orgs_with_active_membership' ),
+          orgss_grant_roster_man_on_purchase: rgar( field, 'orgss_grant_roster_man_on_purchase' ),
+        };
+        console.log('Detail payload:');
+        console.log(detailPayload);
+        let customEvent = new CustomEvent("gf-orgss-field-settings", {
+          detail: detailPayload
         });
 
-      </script>
-      <?php
+        window.dispatchEvent(customEvent);
+      });
+    </script>
+
+    <?php
     }
  
 		public function get_form_editor_field_title() {
@@ -211,15 +210,17 @@ if (class_exists('GF_Field')) {
 
       $id = (int) $this->id;
 
-      $search_mode                         = 'org';
-      $search_org_type                     = '';
-      $relationship_type_upon_org_creation = 'employee';
-      $relationship_mode                   = 'person_to_organization';
-      $new_org_type_override               = '';
-      $org_term_singular                   = 'Organization';
-      $org_term_plural                     = 'Organizations';
-      $disable_org_creation                = false;
-      $checkbox_id_new_org                 = '';
+      $search_mode                                   = 'org';
+      $search_org_type                               = '';
+      $relationship_type_upon_org_creation           = 'employee';
+      $relationship_mode                             = 'person_to_organization';
+      $new_org_type_override                         = '';
+      $org_term_singular                             = 'Organization';
+      $org_term_plural                               = 'Organizations';
+      $disable_org_creation                          = false;
+      $checkbox_id_new_org                           = '';
+      $disable_selecting_orgs_with_active_membership = false;
+      $grant_roster_man_on_purchase                  = false;
 
       //wicket_write_log($form, true);
 
@@ -254,6 +255,12 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_checkbox_id_new_org ) ) {
                 $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
               }
+              if( isset( $field->orgss_disable_selecting_orgs_with_active_membership ) ) {
+                $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
+              }
+              if( isset( $field->orgss_grant_roster_man_on_purchase ) ) {
+                $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
+              }
             }
           }
         }
@@ -261,18 +268,20 @@ if (class_exists('GF_Field')) {
 
       if( component_exists('org-search-select') ) {
         return get_component( 'org-search-select', [ 
-          'classes'                             => [],
-          'search_mode'                         => $search_mode, 
-          'search_org_type'                     => $search_org_type,
-          'relationship_type_upon_org_creation' => $relationship_type_upon_org_creation,
-          'relationship_mode'                   => $relationship_mode,
-          'new_org_type_override'               => $new_org_type_override,
-          'selected_uuid_hidden_field_name'     => 'input_' . $id,
-          'checkbox_id_new_org'                 => $checkbox_id_new_org,
-          'key'                                 => $id,
-          'org_term_singular'                   => $org_term_singular,
-          'org_term_plural'                     => $org_term_plural,
-          'disable_create_org_ui'               => $disable_org_creation,
+          'classes'                                       => [],
+          'search_mode'                                   => $search_mode, 
+          'search_org_type'                               => $search_org_type,
+          'relationship_type_upon_org_creation'           => $relationship_type_upon_org_creation,
+          'relationship_mode'                             => $relationship_mode,
+          'new_org_type_override'                         => $new_org_type_override,
+          'selected_uuid_hidden_field_name'               => 'input_' . $id,
+          'checkbox_id_new_org'                           => $checkbox_id_new_org,
+          'key'                                           => $id,
+          'org_term_singular'                             => $org_term_singular,
+          'org_term_plural'                               => $org_term_plural,
+          'disable_create_org_ui'                         => $disable_org_creation,
+          'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
+          'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
