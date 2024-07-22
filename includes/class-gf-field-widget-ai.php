@@ -39,6 +39,11 @@ if (class_exists('GF_Field')) {
              x-data="wwidgetAiData" 
              x-init="start" 
              x-on:gf-wwidget-ai-field-settings.window="loadFieldSettings">
+          <label>Additional Info Type:</label>
+          <select @change="SetFieldProperty('wwidget_ai_type', $el.value)" x-bind:value="wwidget_ai_type">
+            <option value="people">People</option>
+            <option value="organizations">Organizations</option>
+          </select>
           <label>Additional Info Schemas:</label>
           <template x-for="(schema, index) in schemaArray" :key="index">
             <div class="schema-grouping">
@@ -60,6 +65,9 @@ if (class_exists('GF_Field')) {
             }
             .wicket_widget_ai_setting>label {
               display: block;
+              margin-bottom: 0.7rem;
+            }
+            .wicket_widget_ai_setting>select {
               margin-bottom: 0.7rem;
             }
             .wicket_widget_ai_setting .schema-grouping {
@@ -112,18 +120,23 @@ if (class_exists('GF_Field')) {
       document.addEventListener('alpine:init', () => {
           Alpine.data('wwidgetAiData', () => ({
           schemaArray: [],
+          wwidget_ai_type: 'people',
 
           start() {},
           loadFieldSettings(event) {
             let fieldData = event.detail;
+            let fieldDataSchemas = fieldData.ai_schemas;
+            let fieldDataType = fieldData.type;
 
-            if( typeof fieldData !== 'object' ) {
-              fieldData = [ [] ];
-            } else if(fieldData.length <= 0) {
-              fieldData.push(['']);
+            if( typeof fieldDataSchemas !== 'object' ) {
+              fieldDataSchemas = [ [] ];
+            } else if(fieldDataSchemas.length <= 0) {
+              fieldDataSchemas.push(['']);
             }
 
-            this.schemaArray = fieldData;
+            this.schemaArray = fieldDataSchemas;
+
+            this.wwidget_ai_type = fieldDataType;
           },
           addNewSchemaGrouping() {
             this.schemaArray.push(['']);
@@ -149,7 +162,10 @@ if (class_exists('GF_Field')) {
       // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
       jQuery(document).on('gform_load_field_settings', (event, field, form) => {
         let customEvent = new CustomEvent("gf-wwidget-ai-field-settings", {
-          detail: rgar( field, 'wwidget_ai_schemas' )
+          detail: {
+            ai_schemas: rgar( field, 'wwidget_ai_schemas' ),
+            type: rgar( field, 'wwidget_ai_type' ),
+          }
         });
         window.dispatchEvent(customEvent);
       });
@@ -167,6 +183,7 @@ if (class_exists('GF_Field')) {
       $id = (int) $this->id;
 
       $ai_widget_schemas = [[]];
+      $wwidget_ai_type = 'people';
 
       //wicket_write_log($form, true);
 
@@ -174,8 +191,13 @@ if (class_exists('GF_Field')) {
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
           if( get_class( $field ) == 'GFWicketFieldWidgetAi' ) {
-            if( isset( $field->wwidget_ai_schemas ) ) {
-              $ai_widget_schemas = $field->wwidget_ai_schemas; 
+            if( $field->id == $id ) {
+              if( isset( $field->wwidget_ai_schemas ) ) {
+                $ai_widget_schemas = $field->wwidget_ai_schemas; 
+              }
+              if( isset( $field->wwidget_ai_type ) ) {
+                $wwidget_ai_type = $field->wwidget_ai_type; 
+              }
             }
           }
         }
@@ -188,7 +210,7 @@ if (class_exists('GF_Field')) {
         get_component( 'widget-additional-info', [ 
           'classes'                          => [],
           'additional_info_data_field_name'  => 'input_' . $id,
-          'resource_type'                    => 'people', // TODO: Make this configurable, if needed
+          'resource_type'                    => $wwidget_ai_type,
           'schemas_and_overrides'            => $ai_widget_schemas,
         ], true );
 

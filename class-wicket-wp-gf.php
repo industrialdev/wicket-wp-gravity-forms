@@ -230,7 +230,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         }
 
         public static function gf_custom_pre_render( $form ) {
-            // Echo what we want to add
+            // Store what we want to add
             // Add sidebar layout styles if toggled in Wicket GF options
             if( get_option('wicket_gf_pagination_sidebar_layout') ) {
                 ob_start(); ?>
@@ -269,22 +269,42 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
                 </script>
 
-                <?php echo ob_get_clean();
+                <?php $output = ob_get_clean();
+
+                // Dynamically create and add this HTML form field on render
+                $props = array( 
+                    'id'      => 3000,
+                    'label'   => 'Dynamic Styles - Do Not Edit',
+                    'type'    => 'html',
+                    'content' => $output,
+                );
+                $field = GF_Fields::create( $props );
+                array_push( $form['fields'], $field );
             }
 
             // Loop fields and hide label if toggled with our custom checkbox
+            $hide_label_i = 1;
             foreach( $form['fields'] as $field ) {
                 if( isset( $field['hide_label'] ) ) {
                     if( $field['hide_label'] ) {
-                        echo '
-                        <style>
-                            .gform_wrapper.gravity-theme label[for="input_'.$field['formId'].'_'.$field['id'].'"].gfield_label {
-                                display: none;
-                            }
-                        </style>
-                        ';
+                        // Dynamically create and add this HTML form field on render
+                        $props = array( 
+                            'id'      => (3000 + $hide_label_i),
+                            'label'   => 'Dynamic Styles - Do Not Edit',
+                            'type'    => 'html',
+                            'content' => '
+                                <style>
+                                    .gform_wrapper.gravity-theme label[for="input_'.$field['formId'].'_'.$field['id'].'"].gfield_label {
+                                        display: none;
+                                    }
+                                </style>
+                                ',
+                        );
+                        $field = GF_Fields::create( $props );
+                        array_push( $form['fields'], $field );
                     }
                 }
+                $hide_label_i++;
             }
 
             // Return the form untouched
