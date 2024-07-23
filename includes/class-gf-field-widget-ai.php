@@ -263,9 +263,9 @@ if (class_exists('GF_Field')) {
       //wicket_write_log('Value array:');
       //wicket_write_log($value_array);
 
-      $notFound   = $value_array['notFound'];
-      $validation = $value_array['validation'];
-      $invalid    = $value_array['invalid'];
+      $notFound   = $value_array['notFound'] ?? [];
+      $validation = $value_array['validation'] ?? [];
+      $invalid    = $value_array['invalid'] ?? [];
 
       if( count( $invalid ) > 0 ) {
         $this->failed_validation = true;
