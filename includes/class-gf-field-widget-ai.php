@@ -37,13 +37,17 @@ if (class_exists('GF_Field')) {
         <div class="wicket_widget_ai_setting" 
              style="display:none;" 
              x-data="wwidgetAiData" 
-             x-init="start" 
              x-on:gf-wwidget-ai-field-settings.window="loadFieldSettings">
           <label>Additional Info Type:</label>
-          <select @change="SetFieldProperty('wwidget_ai_type', $el.value)" x-bind:value="wwidget_ai_type">
+          <select @change="updateAiType($el.value)" x-model="wwidget_ai_type">
             <option value="people">People</option>
             <option value="organizations">Organizations</option>
           </select>
+          <div x-show=" wwidget_ai_type == 'organizations' ">
+            <label>Org UUID:</label>
+              <input @keyup="SetFieldProperty('wwidget_ai_org_uuid', $el.value)" x-bind:value="wwidget_ai_org_uuid" type="text" placeholder="1234-5678-9100" />
+              <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
+          </div>
           <label>Additional Info Schemas:</label>
           <template x-for="(schema, index) in schemaArray" :key="index">
             <div class="schema-grouping">
@@ -121,12 +125,13 @@ if (class_exists('GF_Field')) {
           Alpine.data('wwidgetAiData', () => ({
           schemaArray: [],
           wwidget_ai_type: 'people',
+          wwidget_ai_org_uuid: '',
 
-          start() {},
           loadFieldSettings(event) {
             let fieldData = event.detail;
             let fieldDataSchemas = fieldData.ai_schemas;
             let fieldDataType = fieldData.type;
+            let fieldDataOrgUuid = fieldData.org_uuid;
 
             if( typeof fieldDataSchemas !== 'object' ) {
               fieldDataSchemas = [ [] ];
@@ -137,6 +142,11 @@ if (class_exists('GF_Field')) {
             this.schemaArray = fieldDataSchemas;
 
             this.wwidget_ai_type = fieldDataType;
+            this.wwidget_ai_org_uuid = fieldDataOrgUuid;
+          },
+          updateAiType(type) {
+            this.wwidget_ai_type = type;
+            SetFieldProperty('wwidget_ai_type', $el.value);
           },
           addNewSchemaGrouping() {
             this.schemaArray.push(['']);
@@ -165,6 +175,7 @@ if (class_exists('GF_Field')) {
           detail: {
             ai_schemas: rgar( field, 'wwidget_ai_schemas' ),
             type: rgar( field, 'wwidget_ai_type' ),
+            org_uuid: rgar( field, 'wwidget_ai_org_uuid' ),
           }
         });
         window.dispatchEvent(customEvent);
@@ -184,10 +195,10 @@ if (class_exists('GF_Field')) {
 
       $ai_widget_schemas = [[]];
       $wwidget_ai_type = 'people';
+      $wwidget_ai_org_uuid = '';
 
       //wicket_write_log($form, true);
 
-      // TODO: Make this support multiple org search/select elements on one page, if necessary
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
           if( get_class( $field ) == 'GFWicketFieldWidgetAi' ) {
@@ -198,7 +209,20 @@ if (class_exists('GF_Field')) {
               if( isset( $field->wwidget_ai_type ) ) {
                 $wwidget_ai_type = $field->wwidget_ai_type; 
               }
+              if( isset( $field->wwidget_ai_org_uuid ) ) {
+                $wwidget_ai_org_uuid = $field->wwidget_ai_org_uuid; 
+              }
             }
+          }
+        }
+      }
+
+      // Test if a UUID was manually saved, or if a field ID was saved instead (in the case of a multi-page form)
+      if( !str_contains( $wwidget_ai_org_uuid, '-' ) ) {
+        if( isset( $_POST['input_' . $wwidget_ai_org_uuid] ) ) {
+          $field_value = $_POST['input_' . $wwidget_ai_org_uuid];
+          if( str_contains( $field_value, '-' ) ) {
+            $wwidget_ai_org_uuid = $field_value;
           }
         }
       }
@@ -211,6 +235,7 @@ if (class_exists('GF_Field')) {
           'classes'                          => [],
           'additional_info_data_field_name'  => 'input_' . $id,
           'resource_type'                    => $wwidget_ai_type,
+          'org_uuid'                         => $wwidget_ai_org_uuid,
           'schemas_and_overrides'            => $ai_widget_schemas,
         ], true );
 
