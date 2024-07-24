@@ -146,7 +146,7 @@ if (class_exists('GF_Field')) {
           },
           updateAiType(type) {
             this.wwidget_ai_type = type;
-            SetFieldProperty('wwidget_ai_type', $el.value);
+            SetFieldProperty('wwidget_ai_type', type);
           },
           addNewSchemaGrouping() {
             this.schemaArray.push(['']);
