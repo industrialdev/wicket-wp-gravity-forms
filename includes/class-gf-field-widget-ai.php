@@ -45,8 +45,8 @@ if (class_exists('GF_Field')) {
           </select>
           <div x-show=" wwidget_ai_type == 'organizations' ">
             <label>Org UUID:</label>
-              <input @keyup="SetFieldProperty('wwidget_ai_org_uuid', $el.value)" x-bind:value="wwidget_ai_org_uuid" type="text" placeholder="1234-5678-9100" />
-              <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
+            <input @keyup="SetFieldProperty('wwidget_ai_org_uuid', $el.value)" x-bind:value="wwidget_ai_org_uuid" type="text" placeholder="1234-5678-9100" />
+            <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
           </div>
           <label>Additional Info Schemas:</label>
           <template x-for="(schema, index) in schemaArray" :key="index">
@@ -55,6 +55,8 @@ if (class_exists('GF_Field')) {
                 <input @keyup="updateSchemaArray(index, 'schema-id', $el.value)" type="text" placeholder="Schema ID" x-bind:value="typeof schema[0] === 'undefined' ? '' : schema[0]" />
                 <input @keyup="updateSchemaArray(index, 'override-id', $el.value)" type="text" placeholder="Schema override ID (optional)" x-bind:value="typeof schema[1] === 'undefined' ? '' : schema[1]" />
                 <input @keyup="updateSchemaArray(index, 'friendly-name', $el.value)" type="text" placeholder="Friendly name (optional)" x-bind:value="typeof schema[2] === 'undefined' ? '' : schema[2]" />
+                <input @change="updateSchemaArray(index, 'show-as-required', $el.checked)" id="wwidget_ai_show_as_required" x-bind:value="typeof schema[3] === 'undefined' ? '' : schema[3]" type="checkbox">
+                <label for="wwidget_ai_show_as_required">Show as required</label>
               </div>
               <div class="buttons-wrapper">
                 <button @click="addNewSchemaGrouping">+</button>
@@ -62,6 +64,11 @@ if (class_exists('GF_Field')) {
               </div>
             </div>
           </template>
+
+          <input 
+            @change="SetFieldProperty('wwidget_ai_use_slugs', $el.checked)" x-bind:value="wwidget_ai_use_slugs"
+            type="checkbox" id="wwidget_ai_use_slugs" class="wwidget_ai_use_slugs">
+          <label for="wwidget_ai_use_slugs" class="inline">Use schema slugs instead of IDs</label>
 
           <style>
             .wicket_widget_ai_setting {
@@ -126,12 +133,14 @@ if (class_exists('GF_Field')) {
           schemaArray: [],
           wwidget_ai_type: 'people',
           wwidget_ai_org_uuid: '',
+          wwidget_ai_use_slugs: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
             let fieldDataSchemas = fieldData.ai_schemas;
             let fieldDataType = fieldData.type;
             let fieldDataOrgUuid = fieldData.org_uuid;
+            let fieldDataUseSlugs = fieldData.use_slugs;
 
             if( typeof fieldDataSchemas !== 'object' ) {
               fieldDataSchemas = [ [] ];
@@ -143,6 +152,7 @@ if (class_exists('GF_Field')) {
 
             this.wwidget_ai_type = fieldDataType;
             this.wwidget_ai_org_uuid = fieldDataOrgUuid;
+            this.wwidget_ai_use_slugs = fieldDataUseSlugs;
           },
           updateAiType(type) {
             this.wwidget_ai_type = type;
@@ -161,6 +171,8 @@ if (class_exists('GF_Field')) {
               this.schemaArray[index][1] = value;
             } else if( type == 'friendly-name' ) {
               this.schemaArray[index][2] = value;
+            } else if( type == 'show-as-required' ) {
+              this.schemaArray[index][3] = value;
             }
 
             SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
@@ -176,6 +188,7 @@ if (class_exists('GF_Field')) {
             ai_schemas: rgar( field, 'wwidget_ai_schemas' ),
             type: rgar( field, 'wwidget_ai_type' ),
             org_uuid: rgar( field, 'wwidget_ai_org_uuid' ),
+            use_slugs: rgar( field, 'wwidget_ai_use_slugs' ),
           }
         });
         window.dispatchEvent(customEvent);
@@ -196,6 +209,7 @@ if (class_exists('GF_Field')) {
       $ai_widget_schemas = [[]];
       $wwidget_ai_type = 'people';
       $wwidget_ai_org_uuid = '';
+      $wwidget_ai_use_slugs = false;
 
       //wicket_write_log($form, true);
 
@@ -212,6 +226,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->wwidget_ai_org_uuid ) ) {
                 $wwidget_ai_org_uuid = $field->wwidget_ai_org_uuid; 
               }
+              if( isset( $field->wwidget_ai_use_slugs ) ) {
+                $wwidget_ai_use_slugs = $field->wwidget_ai_use_slugs; 
+              }
             }
           }
         }
@@ -227,6 +244,28 @@ if (class_exists('GF_Field')) {
         }
       }
 
+      // Re-form the $ai_widget_schemas array before passing to component
+      $cleaned_ai_widget_schemas = [];
+      if( $wwidget_ai_use_slugs ) {
+        foreach( $ai_widget_schemas as $ai_item ) {
+          $cleaned_ai_widget_schemas[] = [
+            'slug'           => $ai_item[0],
+            'resourceSlug'   => $ai_item[1],
+            'showAsRequired' => $ai_item[3],
+          ];
+        } 
+      } else {
+        foreach( $ai_widget_schemas as $ai_item ) {
+          $cleaned_ai_widget_schemas[] = [
+            'id'             => $ai_item[0],
+            'resourceId'     => $ai_item[1],
+            'showAsRequired' => $ai_item[3] ?? false,
+          ];
+        } 
+      }
+      
+      
+
       if( component_exists('widget-additional-info') ) {
         // Adding extra ob_start/clean since the component was jumping the gun for some reason
         ob_start();
@@ -236,7 +275,7 @@ if (class_exists('GF_Field')) {
           'additional_info_data_field_name'  => 'input_' . $id,
           'resource_type'                    => $wwidget_ai_type,
           'org_uuid'                         => $wwidget_ai_org_uuid,
-          'schemas_and_overrides'            => $ai_widget_schemas,
+          'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
         ], true );
 
         return ob_get_clean();
