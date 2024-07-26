@@ -98,7 +98,7 @@ if (class_exists('GF_Field')) {
               width: 100%;
               margin-right: 5px;
             }
-            .wicket_widget_ai_setting .schema-grouping .inputs-wrapper input:not(:last-of-type) {
+            .wicket_widget_ai_setting .schema-grouping .inputs-wrapper input {
               margin-bottom: 5px;
             }
             .wicket_widget_ai_setting .schema-grouping .buttons-wrapper {
