@@ -55,8 +55,10 @@ if (class_exists('GF_Field')) {
                 <input @keyup="updateSchemaArray(index, 'schema-id', $el.value)" type="text" placeholder="Schema ID" x-bind:value="typeof schema[0] === 'undefined' ? '' : schema[0]" />
                 <input @keyup="updateSchemaArray(index, 'override-id', $el.value)" type="text" placeholder="Schema override ID (optional)" x-bind:value="typeof schema[1] === 'undefined' ? '' : schema[1]" />
                 <input @keyup="updateSchemaArray(index, 'friendly-name', $el.value)" type="text" placeholder="Friendly name (optional)" x-bind:value="typeof schema[2] === 'undefined' ? '' : schema[2]" />
-                <input @change="updateSchemaArray(index, 'show-as-required', $el.checked)" id="wwidget_ai_show_as_required" x-bind:value="typeof schema[3] === 'undefined' ? '' : schema[3]" type="checkbox">
-                <label for="wwidget_ai_show_as_required">Show as required</label>
+                <select @change="updateSchemaArray(index, 'show-as-required', $el.value)" x-bind:value="typeof schema[3] === 'undefined' ? '' : schema[3]">
+                  <option value="false">Don't show as required</option>
+                  <option value="true">Show as required</option>
+                </select>
               </div>
               <div class="buttons-wrapper">
                 <button @click="addNewSchemaGrouping">+</button>
