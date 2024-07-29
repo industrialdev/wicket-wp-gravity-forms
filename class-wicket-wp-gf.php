@@ -70,6 +70,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // Enqueue scripts and styles
             add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts_styles'));
 
+            // Enqueue frontend scripts and styles
+            add_action( 'wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts_styles') );
+
             // Register Rest Routes
           	add_action('rest_api_init', array($this, 'register_rest_routes') );
 
@@ -338,6 +341,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             }
             return;
+        }
+
+        public function enqueue_frontend_scripts_styles() {
+            wp_enqueue_style( 'wicket-gf-widget-style', plugins_url( 'css/wicket_gf_widget_style_helpers.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
         }
 
         public function entries_list_first_column_content( $form_id, $field_id, $value, $entry, $query_string ) {
