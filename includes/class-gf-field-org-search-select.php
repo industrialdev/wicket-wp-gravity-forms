@@ -83,9 +83,9 @@ if (class_exists('GF_Field')) {
 					  <label for="orgss_grant_roster_man_on_purchase" class="inline">Grant roster management on next purchase?</label>
           
             <input 
-              @change="SetFieldProperty('orgss_grant_org_edit_on_select', $el.checked)" x-bind:value="orgss_grant_org_edit_on_select"
-              type="checkbox" id="orgss_grant_org_edit_on_select" class="orgss_grant_org_edit_on_select">
-					  <label for="orgss_grant_org_edit_on_select" class="inline">Grant org_edit role on selection?</label>
+              @change="SetFieldProperty('orgss_grant_org_editor_on_select', $el.checked)" x-bind:value="orgss_grant_org_editor_on_select"
+              type="checkbox" id="orgss_grant_org_editor_on_select" class="orgss_grant_org_editor_on_select">
+					  <label for="orgss_grant_org_editor_on_select" class="inline">Grant org_editor role on selection?</label>
 
 
           </div>
@@ -116,7 +116,7 @@ if (class_exists('GF_Field')) {
           orgss_disable_org_creation: false,
           orgss_disable_selecting_orgs_with_active_membership: false,
           orgss_grant_roster_man_on_purchase: false,
-          orgss_grant_org_edit_on_select: false,
+          orgss_grant_org_editor_on_select: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
@@ -154,9 +154,9 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_grant_roster_man_on_purchase = fieldData.orgss_grant_roster_man_on_purchase ? true : false;
             }
-            if( Object.hasOwn(fieldData, 'orgss_grant_org_edit_on_select') ) {
+            if( Object.hasOwn(fieldData, 'orgss_grant_org_editor_on_select') ) {
               // Handle checkboxes slightly differently
-              this.orgss_grant_org_edit_on_select = fieldData.orgss_grant_org_edit_on_select ? true : false;
+              this.orgss_grant_org_editor_on_select = fieldData.orgss_grant_org_editor_on_select ? true : false;
             }
           },
         }))
@@ -176,7 +176,7 @@ if (class_exists('GF_Field')) {
           orgss_disable_org_creation: rgar( field, 'orgss_disable_org_creation' ),
           orgss_disable_selecting_orgs_with_active_membership: rgar( field, 'orgss_disable_selecting_orgs_with_active_membership' ),
           orgss_grant_roster_man_on_purchase: rgar( field, 'orgss_grant_roster_man_on_purchase' ),
-          orgss_grant_org_edit_on_select: rgar( field, 'orgss_grant_org_edit_on_select' ),
+          orgss_grant_org_editor_on_select: rgar( field, 'orgss_grant_org_editor_on_select' ),
         };
         console.log('Detail payload:');
         console.log(detailPayload);
@@ -233,7 +233,7 @@ if (class_exists('GF_Field')) {
       $checkbox_id_new_org                           = '';
       $disable_selecting_orgs_with_active_membership = false;
       $grant_roster_man_on_purchase                  = false;
-      $orgss_grant_org_edit_on_select                = false;
+      $orgss_grant_org_editor_on_select                = false;
 
       //wicket_write_log($form, true);
 
@@ -274,8 +274,8 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_grant_roster_man_on_purchase ) ) {
                 $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
               }
-              if( isset( $field->orgss_grant_org_edit_on_select ) ) {
-                $orgss_grant_org_edit_on_select = $field->orgss_grant_org_edit_on_select;
+              if( isset( $field->orgss_grant_org_editor_on_select ) ) {
+                $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
               }
             }
           }
@@ -298,7 +298,7 @@ if (class_exists('GF_Field')) {
           'disable_create_org_ui'                         => $disable_org_creation,
           'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
-          'grant_org_edit_on_select'                      => $orgss_grant_org_edit_on_select,
+          'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
