@@ -1,0 +1,27 @@
+.form_saved_message h2 {
+  font-weight: 600;
+  font-size: 1.4em;
+}
+.resume_form_link_wrapper a {
+  text-decoration: underline;
+  margin: 10px 0;
+  display: block;
+}
+
+div.form_saved_message_emailform {
+  margin-top: 10px;
+}
+
+div.form_saved_message_emailform form {
+  display: flex;
+  align-items: flex-end;
+}
+
+div.form_saved_message_emailform form>div {
+  min-width: 580px;
+  margin-right: 10px;
+}
+
+div.form_saved_message_emailform form input[type="email"] {
+  width: 100%;
+}
