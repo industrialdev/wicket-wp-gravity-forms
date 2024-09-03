@@ -1,6 +1,7 @@
 .gform_wrapper.gravity-theme  .wicket .Input>input[type="text"].form-control,
 .gform_wrapper.gravity-theme  .wicket .Input>input[type="password"].form-control,
-.gform_wrapper.gravity-theme  .wicket .Input>input[type="email"].form-control {
+.gform_wrapper.gravity-theme  .wicket .Input>input[type="email"].form-control,
+.gform_wrapper.gravity-theme  .wicket .Input>input[type="url"].form-control {
   padding: 10px 14px;
   padding-top: 30px;
 }
