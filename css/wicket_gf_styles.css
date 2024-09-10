@@ -25,3 +25,10 @@ div.form_saved_message_emailform form>div {
 div.form_saved_message_emailform form input[type="email"] {
   width: 100%;
 }
+
+@media(max-width:767px) {
+  .wicket-gf-shortcode {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

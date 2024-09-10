@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           1.0.33
+ * Version:           1.0.34
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -251,22 +251,31 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         if( paginationStepsCheck != null ) {
                             document.head.insertAdjacentHTML("beforeend", `
                             <style>
-                                form[id^=gform_] {
-                                    display: flex;
+                                @media(min-width:768px) {
+                                    form[id^=gform_] {
+                                        display: flex;
+                                    }
+                                    .gf_page_steps {
+                                        display: flex;
+                                        flex-direction: column;
+                                        min-width: 250px;
+                                    }
+                                    .gform_body {
+                                        flex-grow: 1;
+                                    }
                                 }
-                                .gf_page_steps {
-                                    display: flex;
-                                    flex-direction: column;
-                                    min-width: 250px;
+                                @media(max-width:767px) {
+                                    .gf_page_steps .gf_step {
+                                        margin-top: 0px !important;
+                                        margin-bottom: 0px !important;
+                                        margin-right: 5px !important;
+                                    }
                                 }
                                 .gf_page_steps .gf_step_active {
                                     background: #efefef;
                                     padding: 5px;
                                     border-radius: 999px;
                                     margin-left: -5px !important;
-                                }
-                                .gform_body {
-                                    flex-grow: 1;
                                 }
                             </style>`);
                         }
