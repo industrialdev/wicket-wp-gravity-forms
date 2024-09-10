@@ -16,13 +16,16 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type {
 
 		$this->client = wicket_api_client();
 
-		if( defined( 'ICL_LANGUAGE_CODE' ) ) {
-			$this->language = ICL_LANGUAGE_CODE;
-		} else {
-			if( str_contains( get_locale(), 'fr' ) ) {
-				$this->language = 'fr';
-			}
-		}
+		// TODO: Uncomment and test further - queries on Fr sites
+		// appeared to be returning empty strings in GF, so forcing En
+		// for now
+		// if( defined( 'ICL_LANGUAGE_CODE' ) ) {
+		// 	$this->language = ICL_LANGUAGE_CODE;
+		// } else {
+		// 	if( str_contains( get_locale(), 'fr' ) ) {
+		// 		$this->language = 'fr';
+		// 	}
+		// }
 	}
 
 	public function get_object_id( $object, $primary_property_value = null ) {
