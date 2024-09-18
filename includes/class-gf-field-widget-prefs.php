@@ -70,8 +70,11 @@ if (class_exists('GF_Field')) {
 
       // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
       jQuery(document).on('gform_load_field_settings', (event, field, form) => {
+        let detailPayload = {
+          wwidget_prefs_hide_comm: rgar( field, 'wwidget_prefs_hide_comm' ),
+        };
         let customEvent = new CustomEvent("gf-wwidget-person-prefs-field-settings", {
-          detail: rgar( field, 'wwidget_prefs_hide_comm' )
+          detail: detailPayload
         });
         window.dispatchEvent(customEvent);
       });
