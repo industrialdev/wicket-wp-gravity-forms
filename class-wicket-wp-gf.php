@@ -362,6 +362,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // General Wicket GF Styles
             wp_enqueue_style( 'wicket-gf-general-style', plugins_url( 'css/wicket_gf_styles.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
 
+            // General Wicket GF Scripts
+            wp_enqueue_script( 'wicket-gf-general-script', plugins_url( 'js/wicket_gf_script.js', __FILE__ ), array( 'jquery' ), null, true );
         }
 
         public function entries_list_first_column_content( $form_id, $field_id, $value, $entry, $query_string ) {

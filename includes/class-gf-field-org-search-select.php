@@ -282,51 +282,8 @@ if (class_exists('GF_Field')) {
         }
       }
 
-      // Add the GF-specific ORGSS frontend scripts
-      ob_start();
-      ?>
-      <script>
-        // Wait for the next buttons to be present on screen
-        jQuery(document).ready(function() {
-          var existCondition = setInterval(function() {
-          if (jQuery('[id^=gform_next_button_]').length) {
-              clearInterval(existCondition);
-              findActiveNextButton();
-          }
-          }, 100); // check every 100ms
-        });
-
-        // On page load, find out active next button, make note of it, and hide it
-        function findActiveNextButton() {
-          let next_buttons = jQuery('[id^=gform_next_button_]');
-          let active_next_button = null;
-          next_buttons.each(function(index) {
-            if(jQuery(this).is(":visible")) {
-              active_next_button = jQuery(this);
-            }
-          });
-          if(!active_next_button) {
-            return;
-          }
-          window.activeNextButtonId = active_next_button.attr('id');
-
-          // Don't hide next button as this would currently apply to all pages - 
-          // Hide with a specific ID rule in Code Chest or stylesheet instead
-          //active_next_button.css('opacity', 0);
-        }
-
-        // Listen for org selection (existing or just created) to then proceed to the next GF page, of a multi-step          
-        jQuery(window).on('orgss-selection-made', (event) => {
-          let nextButton = jQuery('#' + window.activeNextButtonId);
-          nextButton.trigger('click');
-        });
-      </script>
-      <?
-      $frontend_script = ob_get_clean();
-
       if( component_exists('org-search-select') ) {
-        return '<div>' . 
-        get_component( 'org-search-select', [ 
+        return get_component( 'org-search-select', [ 
           'classes'                                       => [],
           'search_mode'                                   => $search_mode, 
           'search_org_type'                               => $search_org_type,
@@ -342,15 +299,10 @@ if (class_exists('GF_Field')) {
           'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
-        ], false ) . 
-
-        $frontend_script .
-        '</div>';
+        ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
-      }
-      
-      
+      } 
     }
 
     // Override how to Save the field value
