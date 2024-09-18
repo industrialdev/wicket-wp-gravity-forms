@@ -1,13 +1,16 @@
 // ORGSS auto-advance on selection
 
-// TODO: Put this in a higher-level conditional so it won't pull indefinitely on non OB pages
 // Wait for the next buttons to be present on screen
 jQuery(document).ready(function() {
+  let tries = 0;
   var existCondition = setInterval(function() {
   if (jQuery('[id^=gform_next_button_]').length) {
-      clearInterval(existCondition);
-      findActiveNextButton();
+    clearInterval(existCondition);
+    findActiveNextButton();
+  } else if(tries > 30) {
+    clearInterval(existCondition);
   }
+  tries++;
   }, 100); // check every 100ms
 });
 
