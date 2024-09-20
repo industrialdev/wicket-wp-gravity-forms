@@ -73,6 +73,11 @@ if (class_exists('GF_Field')) {
 					  <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
 
             <input 
+              @change="SetFieldProperty('orgss_hide_remove_buttons', $el.checked)" x-bind:value="orgss_hide_remove_buttons"
+              type="checkbox" id="orgss_hide_remove_buttons" class="orgss_hide_remove_buttons">
+					  <label for="orgss_hide_remove_buttons" class="inline">Hide remove buttons?</label>
+
+            <input 
               @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked)" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
               type="checkbox" id="orgss_disable_selecting_orgs_with_active_membership" class="orgss_disable_selecting_orgs_with_active_membership">
 					  <label for="orgss_disable_selecting_orgs_with_active_membership" class="inline">Disable ability to select orgs with active membership?</label>
@@ -117,6 +122,7 @@ if (class_exists('GF_Field')) {
           orgss_disable_selecting_orgs_with_active_membership: false,
           orgss_grant_roster_man_on_purchase: false,
           orgss_grant_org_editor_on_select: false,
+          orgss_hide_remove_buttons: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
@@ -158,6 +164,11 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_grant_org_editor_on_select = fieldData.orgss_grant_org_editor_on_select ? true : false;
             }
+            if( Object.hasOwn(fieldData, 'orgss_hide_remove_buttons') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_hide_remove_buttons = fieldData.orgss_hide_remove_buttons ? true : false;
+            }
+            
           },
         }))
       });
@@ -177,9 +188,10 @@ if (class_exists('GF_Field')) {
           orgss_disable_selecting_orgs_with_active_membership: rgar( field, 'orgss_disable_selecting_orgs_with_active_membership' ),
           orgss_grant_roster_man_on_purchase: rgar( field, 'orgss_grant_roster_man_on_purchase' ),
           orgss_grant_org_editor_on_select: rgar( field, 'orgss_grant_org_editor_on_select' ),
+          orgss_hide_remove_buttons: rgar( field, 'orgss_hide_remove_buttons' ),
         };
-        console.log('Detail payload:');
-        console.log(detailPayload);
+        //console.log('Detail payload:');
+        //console.log(detailPayload);
         let customEvent = new CustomEvent("gf-orgss-field-settings", {
           detail: detailPayload
         });
@@ -233,7 +245,8 @@ if (class_exists('GF_Field')) {
       $checkbox_id_new_org                           = '';
       $disable_selecting_orgs_with_active_membership = false;
       $grant_roster_man_on_purchase                  = false;
-      $orgss_grant_org_editor_on_select                = false;
+      $orgss_grant_org_editor_on_select              = false;
+      $orgss_hide_remove_buttons                     = false;
 
       //wicket_write_log($form, true);
 
@@ -277,6 +290,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_grant_org_editor_on_select ) ) {
                 $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
               }
+              if( isset( $field->orgss_hide_remove_buttons ) ) {
+                $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
+              }
             }
           }
         }
@@ -299,6 +315,7 @@ if (class_exists('GF_Field')) {
           'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
+          'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
