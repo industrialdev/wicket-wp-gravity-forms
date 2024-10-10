@@ -61,6 +61,12 @@ if (class_exists('GF_Field')) {
               type="text" name="orgss_org_term_plural" class="orgss_org_term_plural" />
             <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters". Can be left blank to use default.</em></p>
 
+            <label style="margin-top: 1em;display: block;">No results found message</label>
+            <input 
+              @keyup="SetFieldProperty('orgss_no_results_message', $el.value)" x-bind:value="orgss_no_results_message"
+              type="text" name="orgss_no_results_message" class="orgss_no_results_message" />
+            <p style="margin-top: 2px;"><em>Message that will display if nothing is found by their search. Can be left blank to use default.</em></p>
+
             <label style="margin-top: 1em;display: block;">'New Org Created' checkbox ID</label>
             <input 
               @keyup="SetFieldProperty('orgss_checkbox_id_new_org', $el.value)" x-bind:value="orgss_checkbox_id_new_org"
@@ -117,6 +123,7 @@ if (class_exists('GF_Field')) {
           orgss_new_org_type_override: '',
           orgss_org_term_singular: '',
           orgss_org_term_plural: '',
+          orgss_no_results_message: '',
           orgss_checkbox_id_new_org: '',
           orgss_disable_org_creation: false,
           orgss_disable_selecting_orgs_with_active_membership: false,
@@ -144,6 +151,9 @@ if (class_exists('GF_Field')) {
             }
             if( Object.hasOwn(fieldData, 'orgss_org_term_plural') ) {
               this.orgss_org_term_plural = fieldData.orgss_org_term_plural;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_no_results_message') ) {
+              this.orgss_no_results_message = fieldData.orgss_no_results_message;
             }
             if( Object.hasOwn(fieldData, 'orgss_checkbox_id_new_org') ) {
               this.orgss_checkbox_id_new_org = fieldData.orgss_checkbox_id_new_org;
@@ -183,6 +193,7 @@ if (class_exists('GF_Field')) {
           orgss_new_org_type_override: rgar( field, 'orgss_new_org_type_override' ),
           orgss_org_term_singular: rgar( field, 'orgss_org_term_singular' ),
           orgss_org_term_plural: rgar( field, 'orgss_org_term_plural' ),
+          orgss_no_results_message: rgar( field, 'orgss_no_results_message' ),
           orgss_checkbox_id_new_org: rgar( field, 'orgss_checkbox_id_new_org' ),
           orgss_disable_org_creation: rgar( field, 'orgss_disable_org_creation' ),
           orgss_disable_selecting_orgs_with_active_membership: rgar( field, 'orgss_disable_selecting_orgs_with_active_membership' ),
@@ -241,6 +252,7 @@ if (class_exists('GF_Field')) {
       $new_org_type_override                         = '';
       $org_term_singular                             = 'Organization';
       $org_term_plural                               = 'Organizations';
+      $orgss_no_results_message                      = '';
       $disable_org_creation                          = false;
       $checkbox_id_new_org                           = '';
       $disable_selecting_orgs_with_active_membership = false;
@@ -274,6 +286,9 @@ if (class_exists('GF_Field')) {
               }
               if( isset( $field->orgss_org_term_plural ) ) {
                 $org_term_plural = $field->orgss_org_term_plural;
+              }
+              if( isset( $field->orgss_no_results_message ) ) {
+                $orgss_no_results_message = $field->orgss_no_results_message;
               }
               if( isset( $field->orgss_disable_org_creation ) ) {
                 $disable_org_creation = $field->orgss_disable_org_creation;
@@ -311,6 +326,7 @@ if (class_exists('GF_Field')) {
           'key'                                           => $id,
           'org_term_singular'                             => $org_term_singular,
           'org_term_plural'                               => $org_term_plural,
+          'no_results_found_message'                      => $orgss_no_results_message,
           'disable_create_org_ui'                         => $disable_org_creation,
           'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
