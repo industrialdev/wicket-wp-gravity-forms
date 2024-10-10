@@ -31,4 +31,8 @@ div.form_saved_message_emailform form input[type="email"] {
     padding-left: 10px;
     padding-right: 10px;
   }
+
+  .gf_page_steps .gf_step_label {
+    display: none !important;
+  }
 }
