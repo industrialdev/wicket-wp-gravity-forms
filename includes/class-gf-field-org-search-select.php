@@ -240,7 +240,9 @@ if (class_exists('GF_Field')) {
     // Render the field
     public function get_field_input($form, $value = '', $entry = null) {
       if ( $this->is_form_editor() ) {
-        return '<p>Org Search/Select UI will show here on the frontend</p>';
+        return '<p>Org Search/Select UI will show here on the frontend.</p><p><strong>Note:</strong> This 
+        element does <strong><em>not</em></strong> display correctly in the GF Preview mode and will appear broken; it\'s recommended 
+        to create a test page with this form on it to properly test the Org Search/Select functionality.</p>';
       }
 
       $id = (int) $this->id;
