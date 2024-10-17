@@ -284,11 +284,46 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         margin-right: 5px !important;
                                     }
                                 }
+                                .gf_page_steps .gf_step {
+                                    border-radius: var(--interactive-corner-radius-lg, 999px);
+                                }
+                                .gf_page_steps .gf_page_steps:not(.gf_step_active) {
+                                    padding-left: var(--space-100, 5px);
+                                    padding-right: var(--space-100, 5px);
+                                }
                                 .gf_page_steps .gf_step_active {
-                                    background: #efefef;
-                                    padding: 5px;
-                                    border-radius: 999px;
+                                    background: var(--highlight-light, #efefef);
+                                    padding: var(--space-100, 5px);
                                     margin-left: -5px !important;
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step .gf_step_label {
+                                    padding-left: var(--space-100, 16px);
+                                    font-size: var(--body-md-font-size, 14px);
+                                    line-height: var(--body-md-line-height, 16px);
+                                    font-weight: bold;
+                                    color: var(--text-content, inherit);
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step .gf_step_number {
+                                    font-weight: bold;
+                                    color: var(--text-content, #585e6a);
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step_active .gf_step_number {
+                                    background: var(--interactive, #cfd3d9);
+                                    border-color: var(--interactive, #cfd3d9);
+                                    color: var(--text-content-reversed, #607382);
+                                    border-width: var(--border-interactive-md, 2px);
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:before {
+                                    background: var(--highlight-light, #607382);
+                                    border-color: var(--highlight-dark, #607382);
+                                    border-width: var(--border-interactive-md, 2px);
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                    color: var(--highlight-dark, #ffffff);
+                                }
+                                .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
+                                    border-width: var(--border-interactive-md, 2px);
+                                    border-color: var(--border-interactive, #cfd3d9);
                                 }
                             </style>`);
                         }
