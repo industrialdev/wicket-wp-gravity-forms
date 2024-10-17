@@ -287,7 +287,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 .gf_page_steps .gf_step {
                                     border-radius: var(--interactive-corner-radius-lg, 999px);
                                 }
-                                .gf_page_steps .gf_page_steps:not(.gf_step_active) {
+                                .gf_page_steps .gf_step:not(.gf_step_active) {
                                     padding-left: var(--space-100, 5px);
                                     padding-right: var(--space-100, 5px);
                                 }
@@ -295,6 +295,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     background: var(--highlight-light, #efefef);
                                     padding: var(--space-100, 5px);
                                     margin-left: -5px !important;
+                                }
+                                body.wicket-theme-v2 .gf_page_steps .gf_step_active {
+                                    margin-left: 0px !important;
                                 }
                                 .gform_wrapper .gf_page_steps .gf_step .gf_step_label {
                                     padding-left: var(--space-100, 16px);
