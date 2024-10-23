@@ -33,10 +33,11 @@ if (class_exists('GF_Field')) {
               type="text" name="orgss_search_org_type" class="orgss_search_org_type" />
             <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em></p>
 
-            <label style="margin-top: 1em;display: block;">Relationship Type Upon Org Creation</label>
+            <label style="margin-top: 1em;display: block;">Relationship Type(s) Upon Org Creation/Selection</label>
             <input 
               @keyup="SetFieldProperty('orgss_relationship_type_upon_org_creation', $el.value)" x-bind:value="orgss_relationship_type_upon_org_creation"
               type="text" name="orgss_relationship_type_upon_org_creation" class="orgss_relationship_type_upon_org_creation" />
+              <p style="margin-top: 2px;margin-bottom: 0px;"><em>This can be a single relationship, or a comma-separated list of multiple relationships (in slug form) that will be created at once.</em></p>
 
             <label style="margin-top: 1em;display: block;">Relationship Mode</label>
             <input 
@@ -77,27 +78,37 @@ if (class_exists('GF_Field')) {
               @change="SetFieldProperty('orgss_disable_org_creation', $el.checked)" x-bind:value="orgss_disable_org_creation"
               type="checkbox" id="orgss_disable_org_creation" class="orgss_disable_org_creation">
 					  <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
+            <br />
 
             <input 
               @change="SetFieldProperty('orgss_hide_remove_buttons', $el.checked)" x-bind:value="orgss_hide_remove_buttons"
               type="checkbox" id="orgss_hide_remove_buttons" class="orgss_hide_remove_buttons">
 					  <label for="orgss_hide_remove_buttons" class="inline">Hide remove buttons?</label>
+            <br />
+
+            <input 
+              @change="SetFieldProperty('orgss_hide_select_buttons', $el.checked)" x-bind:value="orgss_hide_select_buttons"
+              type="checkbox" id="orgss_hide_select_buttons" class="orgss_hide_select_buttons">
+					  <label for="orgss_hide_select_buttons" class="inline">Hide select buttons?</label>
+            <br />
 
             <input 
               @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked)" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
               type="checkbox" id="orgss_disable_selecting_orgs_with_active_membership" class="orgss_disable_selecting_orgs_with_active_membership">
 					  <label for="orgss_disable_selecting_orgs_with_active_membership" class="inline">Disable ability to select orgs with active membership?</label>
+            <br />
 
             <input 
               @change="SetFieldProperty('orgss_grant_roster_man_on_purchase', $el.checked)" x-bind:value="orgss_grant_roster_man_on_purchase"
               type="checkbox" id="orgss_grant_roster_man_on_purchase" class="orgss_grant_roster_man_on_purchase">
 					  <label for="orgss_grant_roster_man_on_purchase" class="inline">Grant roster management on next purchase?</label>
-          
+            <br />
+
             <input 
               @change="SetFieldProperty('orgss_grant_org_editor_on_select', $el.checked)" x-bind:value="orgss_grant_org_editor_on_select"
               type="checkbox" id="orgss_grant_org_editor_on_select" class="orgss_grant_org_editor_on_select">
 					  <label for="orgss_grant_org_editor_on_select" class="inline">Grant org_editor role on selection?</label>
-
+            <br />
 
           </div>
           <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
@@ -130,6 +141,7 @@ if (class_exists('GF_Field')) {
           orgss_grant_roster_man_on_purchase: false,
           orgss_grant_org_editor_on_select: false,
           orgss_hide_remove_buttons: false,
+          orgss_hide_select_buttons: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
@@ -138,19 +150,35 @@ if (class_exists('GF_Field')) {
               this.orgss_search_org_type = fieldData.orgss_search_org_type;
             }
             if( Object.hasOwn(fieldData, 'orgss_relationship_type_upon_org_creation') ) {
-              this.orgss_relationship_type_upon_org_creation = fieldData.orgss_relationship_type_upon_org_creation;
+              if(fieldData.orgss_relationship_type_upon_org_creation) {
+                this.orgss_relationship_type_upon_org_creation = fieldData.orgss_relationship_type_upon_org_creation;
+              } else {
+                this.orgss_relationship_type_upon_org_creation = 'employee';
+              }
             }
             if( Object.hasOwn(fieldData, 'orgss_relationship_mode') ) {
-              this.orgss_relationship_mode = fieldData.orgss_relationship_mode;
+              if(fieldData.orgss_relationship_mode) {
+                this.orgss_relationship_mode = fieldData.orgss_relationship_mode;
+              } else {
+                this.orgss_relationship_mode = 'person_to_organization';
+              }
             }
             if( Object.hasOwn(fieldData, 'orgss_new_org_type_override') ) {
               this.orgss_new_org_type_override = fieldData.orgss_new_org_type_override;
             }
             if( Object.hasOwn(fieldData, 'orgss_org_term_singular') ) {
-              this.orgss_org_term_singular = fieldData.orgss_org_term_singular;
+              if(fieldData.orgss_org_term_singular) {
+                this.orgss_org_term_singular = fieldData.orgss_org_term_singular;
+              } else {
+                this.orgss_org_term_singular = 'Organization';
+              }
             }
             if( Object.hasOwn(fieldData, 'orgss_org_term_plural') ) {
-              this.orgss_org_term_plural = fieldData.orgss_org_term_plural;
+              if(fieldData.orgss_org_term_plural) {
+                this.orgss_org_term_plural = fieldData.orgss_org_term_plural;
+              } else {
+                this.orgss_org_term_plural = 'Organizations';
+              }
             }
             if( Object.hasOwn(fieldData, 'orgss_no_results_message') ) {
               this.orgss_no_results_message = fieldData.orgss_no_results_message;
@@ -178,6 +206,10 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_hide_remove_buttons = fieldData.orgss_hide_remove_buttons ? true : false;
             }
+            if( Object.hasOwn(fieldData, 'orgss_hide_select_buttons') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_hide_select_buttons = fieldData.orgss_hide_select_buttons ? true : false;
+            }
             
           },
         }))
@@ -200,6 +232,7 @@ if (class_exists('GF_Field')) {
           orgss_grant_roster_man_on_purchase: rgar( field, 'orgss_grant_roster_man_on_purchase' ),
           orgss_grant_org_editor_on_select: rgar( field, 'orgss_grant_org_editor_on_select' ),
           orgss_hide_remove_buttons: rgar( field, 'orgss_hide_remove_buttons' ),
+          orgss_hide_select_buttons: rgar( field, 'orgss_hide_select_buttons' ),
         };
         //console.log('Detail payload:');
         //console.log(detailPayload);
@@ -261,6 +294,7 @@ if (class_exists('GF_Field')) {
       $grant_roster_man_on_purchase                  = false;
       $orgss_grant_org_editor_on_select              = false;
       $orgss_hide_remove_buttons                     = false;
+      $orgss_hide_select_buttons                     = false;
 
       //wicket_write_log($form, true);
 
@@ -310,6 +344,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_hide_remove_buttons ) ) {
                 $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
               }
+              if( isset( $field->orgss_hide_select_buttons ) ) {
+                $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
+              }
             }
           }
         }
@@ -334,6 +371,7 @@ if (class_exists('GF_Field')) {
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
           'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
+          'hide_select_buttons'                           => $orgss_hide_select_buttons,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
