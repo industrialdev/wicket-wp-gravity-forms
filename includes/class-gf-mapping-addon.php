@@ -42,7 +42,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 		// Uncomment to see field map choice details for the addon screen you're viewing
 		// add_filter( 'gform_field_map_choices', function( $fields, $form_id, $field_type, $exclude_field_types ) {
-		// 	wicket_write_log( $fields, true );
+		// 	wicket_gf_write_log( $fields, true );
 		
 		// 	return $fields;
 		// }, 10, 4 );
@@ -68,9 +68,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				 * Fields expecting a certain format or validation. */
 
 
-		//wicket_write_log( $feed, true );
+		//wicket_gf_write_log( $feed, true );
 		$feedName  = $feed['meta']['feedName'];
-		//wicket_write_log( get_option( 'wicket_gf_member_fields') );
+		//wicket_gf_write_log( get_option( 'wicket_gf_member_fields') );
 
 		// $metaData = $this->get_field_map_fields( $feed, 'mappedFields' ); // Method for the other field map type
 		$metaData = $this->get_dynamic_field_map_fields( $feed, 'wicketFieldMaps' );
@@ -82,8 +82,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			$merge_vars[ $name ] = $this->get_field_value( $form, $entry, $field_id );
 
 		}
-		wicket_write_log( "The mappings:" );
-		wicket_write_log( $merge_vars );
+		wicket_gf_write_log( "The mappings:" );
+		wicket_gf_write_log( $merge_vars );
 
 		// Loop through the field mappings to organize them by same type (e.g. profile) and same schema to batch API calls
 		$grouped_updates = array();
@@ -97,8 +97,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		}
 
 		if( $this->_debug_schema_changes_before_and_after ) {
-			wicket_write_log( 'The organized array:' );
-			wicket_write_log( $grouped_updates );
+			wicket_gf_write_log( 'The organized array:' );
+			wicket_gf_write_log( $grouped_updates );
 		}
 		
 
@@ -126,8 +126,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			$current_schema_values = self::get_ai_field_from_data_fields($wicket_person->data_fields, $schema);
 
 			if( $this->_debug_schema_changes_before_and_after ) {
-				wicket_write_log('Current schema values:');
-				wicket_write_log($current_schema_values);
+				wicket_gf_write_log('Current schema values:');
+				wicket_gf_write_log($current_schema_values);
 			}
 
 			// Apply those changes to the current info array
@@ -177,10 +177,10 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 	 */
 	private function apply_changes_to_schema( $current_schema_values, $changes_to_apply, $repeater_index_to_update = null ) {
 		if( $this->_debug_schema_changes_before_and_after ) {
-			wicket_write_log( 'Current schema values:' );
-			wicket_write_log($current_schema_values);
-			wicket_write_log('Changes to apply:');
-			wicket_write_log($changes_to_apply);
+			wicket_gf_write_log( 'Current schema values:' );
+			wicket_gf_write_log($current_schema_values);
+			wicket_gf_write_log('Changes to apply:');
+			wicket_gf_write_log($changes_to_apply);
 		}
 
 		$new_schema_entry = empty( $current_schema_values );
@@ -189,8 +189,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 		$expanded_changes_to_apply = self::expand_form_mappings( $changes_to_apply );
 		if( $this->_debug_schema_changes_before_and_after ) {
-			wicket_write_log("Expanded changes to apply:");
-			wicket_write_log($expanded_changes_to_apply);
+			wicket_gf_write_log("Expanded changes to apply:");
+			wicket_gf_write_log($expanded_changes_to_apply);
 		}
 		
 		// Loop through the pending changes
@@ -238,8 +238,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			unset($temp); // Unlink reference
 		}
 		if( $this->_debug_schema_changes_before_and_after ) {
-			wicket_write_log('Updated schema:');
-			wicket_write_log($current_schema_values);
+			wicket_gf_write_log('Updated schema:');
+			wicket_gf_write_log($current_schema_values);
 		}
 
 		return $current_schema_values;
@@ -293,9 +293,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 		// TODO: This function needs to check all fields stored in the db for the provided
 		// schema and ensure nothing that is required is going to go unprovided
 
-		wicket_write_log("Validate schema changes called:");
-		wicket_write_log($schema);
-		wicket_write_log($new_schema_values);
+		wicket_gf_write_log("Validate schema changes called:");
+		wicket_gf_write_log($schema);
+		wicket_gf_write_log($new_schema_values);
 
 		$wicket_member_data_fields = get_option('wicket_gf_member_fields');
 		$schema_fields = array();
@@ -304,8 +304,8 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 				$schema_fields = $schema_type;
 			}
 		}
-		wicket_write_log('This schema\'s fields:');
-		wicket_write_log($schema_fields);
+		wicket_gf_write_log('This schema\'s fields:');
+		wicket_gf_write_log($schema_fields);
 	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
@@ -482,7 +482,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 			if($show_debug_info) { 
 				echo '
 					<pre>
-						'. wicket_write_log( get_option('wicket_gf_member_fields'), true ) . '
+						'. wicket_gf_write_log( get_option('wicket_gf_member_fields'), true ) . '
 					</pre>
 				';
 			}

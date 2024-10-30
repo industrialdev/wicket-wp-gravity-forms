@@ -213,7 +213,7 @@ if (class_exists('GF_Field')) {
       $wwidget_ai_org_uuid = '';
       $wwidget_ai_use_slugs = false;
 
-      //wicket_write_log($form, true);
+      //wicket_gf_write_log($form, true);
 
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
@@ -301,8 +301,8 @@ if (class_exists('GF_Field')) {
 
     public function validate( $value, $form ) {
       $value_array = json_decode($value, true);
-      //wicket_write_log('Value array:');
-      //wicket_write_log($value_array);
+      //wicket_gf_write_log('Value array:');
+      //wicket_gf_write_log($value_array);
 
       $notFound   = $value_array['notFound'] ?? [];
       $validation = $value_array['validation'] ?? [];

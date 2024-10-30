@@ -93,6 +93,12 @@ if (class_exists('GF_Field')) {
             <br />
 
             <input 
+              @change="SetFieldProperty('orgss_display_removal_alert_message', $el.checked)" x-bind:value="orgss_display_removal_alert_message"
+              type="checkbox" id="orgss_display_removal_alert_message" class="orgss_display_removal_alert_message">
+					  <label for="orgss_display_removal_alert_message" class="inline">Display removal alert message?</label>
+            <br />
+
+            <input 
               @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked)" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
               type="checkbox" id="orgss_disable_selecting_orgs_with_active_membership" class="orgss_disable_selecting_orgs_with_active_membership">
 					  <label for="orgss_disable_selecting_orgs_with_active_membership" class="inline">Disable ability to select orgs with active membership?</label>
@@ -142,6 +148,7 @@ if (class_exists('GF_Field')) {
           orgss_grant_org_editor_on_select: false,
           orgss_hide_remove_buttons: false,
           orgss_hide_select_buttons: false,
+          orgss_display_removal_alert_message: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
@@ -210,6 +217,11 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_hide_select_buttons = fieldData.orgss_hide_select_buttons ? true : false;
             }
+            if( Object.hasOwn(fieldData, 'orgss_display_removal_alert_message') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_display_removal_alert_message = fieldData.orgss_display_removal_alert_message ? true : false;
+            }
+            
             
           },
         }))
@@ -233,6 +245,7 @@ if (class_exists('GF_Field')) {
           orgss_grant_org_editor_on_select: rgar( field, 'orgss_grant_org_editor_on_select' ),
           orgss_hide_remove_buttons: rgar( field, 'orgss_hide_remove_buttons' ),
           orgss_hide_select_buttons: rgar( field, 'orgss_hide_select_buttons' ),
+          orgss_display_removal_alert_message: rgar( field, 'orgss_display_removal_alert_message' ),
         };
         //console.log('Detail payload:');
         //console.log(detailPayload);
@@ -295,8 +308,9 @@ if (class_exists('GF_Field')) {
       $orgss_grant_org_editor_on_select              = false;
       $orgss_hide_remove_buttons                     = false;
       $orgss_hide_select_buttons                     = false;
+      $orgss_display_removal_alert_message           = false;
 
-      //wicket_write_log($form, true);
+      //wicket_gf_write_log($form, true);
 
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {
@@ -347,6 +361,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_hide_select_buttons ) ) {
                 $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
               }
+              if( isset( $field->orgss_display_removal_alert_message ) ) {
+                $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
+              }
             }
           }
         }
@@ -372,6 +389,7 @@ if (class_exists('GF_Field')) {
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
           'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
           'hide_select_buttons'                           => $orgss_hide_select_buttons,
+          'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
         ], false );
       } else {
         return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
