@@ -310,7 +310,7 @@ if (class_exists('GF_Field')) {
       $orgss_hide_select_buttons                     = false;
       $orgss_display_removal_alert_message           = false;
 
-      //wicket_write_log($form, true);
+      //wicket_gf_write_log($form, true);
 
       foreach( $form['fields'] as $field ) {
         if( gettype( $field ) == 'object' ) {

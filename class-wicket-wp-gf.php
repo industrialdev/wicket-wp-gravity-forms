@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           1.0.49
+ * Version:           1.0.50
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-define( 'WICKET_WP_GF_VERSION', '1.0.47' );
+define( 'WICKET_WP_GF_VERSION', '1.0.50' );
 
 if ( ! in_array( 'gravityforms/gravityforms.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
 	/**
@@ -51,7 +51,6 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         private static $wicket_current_person;
         private static $wicket_client;
 
-
         /**
 		 * Constructor
 		 */
@@ -77,7 +76,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
           	add_action('rest_api_init', array($this, 'register_rest_routes') );
 
             // Grab user info *after the necessary WP info loads
-            add_action( 'plugins_loaded', array( $this, 'store_data_after_plugins_loaded' ) );
+            //add_action( 'plugins_loaded', array( $this, 'store_data_after_plugins_loaded' ) );
 
             require_once( plugin_dir_path( __FILE__ ) . 'admin/class-wicket-gf-admin.php' );
 
@@ -351,14 +350,16 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             }
         }
 
-        public function store_data_after_plugins_loaded() {
-            if(wicket_person_has_uuid()) {
-                self::$wicket_current_person = wicket_current_person();
-                self::$wicket_client = wicket_api_client();
-            } else {
-                // This is not a CAS-authenticated user
-            }
-        }
+        // TODO: Use a more specific hook so this doesn't run on every page,
+        // maybe add a hook to the base plugin
+        // public function store_data_after_plugins_loaded() {
+        //     if(wicket_person_has_uuid()) {
+        //         self::$wicket_current_person = wicket_current_person();
+        //         self::$wicket_client = wicket_api_client();
+        //     } else {
+        //         // This is not a CAS-authenticated user
+        //     }
+        // }
 
         public function enqueue_scripts_styles($screen) {
             if( $screen == 'toplevel_page_gf_edit_forms' ) {
@@ -390,7 +391,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         public function gf_change_user_name( $value ) {
             //self::write_log($value);
             //self::write_log($entry);
-            wicket_write_log($value);
+            wicket_gf_write_log($value);
 
             return $value;
         }
@@ -476,7 +477,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         }
 
         public static function resync_wicket_member_fields() {
-            //wicket_write_log($_POST);
+            //wicket_gf_write_log($_POST);
 
             $to_return = array();
 
@@ -718,16 +719,18 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 ),
             );
 
+            // TODO: Resume work on this when store_data_after_plugins_loaded() has been updated
+            // to use a more specific hook
             // Add data_fields which are custom per tenant
-            $current_user_data_fields = wicket_current_person();
-            if( !empty( self::$wicket_current_person ) ) {
-                if( !empty( self::$wicket_current_person->data_fields ) ) {
-                    // wicket_write_log('Data fields:', true);
-                    // wicket_write_log(self::$wicket_current_person->data_fields, true);
+            // $current_user_data_fields = wicket_current_person();
+            // if( !empty( self::$wicket_current_person ) ) {
+            //     if( !empty( self::$wicket_current_person->data_fields ) ) {
+            //         // wicket_gf_write_log('Data fields:', true);
+            //         // wicket_gf_write_log(self::$wicket_current_person->data_fields, true);
 
-                    // TODO: Add handling of data_fields
-                }
-            }
+            //         // TODO: Add handling of data_fields
+            //     }
+            // }
 
             // --------------------------------
             // ------- Additional Info --------
@@ -758,7 +761,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Get all Additional Info Schemas
             $all_schemas = wicket_get_schemas();
-            //wicket_write_log($all_schemas);
+            //wicket_gf_write_log($all_schemas);
 
             foreach( $all_schemas['data'] as $schema ) {
                 // Ensure needed attributes are present before adding to array
@@ -796,8 +799,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
                                         $is_required = in_array( $property_name, $required_fields );
 
-                                        // wicket_write_log($property_name . ':');
-                                        // wicket_write_log($property_data);
+                                        // wicket_gf_write_log($property_name . ':');
+                                        // wicket_gf_write_log($property_data);
 
                                         $child_fields[] = [
                                             'name'           => $property_name,
@@ -826,8 +829,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         } else {
                             // If it IS a repeater
                             if( $schema['attributes']['key'] == 'education_details' ) {
-                                //wicket_write_log("Education details:");
-                                //wicket_write_log($schema);
+                                //wicket_gf_write_log("Education details:");
+                                //wicket_gf_write_log($schema);
                             }
                             // TODO: Pack more information about objects into the array and possibly reference the array position in the GF mapping
                             // value instead of the breadcrumbs
@@ -851,14 +854,14 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     $label_fr = $label_fr;
 
                                     if( $property_data['type'] == 'object' ) {
-                                        wicket_write_log('Object detected: ' . $property_name);
+                                        wicket_gf_write_log('Object detected: ' . $property_name);
                                         $object_data = self::expand_field_object( $schema, $property_name, $property_data );
 
                                         if( isset( $object_data['oneOf'] ) ) {
                                             foreach( $object_data['oneOf'] as $object_field_name => $object_field_data ) {
-                                                wicket_write_log("Object field received:");
-                                                wicket_write_log($object_field_name);
-                                                wicket_write_log($object_field_data);
+                                                wicket_gf_write_log("Object field received:");
+                                                wicket_gf_write_log($object_field_name);
+                                                wicket_gf_write_log($object_field_data);
                                                 $required_fields = array();
                                                 if( isset( $object_field_data['required'] ) ) {
                                                     $required_fields = $object_field_data['required'];
@@ -1104,21 +1107,23 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 ),
             );
 
+            // TODO: Continue work on this when store_data_after_plugins_loaded()
+            // has been updated to use a more specific hook
             // Add data_fields which are custom per tenant
-            $example_org = self::$wicket_client->get('organizations?page_number=1&page_size=1');
-            $org_data_fields = array();
-            if( isset( $example_org['data'] ) ) {
-                if( is_array( $example_org['data'] ) ) {
-                    if( isset( $example_org['data'][0]['attributes'] ) ) {
-                        if( isset( $example_org['data'][0]['attributes'] ) ) {
-                            if( isset( $example_org['data'][0]['attributes']['data_fields'] ) ) {
-                                $org_data_fields = $example_org['data'][0]['attributes']['data_fields'];
-                            }
-                        }
-                    }
-                }
-            }
-            wicket_write_log($org_data_fields);
+            // $example_org = self::$wicket_client->get('organizations?page_number=1&page_size=1');
+            // $org_data_fields = array();
+            // if( isset( $example_org['data'] ) ) {
+            //     if( is_array( $example_org['data'] ) ) {
+            //         if( isset( $example_org['data'][0]['attributes'] ) ) {
+            //             if( isset( $example_org['data'][0]['attributes'] ) ) {
+            //                 if( isset( $example_org['data'][0]['attributes']['data_fields'] ) ) {
+            //                     $org_data_fields = $example_org['data'][0]['attributes']['data_fields'];
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+            // wicket_gf_write_log($org_data_fields);
             // TODO: Add handling of org data_fields
 
             // --------------------------------
@@ -1213,8 +1218,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 // Note: for some reason one field is giving "Undefined array key "items"" even
                                 // though items is indeed in the array. Maybe misconfigured in the MDP or has a space somewhere
                                 if( empty($items) ) {
-                                    // wicket_write_log("No items for some reason:");
-                                    // wicket_write_log($schema);
+                                    // wicket_gf_write_log("No items for some reason:");
+                                    // wicket_gf_write_log($schema);
                                 }
                                 return array(
                                     'is_repeater'     => true,
