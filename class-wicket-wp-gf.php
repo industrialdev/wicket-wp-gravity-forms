@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           1.0.51
+ * Version:           1.0.52
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -391,7 +391,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         public function gf_change_user_name( $value ) {
             //self::write_log($value);
             //self::write_log($entry);
-            wicket_gf_write_log($value);
+            //wicket_gf_write_log($value);
 
             return $value;
         }
