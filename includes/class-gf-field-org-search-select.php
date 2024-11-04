@@ -107,13 +107,13 @@ if (class_exists('GF_Field')) {
             <input 
               @change="SetFieldProperty('orgss_grant_roster_man_on_purchase', $el.checked)" x-bind:value="orgss_grant_roster_man_on_purchase"
               type="checkbox" id="orgss_grant_roster_man_on_purchase" class="orgss_grant_roster_man_on_purchase">
-					  <label for="orgss_grant_roster_man_on_purchase" class="inline">Grant roster management on next purchase?</label>
+					  <label for="orgss_grant_roster_man_on_purchase" class="inline">Grant roster management (membership_manager role for selected org) on next purchase?</label>
             <br />
 
             <input 
               @change="SetFieldProperty('orgss_grant_org_editor_on_select', $el.checked)" x-bind:value="orgss_grant_org_editor_on_select"
               type="checkbox" id="orgss_grant_org_editor_on_select" class="orgss_grant_org_editor_on_select">
-					  <label for="orgss_grant_org_editor_on_select" class="inline">Grant org_editor role on selection?</label>
+					  <label for="orgss_grant_org_editor_on_select" class="inline">Grant org_editor role on selection (scoped to selected org)?</label>
             <br />
 
           </div>
