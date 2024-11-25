@@ -406,14 +406,16 @@ if (class_exists('GF_Field')) {
     //   return $value;
     // }
 
-    public function validate( $value, $form ) {      
-      if (strlen(trim($value)) <= 0) {
-        $this->failed_validation = true;
-        if ( ! empty( $this->errorMessage ) ) {
-            $this->validation_message = $this->errorMessage;
-        }
-      }
-    }
+    // This function isn't needed, as Gravity Forms will already flag the field if its marked
+    // as 'required' but the user doesn't provide a value
+    // public function validate( $value, $form ) {      
+    //   if (strlen(trim($value)) <= 0) {
+    //     $this->failed_validation = true;
+    //     if ( ! empty( $this->errorMessage ) ) {
+    //         $this->validation_message = $this->errorMessage;
+    //     }
+    //   }
+    // }
 
     // Functions for how the field value gets displayed on the backend
     // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
