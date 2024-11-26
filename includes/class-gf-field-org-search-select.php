@@ -279,7 +279,8 @@ if (class_exists('GF_Field')) {
         'rules_setting',
         'error_message_setting',
         'css_class_setting',
-        'conditional_logic_field_setting'
+        'conditional_logic_field_setting',
+        'label_placement_setting',
       ];
     }
 
