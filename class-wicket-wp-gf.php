@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.1
+ * Version:           2.0.2
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -275,6 +275,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     .gform_body {
                                         flex-grow: 1;
                                     }
+
+                                    body.wicket-theme-v2 form[id^=gform_] {
+                                        gap: var(--space-200);
+                                    }
                                 }
                                 @media(max-width:767px) {
                                     .gf_page_steps .gf_step {
@@ -315,6 +319,13 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     color: var(--text-content-reversed, #607382);
                                     border-width: var(--border-interactive-md, 2px);
                                 }
+                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed {
+                                    position: relative;
+                                }
+                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number {
+                                    background: var(--highlight-dark, var(--gf-local-bg-color, #000) );
+                                    position: relative;
+                                }
                                 .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:before {
                                     background: var(--highlight-light, #607382);
                                     border-color: var(--highlight-dark, #607382);
@@ -322,6 +333,12 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                 }
                                 .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:after {
                                     color: var(--highlight-dark, #ffffff);
+                                    background-color: var(--highlight-light, #607382);
+                                }
+                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                    left: -2px;
+                                    top: -2px;
+                                    border-color: var(--highlight-dark);
                                 }
                                 .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
                                     border-width: var(--border-interactive-md, 2px);
