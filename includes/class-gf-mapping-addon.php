@@ -8,7 +8,7 @@ class GFWicketMappingAddOn extends GFFeedAddOn {
 
 	public $_async_feed_processing = false; // Makes this an async feed so the form can submit while this processes in the background
 
-	protected $_version = '2'; // Unsure if this line is needed
+	protected $_version = WICKET_WP_GF_VERSION; 
 	protected $_min_gravityforms_version = '1.9';
 	protected $_slug = 'wicketmap';
 	protected $_path = 'wicketmap/wicketmap.php';
