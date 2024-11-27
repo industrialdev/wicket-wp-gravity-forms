@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.3
+ * Version:           2.0.4
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -20,8 +20,6 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
-
-define( 'WICKET_WP_GF_VERSION', '1.0.50' );
 
 if ( ! in_array( 'gravityforms/gravityforms.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
 	/**
@@ -151,85 +149,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
         public static function gf_editor_global_custom_scripts() {
             ?>
-
-            <!-- Include Alpine here for easier development of custom JS in the GF editor -->
-            <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-            <script>
-                // Check if we're currently looking at one of our elements, and if so show the settings for it,
-                // otherwise hide the settings
-                let orgss_settings_panes = document.querySelectorAll('.wicket_orgss_setting');
-                let wwidget_ai_settings = document.querySelectorAll('.wicket_widget_ai_setting');
-                let wwidget_org_profile_settings = document.querySelectorAll('.wicket_widget_org_profile_setting');
-                let wwidget_person_pref_settings = document.querySelectorAll('.wicket_widget_person_prefs_setting');
-                let gf_fields_wrapper = document.querySelector('#gform_fields');
-                let gf_edit_field_button = document.querySelector('.gfield-field-action.gfield-edit');
-                let wicket_global_settings_hide_label = document.querySelector('.wicket_global_custom_settings #hide_label');
-
-                jQuery(document).on('gform_load_field_settings', conditionallyShowElementControls);
-                gf_fields_wrapper.addEventListener('click', conditionallyShowElementControls);
-                gf_edit_field_button.addEventListener('click', conditionallyShowElementControls);
-
-                function conditionallyShowElementControls (event, field, form) {
-                    let selectedField = GetSelectedField(); // GF editor function
-                    //console.log(event.target);
-                    //console.log(selectedField);
-
-                    // Org search/select
-                    if( selectedField.type == "wicket_org_search_select" ) {
-                        for (let orgss_settings_pane of orgss_settings_panes) {
-                            orgss_settings_pane.style.display = "block";
-                        }
-                    } else {
-                        for (let orgss_settings_pane of orgss_settings_panes) {
-                            orgss_settings_pane.style.display = "none";
-                        }
-                    }
-                    // AI widget
-                    if( selectedField.type == "wicket_widget_ai" ) {
-                        for (let wwidget_ai_setting of wwidget_ai_settings) {
-                            wwidget_ai_setting.style.display = "block";
-                        }
-                    } else {
-                        for (let wwidget_ai_setting of wwidget_ai_settings) {
-                            wwidget_ai_setting.style.display = "none";
-                        }
-                    }
-                    // Org profile widget
-                    if( selectedField.type == "wicket_widget_profile_org" ) {
-                        for (let wwidget_org_profile_setting of wwidget_org_profile_settings) {
-                            wwidget_org_profile_setting.style.display = "block";
-                        }
-                    } else {
-                        for (let wwidget_org_profile_setting of wwidget_org_profile_settings) {
-                            wwidget_org_profile_setting.style.display = "none";
-                        }
-                    }
-                    // Person pref widget
-                    if( selectedField.type == "wicket_widget_prefs" ) {
-                        for (let wwidget_person_pref_setting of wwidget_person_pref_settings) {
-                            wwidget_person_pref_setting.style.display = "block";
-                        }
-                    } else {
-                        for (let wwidget_person_pref_setting of wwidget_person_pref_settings) {
-                            wwidget_person_pref_setting.style.display = "none";
-                        }
-                    }
-
-                    // Reload values of global custom settings on tab change so they're correctly reflected
-                    // Using try/catch in case property doesn't exist on GF object
-                    try {
-                        if( rgar( field, 'hide_label' ) ) {
-                            wicket_global_settings_hide_label.checked = true;
-                        }
-                    }
-                    catch(err) {
-                        wicket_global_settings_hide_label.checked = false;
-                    }
-                                        
-                }
-            </script>
-
+            <!-- Alpine and other editor scripts in a webpacked script -->
+            <script src="<?php echo plugin_dir_url( __FILE__ ) . 'js/gf_editor/dist/main.js'; ?>" defer></script>
             <?php
         }
 
