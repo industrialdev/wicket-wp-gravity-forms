@@ -35,6 +35,8 @@ function findActiveNextButton() {
 
 // Listen for org selection (existing or just created) to then proceed to the next GF page, of a multi-step          
 jQuery(window).on('orgss-selection-made', (event) => {
-  let nextButton = jQuery('#' + window.activeNextButtonId);
-  nextButton.trigger('click');
+  setTimeout(function() {
+    let nextButton = jQuery('#' + window.activeNextButtonId);
+    nextButton.trigger('click');
+  }, 2000); // Give GF a couple seconds to register any programatic form changes before we advance too fast
 });
