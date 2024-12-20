@@ -99,10 +99,79 @@ if (class_exists('GF_Field')) {
             <br />
 
             <input 
-              @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked)" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
+              @change="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', $el.checked);orgss_disable_selecting_orgs_with_active_membership = $el.checked;" x-bind:value="orgss_disable_selecting_orgs_with_active_membership"
               type="checkbox" id="orgss_disable_selecting_orgs_with_active_membership" class="orgss_disable_selecting_orgs_with_active_membership">
 					  <label for="orgss_disable_selecting_orgs_with_active_membership" class="inline">Disable ability to select orgs with active membership?</label>
             <br />
+
+            <div x-show="orgss_disable_selecting_orgs_with_active_membership" style="margin-left:10px;margin-bottom: 10px;">
+              <label style="margin-top: 1em;display: block;">Active Membership Alert Title</label>
+              <input 
+                @keyup="SetFieldProperty('orgss_active_membership_alert_title', $el.value)" x-bind:value="orgss_active_membership_alert_title"
+                type="text" name="orgss_active_membership_alert_title" class="orgss_active_membership_alert_title" />
+
+                <label style="margin-top: 1em;display: block;">Active Membership Alert Body</label>
+                <input 
+                  @keyup="SetFieldProperty('orgss_active_membership_alert_body', $el.value)" x-bind:value="orgss_active_membership_alert_body"
+                  type="text" name="orgss_active_membership_alert_body" class="orgss_active_membership_alert_body" />
+            
+                <label style="margin-top: 1em;display: block;">Active Membership Button 1 Text</label>
+                <input 
+                  @keyup="SetFieldProperty('orgss_active_membership_alert_button_1_text', $el.value)" x-bind:value="orgss_active_membership_alert_button_1_text"
+                    type="text" name="orgss_active_membership_alert_button_1_text" class="orgss_active_membership_alert_button_1_text" />
+            
+                <label style="margin-top: 1em;display: block;">Active Membership Button 1 URL</label>
+                <input 
+                  @keyup="SetFieldProperty('orgss_active_membership_alert_button_1_url', $el.value)" x-bind:value="orgss_active_membership_alert_button_1_url"
+                  type="text" name="orgss_active_membership_alert_button_1_url" class="orgss_active_membership_alert_button_1_url" />
+                <p style="margin-top: 2px;"><em>Set to PROCEED for this button to continue with the usual org selection actions, or BUTTON if you're going to do something fancy with it on the backend.</em></p>
+
+                <label style="margin-top: 1em;display: block;">Active Membership Button 1 Style</label>
+                <select
+                  name="orgss_active_membership_alert_button_1_style"
+                  class="orgss_active_membership_alert_button_1_style" 
+                  x-model="orgss_active_membership_alert_button_1_style" 
+                  style="margin-bottom: 1em;"
+                >
+                  <option value="primary" selected>Primary</option>
+                  <option value="secondary" selected>Secondary</option>
+                </select>
+
+                <input 
+                  @change="SetFieldProperty('orgss_active_membership_alert_button_1_new_tab', $el.checked)" x-bind:value="orgss_active_membership_alert_button_1_new_tab"
+                  type="checkbox" id="orgss_active_membership_alert_button_1_new_tab" class="orgss_active_membership_alert_button_1_new_tab">
+                <label for="orgss_active_membership_alert_button_1_new_tab" class="inline">Open Button 1 in New Tab?</label>
+
+
+                <label style="margin-top: 1em;display: block;">Active Membership Button 2 Text</label>
+                <input 
+                  @keyup="SetFieldProperty('orgss_active_membership_alert_button_2_text', $el.value)" x-bind:value="orgss_active_membership_alert_button_2_text"
+                    type="text" name="orgss_active_membership_alert_button_2_text" class="orgss_active_membership_alert_button_2_text" />
+            
+                <label style="margin-top: 1em;display: block;">Active Membership Button 2 URL</label>
+                <input 
+                  @keyup="SetFieldProperty('orgss_active_membership_alert_button_2_url', $el.value)" x-bind:value="orgss_active_membership_alert_button_2_url"
+                  type="text" name="orgss_active_membership_alert_button_2_url" class="orgss_active_membership_alert_button_2_url" />
+                <p style="margin-top: 2px;"><em>Set to PROCEED for this button to continue with the usual org selection actions, or BUTTON if you're going to do something fancy with it on the backend.</em></p>
+
+                <label style="margin-top: 1em;display: block;">Active Membership Button 2 Style</label>
+                <select
+                  name="orgss_active_membership_alert_button_2_style"
+                  class="orgss_active_membership_alert_button_2_style" 
+                  x-model="orgss_active_membership_alert_button_2_style" 
+                  style="margin-bottom: 1em;"
+                >
+                  <option value="primary" selected>Primary</option>
+                  <option value="secondary" selected>Secondary</option>
+                </select>
+
+                <input 
+                  @change="SetFieldProperty('orgss_active_membership_alert_button_2_new_tab', $el.checked)" x-bind:value="orgss_active_membership_alert_button_2_new_tab"
+                  type="checkbox" id="orgss_active_membership_alert_button_2_new_tab" class="orgss_active_membership_alert_button_2_new_tab">
+                <label for="orgss_active_membership_alert_button_2_new_tab" class="inline">Open Button 2 in New Tab?</label>
+
+
+              </div>
 
             <input 
               @change="SetFieldProperty('orgss_grant_roster_man_on_purchase', $el.checked)" x-bind:value="orgss_grant_roster_man_on_purchase"
@@ -149,6 +218,16 @@ if (class_exists('GF_Field')) {
           orgss_hide_remove_buttons: false,
           orgss_hide_select_buttons: false,
           orgss_display_removal_alert_message: false,
+          orgss_active_membership_alert_title: '',
+          orgss_active_membership_alert_body: '',
+          orgss_active_membership_alert_button_1_text: '',
+          orgss_active_membership_alert_button_1_url: '',
+          orgss_active_membership_alert_button_1_style: 'primary',
+          orgss_active_membership_alert_button_1_new_tab: false,
+          orgss_active_membership_alert_button_2_text: '',
+          orgss_active_membership_alert_button_2_url: '',
+          orgss_active_membership_alert_button_2_style: 'secondary',
+          orgss_active_membership_alert_button_2_new_tab: false,
 
           loadFieldSettings(event) {
             let fieldData = event.detail;
@@ -201,6 +280,38 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_disable_selecting_orgs_with_active_membership = fieldData.orgss_disable_selecting_orgs_with_active_membership ? true : false;
             }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_title') ) {
+              this.orgss_active_membership_alert_title = fieldData.orgss_active_membership_alert_title;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_body') ) {
+              this.orgss_active_membership_alert_body = fieldData.orgss_active_membership_alert_body;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_1_text') ) {
+              this.orgss_active_membership_alert_button_1_text = fieldData.orgss_active_membership_alert_button_1_text;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_1_url') ) {
+              this.orgss_active_membership_alert_button_1_url = fieldData.orgss_active_membership_alert_button_1_url;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_1_style') ) {
+              this.orgss_active_membership_alert_button_1_style = fieldData.orgss_active_membership_alert_button_1_style;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_1_new_tab') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_active_membership_alert_button_1_new_tab = fieldData.orgss_active_membership_alert_button_1_new_tab ? true : false;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_2_text') ) {
+              this.orgss_active_membership_alert_button_2_text = fieldData.orgss_active_membership_alert_button_2_text;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_2_url') ) {
+              this.orgss_active_membership_alert_button_2_url = fieldData.orgss_active_membership_alert_button_2_url;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_2_style') ) {
+              this.orgss_active_membership_alert_button_2_style = fieldData.orgss_active_membership_alert_button_2_style;
+            }
+            if( Object.hasOwn(fieldData, 'orgss_active_membership_alert_button_2_new_tab') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_active_membership_alert_button_2_new_tab = fieldData.orgss_active_membership_alert_button_2_new_tab ? true : false;
+            }
             if( Object.hasOwn(fieldData, 'orgss_grant_roster_man_on_purchase') ) {
               // Handle checkboxes slightly differently
               this.orgss_grant_roster_man_on_purchase = fieldData.orgss_grant_roster_man_on_purchase ? true : false;
@@ -246,6 +357,16 @@ if (class_exists('GF_Field')) {
           orgss_hide_remove_buttons: rgar( field, 'orgss_hide_remove_buttons' ),
           orgss_hide_select_buttons: rgar( field, 'orgss_hide_select_buttons' ),
           orgss_display_removal_alert_message: rgar( field, 'orgss_display_removal_alert_message' ),
+          orgss_active_membership_alert_title: rgar( field, 'orgss_active_membership_alert_title' ),
+          orgss_active_membership_alert_body: rgar( field, 'orgss_active_membership_alert_body' ),
+          orgss_active_membership_alert_button_1_text: rgar( field, 'orgss_active_membership_alert_button_1_text' ),
+          orgss_active_membership_alert_button_1_url: rgar( field, 'orgss_active_membership_alert_button_1_url' ),
+          orgss_active_membership_alert_button_1_style: rgar( field, 'orgss_active_membership_alert_button_1_style' ),
+          orgss_active_membership_alert_button_1_new_tab: rgar( field, 'orgss_active_membership_alert_button_1_new_tab' ),
+          orgss_active_membership_alert_button_2_text: rgar( field, 'orgss_active_membership_alert_button_2_text' ),
+          orgss_active_membership_alert_button_2_url: rgar( field, 'orgss_active_membership_alert_button_2_url' ),
+          orgss_active_membership_alert_button_2_style: rgar( field, 'orgss_active_membership_alert_button_2_style' ),
+          orgss_active_membership_alert_button_2_new_tab: rgar( field, 'orgss_active_membership_alert_button_2_new_tab' ),
         };
         //console.log('Detail payload:');
         //console.log(detailPayload);
@@ -310,6 +431,16 @@ if (class_exists('GF_Field')) {
       $orgss_hide_remove_buttons                     = false;
       $orgss_hide_select_buttons                     = false;
       $orgss_display_removal_alert_message           = false;
+      $orgss_active_membership_alert_title           = '';
+      $orgss_active_membership_alert_body            = '';
+      $orgss_active_membership_alert_button_1_text   = '';
+      $orgss_active_membership_alert_button_1_url    = '';
+      $orgss_active_membership_alert_button_1_style  = '';
+      $orgss_active_membership_alert_button_1_new_tab = false;
+      $orgss_active_membership_alert_button_2_text   = '';
+      $orgss_active_membership_alert_button_2_url    = '';
+      $orgss_active_membership_alert_button_2_style  = '';
+      $orgss_active_membership_alert_button_2_new_tab = false;
 
       //wicket_gf_write_log($form, true);
 
@@ -350,6 +481,36 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_disable_selecting_orgs_with_active_membership ) ) {
                 $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
               }
+              if( isset( $field->orgss_active_membership_alert_title ) ) {
+                $orgss_active_membership_alert_title = $field->orgss_active_membership_alert_title;
+              }
+              if( isset( $field->orgss_active_membership_alert_body ) ) {
+                $orgss_active_membership_alert_body = $field->orgss_active_membership_alert_body;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_1_text ) ) {
+                $orgss_active_membership_alert_button_1_text = $field->orgss_active_membership_alert_button_1_text;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_1_url ) ) {
+                $orgss_active_membership_alert_button_1_url = $field->orgss_active_membership_alert_button_1_url;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_1_style ) ) {
+                $orgss_active_membership_alert_button_1_style = $field->orgss_active_membership_alert_button_1_style;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_1_new_tab ) ) {
+                $orgss_active_membership_alert_button_1_new_tab = $field->orgss_active_membership_alert_button_1_new_tab;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_2_text ) ) {
+                $orgss_active_membership_alert_button_2_text = $field->orgss_active_membership_alert_button_2_text;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_2_url ) ) {
+                $orgss_active_membership_alert_button_2_url = $field->orgss_active_membership_alert_button_2_url;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_2_style ) ) {
+                $orgss_active_membership_alert_button_2_style = $field->orgss_active_membership_alert_button_2_style;
+              }
+              if( isset( $field->orgss_active_membership_alert_button_2_new_tab ) ) {
+                $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
+              }
               if( isset( $field->orgss_grant_roster_man_on_purchase ) ) {
                 $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
               }
@@ -386,6 +547,16 @@ if (class_exists('GF_Field')) {
           'no_results_found_message'                      => $orgss_no_results_message,
           'disable_create_org_ui'                         => $disable_org_creation,
           'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
+          'active_membership_alert_title'                 => $orgss_active_membership_alert_title,
+          'active_membership_alert_body'                  => $orgss_active_membership_alert_body,
+          'active_membership_alert_button_1_text'         => $orgss_active_membership_alert_button_1_text,
+          'active_membership_alert_button_1_url'          => $orgss_active_membership_alert_button_1_url,
+          'active_membership_alert_button_1_style'        => $orgss_active_membership_alert_button_1_style,
+          'active_membership_alert_button_1_new_tab'      => $orgss_active_membership_alert_button_1_new_tab,
+          'active_membership_alert_button_2_text'         => $orgss_active_membership_alert_button_2_text,
+          'active_membership_alert_button_2_url'          => $orgss_active_membership_alert_button_2_url,
+          'active_membership_alert_button_2_style'        => $orgss_active_membership_alert_button_2_style,
+          'active_membership_alert_button_2_new_tab'      => $orgss_active_membership_alert_button_2_new_tab,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
           'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
