@@ -88,7 +88,11 @@ class GW_Update_Posts {
 		}
 		// Get the post and, if the current user has capabilities, update post with new content.
 		$post = get_post( $post_id );
-		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+
+		$can_update = current_user_can( 'edit_post', $post->ID );
+		$can_update = apply_filters( 'wicket_gravity_forms_gw_update_posts_can_update', $can_update, $post_id, $entry, $form );
+
+		if ( ! $can_update ) {
 			return;
 		}
 
