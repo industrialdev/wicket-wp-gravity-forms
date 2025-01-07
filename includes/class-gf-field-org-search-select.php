@@ -130,7 +130,9 @@ if (class_exists('GF_Field')) {
                 <select
                   name="orgss_active_membership_alert_button_1_style"
                   class="orgss_active_membership_alert_button_1_style" 
-                  x-model="orgss_active_membership_alert_button_1_style" 
+                  x-model="orgss_active_membership_alert_button_1_style"
+                  x-init="SetFieldProperty('orgss_active_membership_alert_button_1_style', $el.value)" 
+                  @change="SetFieldProperty('orgss_active_membership_alert_button_1_style', $el.value)" 
                   style="margin-bottom: 1em;"
                 >
                   <option value="primary" selected>Primary</option>
@@ -159,6 +161,8 @@ if (class_exists('GF_Field')) {
                   name="orgss_active_membership_alert_button_2_style"
                   class="orgss_active_membership_alert_button_2_style" 
                   x-model="orgss_active_membership_alert_button_2_style" 
+                  x-init="SetFieldProperty('orgss_active_membership_alert_button_2_style', $el.value)" 
+                  @change="SetFieldProperty('orgss_active_membership_alert_button_2_style', $el.value)" 
                   style="margin-bottom: 1em;"
                 >
                   <option value="primary" selected>Primary</option>
@@ -368,8 +372,10 @@ if (class_exists('GF_Field')) {
           orgss_active_membership_alert_button_2_style: rgar( field, 'orgss_active_membership_alert_button_2_style' ),
           orgss_active_membership_alert_button_2_new_tab: rgar( field, 'orgss_active_membership_alert_button_2_new_tab' ),
         };
-        //console.log('Detail payload:');
-        //console.log(detailPayload);
+        // console.log('Detail payload:');
+        // console.log(detailPayload);
+        // console.log('Field:');
+        // console.log(field);
         let customEvent = new CustomEvent("gf-orgss-field-settings", {
           detail: detailPayload
         });
