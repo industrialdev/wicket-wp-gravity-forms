@@ -168,6 +168,7 @@ if (class_exists('GF_Field')) {
                 >
                   <option value="primary" selected>Primary</option>
                   <option value="secondary" selected>Secondary</option>
+                  <option value="ghost" selected>Ghost</option>
                 </select>
 
                 <input 
