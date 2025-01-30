@@ -111,9 +111,10 @@ if (class_exists('GF_Field')) {
                 type="text" name="orgss_active_membership_alert_title" class="orgss_active_membership_alert_title" />
 
                 <label style="margin-top: 1em;display: block;">Active Membership Alert Body</label>
-                <input 
+                <textarea
                   @keyup="SetFieldProperty('orgss_active_membership_alert_body', $el.value)" x-bind:value="orgss_active_membership_alert_body"
-                  type="text" name="orgss_active_membership_alert_body" class="orgss_active_membership_alert_body" />
+                  type="text" name="orgss_active_membership_alert_body" class="orgss_active_membership_alert_body">
+                  </textarea>
             
                 <label style="margin-top: 1em;display: block;">Active Membership Button 1 Text</label>
                 <input 
