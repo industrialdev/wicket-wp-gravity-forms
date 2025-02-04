@@ -308,7 +308,7 @@ if (class_exists('GF_Field')) {
       $validation = $value_array['validation'] ?? [];
       $invalid    = $value_array['invalid'] ?? [];
 
-      if( count( $invalid ) > 0 ) {
+      if( count( $invalid ) > 0 && $this->isRequired ) {
         $this->failed_validation = true;
         if ( ! empty( $this->errorMessage ) ) {
             $this->validation_message = $this->errorMessage;
