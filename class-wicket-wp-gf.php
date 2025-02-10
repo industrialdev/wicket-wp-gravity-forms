@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.13
+ * Version:           2.0.14
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -360,6 +360,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // General Wicket GF Scripts
             wp_enqueue_script( 'wicket-gf-general-script', plugins_url( 'js/wicket_gf_script.js', __FILE__ ), array( 'jquery' ), null, true );
+        
+            // Pass data to the script
+            wp_localize_script(
+                'wicket-gf-general-script',
+                'WicketGfPluginData', // This will be the global object in JS
+                array(
+                    'shouldAutoAdvance' => get_option( 'wicket_gf_orgss_auto_advance', true )
+                )
+            );
         }
 
         public function entries_list_first_column_content( $form_id, $field_id, $value, $entry, $query_string ) {

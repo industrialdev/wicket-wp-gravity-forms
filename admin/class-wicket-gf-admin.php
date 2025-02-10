@@ -34,6 +34,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 				add_option('wicket_gf_slug_mapping', '');
 				register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', null);
 				register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
+				register_setting('wicket_gf_options_group', 'wicket_gf_orgss_auto_advance', null);
 		}
 
 		// Create an options page
@@ -146,6 +147,16 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 										<?php if(get_option('wicket_gf_pagination_sidebar_layout')){echo 'checked';} ?>
 									>
 									<label for="wicket_gf_pagination_sidebar_layout" class="inline">Use Sidebar Pagination Layout</label>					
+								</div>
+
+								<div class="wicket_orgss_auto_advance" style="">
+									<input 
+										type="checkbox" 
+										name="wicket_gf_orgss_auto_advance" 
+										id="wicket_gf_orgss_auto_advance"
+										<?php if(get_option('wicket_gf_orgss_auto_advance', true)){echo 'checked';} ?>
+									>
+									<label for="wicket_gf_orgss_auto_advance" class="inline">Auto-advance to next page on org selection in the Org Search & Select</label>					
 								</div>
 								
 								<?php submit_button(); ?>
