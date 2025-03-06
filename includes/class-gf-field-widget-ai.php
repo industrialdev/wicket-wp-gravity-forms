@@ -299,20 +299,122 @@ if (class_exists('GF_Field')) {
       //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
     }
 
-    public function validate( $value, $form ) {
+    public function validate($value, $form) {
       $value_array = json_decode($value, true);
-      //wicket_gf_write_log('Value array:');
-      //wicket_gf_write_log($value_array);
-
+      // wicket_gf_write_log('Start validation for field ID: ' . $this->id);
+      // wicket_gf_write_log('Value array:');
+      // wicket_gf_write_log($value_array);
+    
       $notFound   = $value_array['notFound'] ?? [];
       $validation = $value_array['validation'] ?? [];
       $invalid    = $value_array['invalid'] ?? [];
-
-      if( count( $invalid ) > 0 && $this->isRequired ) {
-        $this->failed_validation = true;
-        if ( ! empty( $this->errorMessage ) ) {
-            $this->validation_message = $this->errorMessage;
-        }
+    
+      if(count($invalid) > 0 && $this->isRequired) {
+          $this->failed_validation = true;
+          if (!empty($this->errorMessage)) {
+              $this->validation_message = $this->errorMessage;
+          }
+      }
+    
+      // Find our field in the form to get the schemas
+      $id = (int) $this->id;
+      $field_schemas = [];
+      $use_slugs = false;
+      
+      // Find this field's data in the form
+      foreach ($form['fields'] as $field) {
+          if (gettype($field) == 'object' && get_class($field) == 'GFWicketFieldWidgetAi' && $field->id == $id) {
+              if (isset($field->wwidget_ai_schemas)) {
+                  $field_schemas = $field->wwidget_ai_schemas;
+              }
+              if (isset($field->wwidget_ai_use_slugs)) {
+                  $use_slugs = $field->wwidget_ai_use_slugs;
+              }
+              break;
+          }
+      }
+      
+      // wicket_gf_write_log('Field schemas from form:');
+      // wicket_gf_write_log($field_schemas);
+      // wicket_gf_write_log('Use slugs: ' . ($use_slugs ? 'true' : 'false'));
+      
+      // Check for required schemas that are empty
+      $missing_required = [];
+      
+      foreach ($field_schemas as $schema) {
+          // Check if schema is configured to show as required (index 3 is "true")
+          // wicket_gf_write_log('Checking schema: ');
+          // wicket_gf_write_log($schema);
+          
+          if (isset($schema[3]) && $schema[3] === 'true') {
+              $schema_id = $schema[0]; // The schema ID/slug is at index 0
+              // wicket_gf_write_log('Schema is required: ' . $schema_id);
+              
+              // Check if this required schema has data
+              $schema_has_data = false;
+              
+              // Look for data in dataFields array where schema_slug matches our schema_id
+              if (isset($value_array['dataFields']) && is_array($value_array['dataFields'])) {
+                  foreach ($value_array['dataFields'] as $dataField) {
+                      if (isset($dataField['schema_slug']) && $dataField['schema_slug'] === $schema_id) {
+                          // wicket_gf_write_log('Found data field for schema_id: ' . $schema_id);
+                          // wicket_gf_write_log('Data value:');
+                          // wicket_gf_write_log($dataField['value']);
+                          
+                          // Check if the value is populated
+                          if (isset($dataField['value'])) {
+                              if (is_array($dataField['value'])) {
+                                  // For array values, check if they have any non-empty elements
+                                  $has_content = false;
+                                  
+                                  foreach ($dataField['value'] as $val) {
+                                      if (!empty($val)) {
+                                          $has_content = true;
+                                          break;
+                                      }
+                                  }
+                                  
+                                  $schema_has_data = $has_content;
+                                  // wicket_gf_write_log('Array check - has data: ' . ($schema_has_data ? 'true' : 'false'));
+                              } else {
+                                  // For non-array values, check if non-empty
+                                  $schema_has_data = !empty($dataField['value']);
+                                  // wicket_gf_write_log('Value check - has data: ' . ($schema_has_data ? 'true' : 'false'));
+                              }
+                          }
+                          
+                          break; // Found the schema we were looking for, no need to continue loop
+                      }
+                  }
+              }
+              
+              if (!$schema_has_data) {
+                  // wicket_gf_write_log('No data found for schema_id: ' . $schema_id);
+                  // Use friendly name if available (index 2), otherwise use the ID/slug
+                  $display_name = !empty($schema[2]) ? $schema[2] : $schema_id;
+                  $missing_required[] = $display_name;
+                  // wicket_gf_write_log('Added to missing required: ' . $display_name);
+              }
+          }
+      }
+      
+      // wicket_gf_write_log('Missing required fields:');
+      // wicket_gf_write_log($missing_required);
+      
+      // If we have missing required fields, set validation error
+      if (count($missing_required) > 0) {
+          $this->failed_validation = true;
+          
+          // Use custom error message if set, otherwise create one
+          if (!empty($this->errorMessage)) {
+              $this->validation_message = $this->errorMessage;
+          } else {
+              $this->validation_message = sprintf(
+                  __('Please fill in the required information: %s', 'wicket-gf'),
+                  implode(', ', $missing_required)
+              );
+          }
+          // wicket_gf_write_log('Validation failed with message: ' . $this->validation_message);
       }
     }
 
