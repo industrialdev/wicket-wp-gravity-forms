@@ -145,7 +145,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             add_action( 'gform_editor_js', ['GFWicketFieldWidgetPrefs','editor_script'] );
 
             // Apply pre-form-render actions based on our settings above as needed
-            add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'] );
+            add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'], 50, 1 );
             
         }
 
