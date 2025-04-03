@@ -115,9 +115,10 @@ if (class_exists('GF_Field')) {
           'preferences_data_field_name'  => 'input_' . $id,
         ], true );
 
-        return ob_get_clean();
+        $component_output = ob_get_clean();
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
       } else {
-        return '<p>Widget-prefs-person component is missing. Please update the Wicket Base Plugin.</p>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-prefs-person component is missing. Please update the Wicket Base Plugin.</p></div>';
       }
        
     }

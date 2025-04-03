@@ -541,7 +541,7 @@ if (class_exists('GF_Field')) {
       }
 
       if( component_exists('org-search-select') ) {
-        return get_component( 'org-search-select', [ 
+        $component_output = get_component( 'org-search-select', [ 
           'classes'                                       => [],
           'search_mode'                                   => $search_mode, 
           'search_org_type'                               => $search_org_type,
@@ -572,8 +572,9 @@ if (class_exists('GF_Field')) {
           'hide_select_buttons'                           => $orgss_hide_select_buttons,
           'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
         ], false );
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
       } else {
-        return '<p>Org search/select component is missing. Please update the Wicket Base Plugin.</p>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
       } 
     }
 

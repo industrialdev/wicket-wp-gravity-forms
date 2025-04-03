@@ -38,12 +38,13 @@ if (class_exists('GF_Field')) {
       $id = (int) $this->id;
 
       if( component_exists('widget-profile-individual') ) {
-        return get_component( 'widget-profile-individual', [ 
+        $component_output = get_component( 'widget-profile-individual', [ 
           'classes'                    => [],
           'user_info_data_field_name'  => 'input_' . $id,
         ], false );
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
       } else {
-        return '<p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p></div>';
       }
        
     }

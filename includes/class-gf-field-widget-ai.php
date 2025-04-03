@@ -280,9 +280,10 @@ if (class_exists('GF_Field')) {
           'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
         ], true );
 
-        return ob_get_clean();
+        $component_output = ob_get_clean();
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
       } else {
-        return '<p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
       }
        
     }

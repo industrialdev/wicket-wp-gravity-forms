@@ -110,13 +110,14 @@ if (class_exists('GF_Field')) {
       }
 
       if( component_exists('widget-profile-org') ) {
-        return get_component( 'widget-profile-org', [ 
+        $component_output = get_component( 'widget-profile-org', [ 
           'classes'                    => [],
           'org_info_data_field_name'   => 'input_' . $id,
           'org_id'                     => $org_uuid,
         ], false );
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
       } else {
-        return '<p>Widget-profile-org component is missing. Please update the Wicket Base Plugin.</p>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-org component is missing. Please update the Wicket Base Plugin.</p></div>';
       }
        
     }
