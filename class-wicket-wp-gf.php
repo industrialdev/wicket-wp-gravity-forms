@@ -264,6 +264,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                     border-color: var(--highlight-dark);
                                     border-radius: 20px;
                                 }
+                                /* Orbital theme compatibility fix */
+                                body.wicket-theme-v2 .gform-theme--orbital .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                    left: -2px;
+                                    top: -2px;
+                                }
                                 .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
                                     border-width: var(--border-interactive-md, 2px);
                                     border-color: var(--border-interactive, #cfd3d9);
