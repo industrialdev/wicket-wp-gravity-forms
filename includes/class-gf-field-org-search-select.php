@@ -192,6 +192,12 @@ if (class_exists('GF_Field')) {
 					  <label for="orgss_grant_org_editor_on_select" class="inline">Grant org_editor role on selection (scoped to selected org)?</label>
             <br />
 
+            <input 
+              @change="SetFieldProperty('orgss_grant_org_editor_on_purchase', $el.checked)" x-bind:value="orgss_grant_org_editor_on_purchase"
+              type="checkbox" id="orgss_grant_org_editor_on_purchase" class="orgss_grant_org_editor_on_purchase">
+					  <label for="orgss_grant_org_editor_on_purchase" class="inline">Grant org_editor role for selected org on next purchase?</label>
+            <br />
+
           </div>
           <div x-show=" searchMode == 'groups' " class="orgss-groups-settings">
             <div>Group settings coming soon.</div>
@@ -222,6 +228,7 @@ if (class_exists('GF_Field')) {
           orgss_disable_selecting_orgs_with_active_membership: false,
           orgss_grant_roster_man_on_purchase: false,
           orgss_grant_org_editor_on_select: false,
+          orgss_grant_org_editor_on_purchase: false,
           orgss_hide_remove_buttons: false,
           orgss_hide_select_buttons: false,
           orgss_display_removal_alert_message: false,
@@ -327,6 +334,10 @@ if (class_exists('GF_Field')) {
               // Handle checkboxes slightly differently
               this.orgss_grant_org_editor_on_select = fieldData.orgss_grant_org_editor_on_select ? true : false;
             }
+            if( Object.hasOwn(fieldData, 'orgss_grant_org_editor_on_purchase') ) {
+              // Handle checkboxes slightly differently
+              this.orgss_grant_org_editor_on_purchase = fieldData.orgss_grant_org_editor_on_purchase ? true : false;
+            }
             if( Object.hasOwn(fieldData, 'orgss_hide_remove_buttons') ) {
               // Handle checkboxes slightly differently
               this.orgss_hide_remove_buttons = fieldData.orgss_hide_remove_buttons ? true : false;
@@ -361,6 +372,7 @@ if (class_exists('GF_Field')) {
           orgss_disable_selecting_orgs_with_active_membership: rgar( field, 'orgss_disable_selecting_orgs_with_active_membership' ),
           orgss_grant_roster_man_on_purchase: rgar( field, 'orgss_grant_roster_man_on_purchase' ),
           orgss_grant_org_editor_on_select: rgar( field, 'orgss_grant_org_editor_on_select' ),
+          orgss_grant_org_editor_on_purchase: rgar( field, 'orgss_grant_org_editor_on_purchase' ),
           orgss_hide_remove_buttons: rgar( field, 'orgss_hide_remove_buttons' ),
           orgss_hide_select_buttons: rgar( field, 'orgss_hide_select_buttons' ),
           orgss_display_removal_alert_message: rgar( field, 'orgss_display_removal_alert_message' ),
@@ -437,6 +449,7 @@ if (class_exists('GF_Field')) {
       $disable_selecting_orgs_with_active_membership = false;
       $grant_roster_man_on_purchase                  = false;
       $orgss_grant_org_editor_on_select              = false;
+      $orgss_grant_org_editor_on_purchase            = false;
       $orgss_hide_remove_buttons                     = false;
       $orgss_hide_select_buttons                     = false;
       $orgss_display_removal_alert_message           = false;
@@ -526,6 +539,9 @@ if (class_exists('GF_Field')) {
               if( isset( $field->orgss_grant_org_editor_on_select ) ) {
                 $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
               }
+              if( isset( $field->orgss_grant_org_editor_on_purchase ) ) {
+                $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
+              }
               if( isset( $field->orgss_hide_remove_buttons ) ) {
                 $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
               }
@@ -568,6 +584,7 @@ if (class_exists('GF_Field')) {
           'active_membership_alert_button_2_new_tab'      => $orgss_active_membership_alert_button_2_new_tab,
           'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
           'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
+          'grant_org_editor_on_purchase'                  => $orgss_grant_org_editor_on_purchase,
           'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
           'hide_select_buttons'                           => $orgss_hide_select_buttons,
           'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
