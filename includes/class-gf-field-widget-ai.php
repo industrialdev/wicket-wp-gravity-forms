@@ -362,27 +362,9 @@ if (class_exists('GF_Field')) {
                           // wicket_gf_write_log('Data value:');
                           // wicket_gf_write_log($dataField['value']);
                           
-                          // Check if the value is populated
-                          if (isset($dataField['value'])) {
-                              if (is_array($dataField['value'])) {
-                                  // For array values, check if they have any non-empty elements
-                                  $has_content = false;
-                                  
-                                  foreach ($dataField['value'] as $val) {
-                                      if (!empty($val)) {
-                                          $has_content = true;
-                                          break;
-                                      }
-                                  }
-                                  
-                                  $schema_has_data = $has_content;
-                                  // wicket_gf_write_log('Array check - has data: ' . ($schema_has_data ? 'true' : 'false'));
-                              } else {
-                                  // For non-array values, check if non-empty
-                                  $schema_has_data = !empty($dataField['value']);
-                                  // wicket_gf_write_log('Value check - has data: ' . ($schema_has_data ? 'true' : 'false'));
-                              }
-                          }
+                          // Use the 'valid' flag provided by the component to determine if the field has valid data
+                          // This respects the component's own validation rules, including fields with intentionally empty values
+                          $schema_has_data = isset($dataField['valid']) && $dataField['valid'] == 1;
                           
                           break; // Found the schema we were looking for, no need to continue loop
                       }
