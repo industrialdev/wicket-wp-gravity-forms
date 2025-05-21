@@ -7,7 +7,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.25
+ * Version:           2.0.26
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-define( 'WICKET_WP_GF_VERSION', '2.0.25' );
+define( 'WICKET_WP_GF_VERSION', '2.0.26' );
 
 if ( ! in_array( 'gravityforms/gravityforms.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
 	/**
@@ -99,6 +99,9 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             // Gravity Wiz helper snippets we want available in our plugin
             require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gw-update-posts.php' );
+
+            // Register scripts for conditional logic
+            $this->register_conditional_logic_scripts();
         }
 
         public static function gf_mapping_addon_load() {
@@ -1373,6 +1376,31 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             return (int) ceil(($max_indentation - 1) / 2) + 1;
         }
 
+        /**
+         * Register scripts for conditional logic support
+         */
+        public function register_conditional_logic_scripts() {
+            // Add a script to handle conditional logic updates for our custom fields
+            add_action('gform_enqueue_scripts', array($this, 'enqueue_conditional_logic_script'));
+        }
+
+        /**
+         * Enqueue script for conditional logic support
+         */
+        public function enqueue_conditional_logic_script() {
+            // Only enqueue if we're on a form page
+            // if (!GFCommon::is_form_page()) {
+            //     return;
+            // }
+
+            wp_enqueue_script(
+                'wicket-gf-conditional-logic',
+                plugins_url('assets/js/wicket-gf-conditional-logic.js', __FILE__),
+                array('jquery', 'gform_conditional_logic'),
+                WICKET_WP_GF_VERSION,
+                true
+            );
+        }
 
     }
     new Wicket_Gf_Main();

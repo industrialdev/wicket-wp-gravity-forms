@@ -414,6 +414,11 @@ if (class_exists('GF_Field')) {
       ];
     }
 
+    // Declare that this field supports conditional logic
+    public function is_conditional_logic_supported() {
+      return true;
+    }
+
     function get_form_editor_field_settings() {
       return [
         'label_setting',
@@ -588,22 +593,82 @@ if (class_exists('GF_Field')) {
           'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
           'hide_select_buttons'                           => $orgss_hide_select_buttons,
           'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
+          'form_id'                                       => isset($form['id']) ? $form['id'] : 0,
         ], false );
-        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+        
+        // Hidden field for Gravity Forms conditional logic
+        $hidden_field = sprintf(
+          '<input type="hidden" name="input_%d" id="input_%s_%d" value="%s" class="gf_org_search_select_input" />',
+          $id,
+          isset($form['id']) ? $form['id'] : 0,
+          $id,
+          esc_attr($value)
+        );
+        
+        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
       } else {
         return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
       } 
     }
 
-    // Override how to Save the field value
-    // public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
-    //   if (empty($value)) {
-    //     $value = '';
-    //   } else {
-    //     // Do things
-    //   }
-    //   return $value;
-    // }
+    // Make sure the field value is properly recognized for conditional logic
+    public function get_value_submission($field_values, $get_from_post_global_var = true) {
+      $input_name = 'input_' . $this->id;
+      
+      if ($get_from_post_global_var) {
+        // Get value from the $_POST
+        $value = rgpost($input_name);
+      } else {
+        // Get value from the provided array
+        $value = isset($field_values[$input_name]) ? $field_values[$input_name] : '';
+      }
+      
+      return $value;
+    }
+    
+    // This function is needed to ensure field inputs are properly processed for conditional logic
+    public function get_field_value($value, $form, $input_name, $lead_id, $lead) {
+      if (empty($value)) {
+        return '';
+      }
+      return $value;
+    }
+    
+    // Helper method to ensure conditional logic sees the value correctly
+    public function is_value_submission_empty($form_id) {
+      $input_name = 'input_' . $this->id;
+      $value = rgpost($input_name);
+      return empty($value);
+    }
+
+    // Specify which event to listen for with conditional logic
+    public function get_conditional_logic_event($event) {
+      return 'change';
+    }
+    
+    // Return the current field value for conditional logic
+    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
+      return $value;
+    }
+    
+    // Make the field compatible with Gravity Forms entry details
+    public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
+      if (empty($value)) {
+        return '';
+      }
+      
+      // You could format the UUID to be more readable here if desired
+      return esc_html($value);
+    }
+    
+    // Ensure the field works properly in entry list views
+    public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
+      if (empty($value)) {
+        return '';
+      }
+      
+      return esc_html($value);
+    }
 
     // This function isn't needed, as Gravity Forms will already flag the field if its marked
     // as 'required' but the user doesn't provide a value
