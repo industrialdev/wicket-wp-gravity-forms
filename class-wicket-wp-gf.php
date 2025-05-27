@@ -1,7 +1,5 @@
 <?php
 /**
- *
- * @package  wicket-gravity-forms
  * @author  Wicket Inc.
  *
  * Plugin Name:       Wicket Gravity Forms
@@ -14,157 +12,161 @@
  * Support:           https://wicket.io
  * Domain Path:       /languages
  * Text Domain:       wicket-gf
- *
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
 }
 
-define( 'WICKET_WP_GF_VERSION', '2.0.26' );
+define('WICKET_WP_GF_VERSION', '2.0.26');
 
-if ( ! in_array( 'gravityforms/gravityforms.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
-	/**
-	 * Show Required Plugin Notice
-	 */
-	function wicket_gf_admin_notice() {
-		// Deactivate the plugin.
-		deactivate_plugins( __FILE__ );
+if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', get_option('active_plugins')), true)) {
+    /**
+     * Show Required Plugin Notice.
+     */
+    function wicket_gf_admin_notice()
+    {
+        // Deactivate the plugin.
+        deactivate_plugins(__FILE__);
 
-		$wicket_gf_plugin_check = '<div id="message" class="error">
+        $wicket_gf_plugin_check = '<div id="message" class="error">
             <p><strong>Wicket Gravity Forms plugin is inactive.</strong> The <a href="https://www.gravityforms.com/">Gravity Forms plugin</a> must be active for this plugin to be used. Please install &amp; activate Gravity Forms »</p></div>';
-		echo wp_kses_post( $wicket_gf_plugin_check );
-	}
+        echo wp_kses_post($wicket_gf_plugin_check);
+    }
 
-	add_action( 'admin_notices', 'wicket_gf_admin_notice' );
+    add_action('admin_notices', 'wicket_gf_admin_notice');
 }
 
-if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
-	/**
-	 * The main Wicket Gravity Forms class
-	 */
-	class Wicket_Gf_Main {
-
-         /**
-		 * Class variables
-		 */
+if (!class_exists('Wicket_Gf_Main')) {
+    /**
+     * The main Wicket Gravity Forms class.
+     */
+    class Wicket_Gf_Main
+    {
+        /**
+         * Class variables.
+         */
         private static $wicket_current_person;
         private static $wicket_client;
 
         /**
-		 * Constructor
-		 */
-		public function __construct() {
-            add_action( 'plugins_loaded', array($this, 'conditionally_include_pa_object') );
+         * Constructor.
+         */
+        public function __construct()
+        {
+            add_action('plugins_loaded', [$this, 'conditionally_include_pa_object']);
 
             // Hook for shortcode
-            add_shortcode('wicket_gravityform', array($this,'shortcode')); 
+            add_shortcode('wicket_gravityform', [$this, 'shortcode']);
 
             // Bootstrap the GF Addon for field mapping
-            add_action( 'gform_loaded', array( $this, 'gf_mapping_addon_load' ), 5 );
+            add_action('gform_loaded', [$this, 'gf_mapping_addon_load'], 5);
 
             // Custom GF fields
-            add_action( 'gform_loaded', array( $this, 'gf_load_custom_fields' ), 5 );
+            add_action('gform_loaded', [$this, 'gf_load_custom_fields'], 5);
 
             // Enqueue scripts and styles
-            add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts_styles'));
+            add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts_styles']);
 
             // Enqueue frontend scripts and styles
-            add_action( 'wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts_styles') );
+            add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_scripts_styles']);
 
             // Register Rest Routes
-          	add_action('rest_api_init', array($this, 'register_rest_routes') );
+            add_action('rest_api_init', [$this, 'register_rest_routes']);
 
             // Grab user info *after the necessary WP info loads
             //add_action( 'plugins_loaded', array( $this, 'store_data_after_plugins_loaded' ) );
 
-            require_once( plugin_dir_path( __FILE__ ) . 'admin/class-wicket-gf-admin.php' );
+            require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
 
             // Add Options Page for plugin
-            add_action('admin_menu', array('Wicket_Gf_Admin','register_options_page'), 20 );
-            add_action('admin_init', array('Wicket_Gf_Admin','register_settings') );
+            add_action('admin_menu', ['Wicket_Gf_Admin', 'register_options_page'], 20);
+            add_action('admin_init', ['Wicket_Gf_Admin', 'register_settings']);
 
             // Add settings link to plugins page listing
             $plugin = plugin_basename(__FILE__);
-            add_filter("plugin_action_links_$plugin", array('Wicket_Gf_Admin', 'add_settings_link') );
+            add_filter("plugin_action_links_$plugin", ['Wicket_Gf_Admin', 'add_settings_link']);
 
             // Allow all tags in gform fields that WP's wp_kses_post() allows
-            add_filter( 'gform_allowable_tags', '__return_true' );
-            add_filter('wp_kses_allowed_html',array($this, 'update_kses_tags'), 1);
+            add_filter('gform_allowable_tags', '__return_true');
+            add_filter('wp_kses_allowed_html', [$this, 'update_kses_tags'], 1);
 
             // Modifying GF Entry screens
-            add_action( 'gform_entries_first_column', array($this, 'entries_list_first_column_content'), 10, 5 );
-            add_action("gform_print_entry_header", array($this, 'custom_entry_header', 10, 2));
-            add_filter( 'gform_get_field_value', array($this, 'gf_change_user_name'), 3 );
+            add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
+            add_action('gform_print_entry_header', [$this, 'custom_entry_header', 10, 2]);
+            add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
 
             // Gravity Wiz helper snippets we want available in our plugin
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gw-update-posts.php' );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
 
             // Register scripts for conditional logic
             $this->register_conditional_logic_scripts();
         }
 
-        public static function gf_mapping_addon_load() {
-            if ( ! method_exists( 'GFForms', 'include_feed_addon_framework' ) ) {
+        public static function gf_mapping_addon_load()
+        {
+            if (!method_exists('GFForms', 'include_feed_addon_framework')) {
                 return;
             }
-    
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-mapping-addon.php' );
-    
-            GFAddOn::register( 'GFWicketMappingAddOn' );
+
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-mapping-addon.php';
+
+            GFAddOn::register('GFWicketMappingAddOn');
 
             // handle displaying content for our custom menu when selected
-            add_action( 'gform_form_settings_page_wicketmap', array( 'GFWicketMappingAddOn', 'addon_custom_ui' ), 20 );
+            add_action('gform_form_settings_page_wicketmap', ['GFWicketMappingAddOn', 'addon_custom_ui'], 20);
         }
 
-        public static function gf_load_custom_fields() {
+        public static function gf_load_custom_fields()
+        {
             // Load global editor scripts
-            add_action( 'gform_editor_js', ['Wicket_Gf_Main','gf_editor_global_custom_scripts'] );
+            add_action('gform_editor_js', ['Wicket_Gf_Main', 'gf_editor_global_custom_scripts']);
 
             // Load global custom fields applied to all field types
-            add_action( 'gform_field_standard_settings', ['Wicket_Gf_Main','gf_editor_global_custom_fields'], 10, 2 );
+            add_action('gform_field_standard_settings', ['Wicket_Gf_Main', 'gf_editor_global_custom_fields'], 10, 2);
 
             // Custom field: org search/select
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-org-search-select.php' );
-            add_action( 'gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect','custom_settings'], 10, 2 );
-            add_action( 'gform_editor_js', ['GFWicketFieldOrgSearchSelect','editor_script'] );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-org-search-select.php';
+            add_action('gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect', 'custom_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFWicketFieldOrgSearchSelect', 'editor_script']);
 
             // Custom field: individual profile widget
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile.php' );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
 
             // Custom field: user mdp tags
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-user-mdp-tags.php' );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
 
             // Custom field: org profile widget
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-profile-org.php' );
-            add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetProfileOrg','custom_settings'], 10, 2 );
-            add_action( 'gform_editor_js', ['GFWicketFieldWidgetProfileOrg','editor_script'] );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
+            add_action('gform_field_standard_settings', ['GFWicketFieldWidgetProfileOrg', 'custom_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFWicketFieldWidgetProfileOrg', 'editor_script']);
 
             // Custom field: additional info widget
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-ai.php' );
-            add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetAi','custom_settings'], 10, 2 );
-            add_action( 'gform_editor_js', ['GFWicketFieldWidgetAi','editor_script'] );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-ai.php';
+            add_action('gform_field_standard_settings', ['GFWicketFieldWidgetAi', 'custom_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFWicketFieldWidgetAi', 'editor_script']);
 
             // Custom field: person preferences widget
-            require_once( plugin_dir_path( __FILE__ ) . 'includes/class-gf-field-widget-prefs.php' );
-            add_action( 'gform_field_standard_settings', ['GFWicketFieldWidgetPrefs','custom_settings'], 10, 2 );
-            add_action( 'gform_editor_js', ['GFWicketFieldWidgetPrefs','editor_script'] );
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
+            add_action('gform_field_standard_settings', ['GFWicketFieldWidgetPrefs', 'custom_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFWicketFieldWidgetPrefs', 'editor_script']);
 
             // Apply pre-form-render actions based on our settings above as needed
-            add_filter( 'gform_pre_render', ['Wicket_Gf_Main','gf_custom_pre_render'], 50, 1 );
-            
+            add_filter('gform_pre_render', ['Wicket_Gf_Main', 'gf_custom_pre_render'], 50, 1);
+
         }
 
-        public static function gf_editor_global_custom_scripts() {
+        public static function gf_editor_global_custom_scripts()
+        {
             ?>
             <!-- Alpine and other editor scripts in a webpacked script -->
-            <script src="<?php echo plugin_dir_url( __FILE__ ) . 'js/gf_editor/dist/main.js'; ?>" defer></script>
+            <script src="<?php echo plugin_dir_url(__FILE__) . 'js/gf_editor/dist/main.js'; ?>" defer></script>
             <?php
         }
 
-        public static function gf_editor_global_custom_fields( $position, $form_id ) {
+        public static function gf_editor_global_custom_fields($position, $form_id)
+        {
             //create settings on position 25 (right after Field Label)
-            if ( $position == 25 ) { 
+            if ($position == 25) {
                 ob_start(); ?>
 
                 <div class="wicket_global_custom_settings">
@@ -172,14 +174,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 					<label for="hide_label" class="inline">Hide Label</label>
                 </div>
 
-                <?php echo ob_get_clean(); 
+                <?php echo ob_get_clean();
             }
         }
 
-        public static function gf_custom_pre_render( $form ) {
+        public static function gf_custom_pre_render($form)
+        {
             // Store what we want to add
             // Add sidebar layout styles if toggled in Wicket GF options
-            if( get_option('wicket_gf_pagination_sidebar_layout') ) {
+            if (get_option('wicket_gf_pagination_sidebar_layout')) {
                 ob_start(); ?>
 
                 <script>
@@ -289,36 +292,36 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 <?php $output = ob_get_clean();
 
                 // Dynamically create and add this HTML form field on render
-                $props = array( 
+                $props = [
                     'id'      => 3000,
                     'label'   => 'Dynamic Styles - Do Not Edit',
                     'type'    => 'html',
                     'content' => $output,
-                );
-                $field = GF_Fields::create( $props );
-                array_push( $form['fields'], $field );
+                ];
+                $field = GF_Fields::create($props);
+                array_push($form['fields'], $field);
             }
 
             // Loop fields and hide label if toggled with our custom checkbox
             $hide_label_i = 1;
-            foreach( $form['fields'] as $field ) {
-                if( isset( $field['hide_label'] ) ) {
-                    if( $field['hide_label'] ) {
+            foreach ($form['fields'] as $field) {
+                if (isset($field['hide_label'])) {
+                    if ($field['hide_label']) {
                         // Dynamically create and add this HTML form field on render
-                        $props = array( 
+                        $props = [
                             'id'      => (3000 + $hide_label_i),
                             'label'   => 'Dynamic Styles - Do Not Edit',
                             'type'    => 'html',
                             'content' => '
                                 <style>
-                                    .gform_wrapper.gravity-theme label[for="input_'.$field['formId'].'_'.$field['id'].'"].gfield_label {
+                                    .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
                                         display: none;
                                     }
                                 </style>
                                 ',
-                        );
-                        $field = GF_Fields::create( $props );
-                        array_push( $form['fields'], $field );
+                        ];
+                        $field = GF_Fields::create($props);
+                        array_push($form['fields'], $field);
                     }
                 }
                 $hide_label_i++;
@@ -328,14 +331,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             return $form;
         }
 
-        public function conditionally_include_pa_object() {
+        public function conditionally_include_pa_object()
+        {
             // Only initialize this plugin if Wicket Helper plugin is active
-            if( function_exists( 'wicket_api_client' ) ) {
-                
+            if (function_exists('wicket_api_client')) {
+
                 // Only initialize this plugin if Populate Anything plugin is active
-                if ( class_exists( 'GP_Populate_Anything' ) && class_exists( 'GPPA_Object_Type' ) ) {
-                    require_once plugin_dir_path( __FILE__ ) . 'includes/class-object-type-wicket.php';
-                    gp_populate_anything()->register_object_type( 'wicket', 'GPPA_Object_Type_Wicket' );
+                if (class_exists('GP_Populate_Anything') && class_exists('GPPA_Object_Type')) {
+                    require_once plugin_dir_path(__FILE__) . 'includes/class-object-type-wicket.php';
+                    gp_populate_anything()->register_object_type('wicket', 'GPPA_Object_Type_Wicket');
                 }
             }
         }
@@ -351,43 +355,46 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
         //     }
         // }
 
-        public function enqueue_scripts_styles($screen) {
-            if( $screen == 'toplevel_page_gf_edit_forms' ) {
-                if( isset( $_GET['subview'] ) && isset( $_GET['fid'] ) ) {
-                    if( $_GET['subview'] == 'wicketmap' ) {
-                        wp_enqueue_style( 'wicket-gf-addon-style', plugins_url( 'css/wicket_gf_addon_styles.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
-                        wp_enqueue_script( 'wicket-gf-addon-script', plugins_url( 'js/wicket_gf_addon_script.js', __FILE__ ), array( 'jquery' ), null, true );
+        public function enqueue_scripts_styles($screen)
+        {
+            if ($screen == 'toplevel_page_gf_edit_forms') {
+                if (isset($_GET['subview']) && isset($_GET['fid'])) {
+                    if ($_GET['subview'] == 'wicketmap') {
+                        wp_enqueue_style('wicket-gf-addon-style', plugins_url('css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+                        wp_enqueue_script('wicket-gf-addon-script', plugins_url('js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
                     }
                 }
             }
 
-            return;
         }
 
-        public function enqueue_frontend_scripts_styles() {
-            wp_enqueue_style( 'wicket-gf-widget-style', plugins_url( 'css/wicket_gf_widget_style_helpers.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
-        
+        public function enqueue_frontend_scripts_styles()
+        {
+            wp_enqueue_style('wicket-gf-widget-style', plugins_url('css/wicket_gf_widget_style_helpers.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+
             // General Wicket GF Styles
-            wp_enqueue_style( 'wicket-gf-general-style', plugins_url( 'css/wicket_gf_styles.css', __FILE__ ), array(), WICKET_WP_GF_VERSION, 'all');
+            wp_enqueue_style('wicket-gf-general-style', plugins_url('css/wicket_gf_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
             // General Wicket GF Scripts
-            wp_enqueue_script( 'wicket-gf-general-script', plugins_url( 'js/wicket_gf_script.js', __FILE__ ), array( 'jquery' ), WICKET_WP_GF_VERSION, true );
-        
+            wp_enqueue_script('wicket-gf-general-script', plugins_url('js/wicket_gf_script.js', __FILE__), ['jquery'], WICKET_WP_GF_VERSION, true);
+
             // Pass data to the script
             wp_localize_script(
                 'wicket-gf-general-script',
                 'WicketGfPluginData', // This will be the global object in JS
-                array(
-                    'shouldAutoAdvance' => get_option( 'wicket_gf_orgss_auto_advance', true )
-                )
+                [
+                    'shouldAutoAdvance' => get_option('wicket_gf_orgss_auto_advance', true),
+                ]
             );
         }
 
-        public function entries_list_first_column_content( $form_id, $field_id, $value, $entry, $query_string ) {
+        public function entries_list_first_column_content($form_id, $field_id, $value, $entry, $query_string)
+        {
             echo 'Sample text.';
-        } 
+        }
 
-        public function gf_change_user_name( $value ) {
+        public function gf_change_user_name($value)
+        {
             //self::write_log($value);
             //self::write_log($entry);
             //wicket_gf_write_log($value);
@@ -395,61 +402,63 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             return $value;
         }
 
-        public static function update_kses_tags( $allowedposttags ){
-            $allowed_atts = array(
-                'align'      => array(),
-                'class'      => array(),
-                'type'       => array(),
-                'id'         => array(),
-                'dir'        => array(),
-                'lang'       => array(),
-                'style'      => array(),
-                'xml:lang'   => array(),
-                'src'        => array(),
-                'alt'        => array(),
-                'href'       => array(),
-                'rel'        => array(),
-                'rev'        => array(),
-                'target'     => array(),
-                'novalidate' => array(),
-                'type'       => array(),
-                'value'      => array(),
-                'name'       => array(),
-                'tabindex'   => array(),
-                'action'     => array(),
-                'method'     => array(),
-                'for'        => array(),
-                'width'      => array(),
-                'height'     => array(),
-                'data'       => array(),
-                'title'      => array(),
-            );
+        public static function update_kses_tags($allowedposttags)
+        {
+            $allowed_atts = [
+                'align'      => [],
+                'class'      => [],
+                'type'       => [],
+                'id'         => [],
+                'dir'        => [],
+                'lang'       => [],
+                'style'      => [],
+                'xml:lang'   => [],
+                'src'        => [],
+                'alt'        => [],
+                'href'       => [],
+                'rel'        => [],
+                'rev'        => [],
+                'target'     => [],
+                'novalidate' => [],
+                'type'       => [],
+                'value'      => [],
+                'name'       => [],
+                'tabindex'   => [],
+                'action'     => [],
+                'method'     => [],
+                'for'        => [],
+                'width'      => [],
+                'height'     => [],
+                'data'       => [],
+                'title'      => [],
+            ];
 
             // Enable our desired tag types
-            $allowedposttags['script']   = $allowed_atts;
-            $allowedposttags['style']    = $allowed_atts;
-            $allowedposttags['iframe']   = $allowed_atts;
- 
+            $allowedposttags['script'] = $allowed_atts;
+            $allowedposttags['style'] = $allowed_atts;
+            $allowedposttags['iframe'] = $allowed_atts;
+
             return $allowedposttags;
         }
 
-		public static function shortcode($atts) {
+        public static function shortcode($atts)
+        {
             // override default attributes with user attributes
             $a = shortcode_atts([
-                    "slug"         => "",
-                    "title"        => true,
-                    "description"  => true,
-                    "ajax"         => "",
-                    "tabindex"     => "",
-                    "field_values" => "",
-                    "theme"        => ""
+                'slug'         => '',
+                'title'        => true,
+                'description'  => true,
+                'ajax'         => '',
+                'tabindex'     => '',
+                'field_values' => '',
+                'theme'        => '',
             ], $atts);
 
-            if( empty( $a['slug'] ) ) {
-                    return;
+            if (empty($a['slug'])) {
+                return;
             }
 
-            $form_id = wicket_gf_get_form_id_by_slug( $a['slug'] );
+            $form_id = wicket_gf_get_form_id_by_slug($a['slug']);
             $title = $a['title'];
             $description = $a['description'];
             $ajax = $a['ajax'];
@@ -459,38 +468,40 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
 
             return '<div class="container wicket-gf-shortcode">' .
                     do_shortcode(
-                            "[gravityform id='".$form_id."' title='".$title."' description='".$description."' ajax='".$ajax."' tabindex='".$tabindex."' field_values='".$field_values."' theme='".$theme."']"
-                    ) . 
+                        "[gravityform id='" . $form_id . "' title='" . $title . "' description='" . $description . "' ajax='" . $ajax . "' tabindex='" . $tabindex . "' field_values='" . $field_values . "' theme='" . $theme . "']"
+                    ) .
                     '</div>';
         }
 
-        public static function register_rest_routes() {
-          register_rest_route( 'wicket-gf/v1', 'resync-member-fields',array(
-            'methods'  => 'POST',
-            'callback' => array( 'Wicket_Gf_Main', 'resync_wicket_member_fields' ),
-            'permission_callback' => function() {
-              //return current_user_can('edit_posts');
-              return true;
-            }
-          ));
+        public static function register_rest_routes()
+        {
+            register_rest_route('wicket-gf/v1', 'resync-member-fields', [
+                'methods'  => 'POST',
+                'callback' => ['Wicket_Gf_Main', 'resync_wicket_member_fields'],
+                'permission_callback' => function () {
+                    //return current_user_can('edit_posts');
+                    return true;
+                },
+            ]);
         }
 
-        public static function resync_wicket_member_fields() {
+        public static function resync_wicket_member_fields()
+        {
             //wicket_gf_write_log($_POST);
 
-            $to_return = array();
+            $to_return = [];
 
             // --------------------------------
             // --------- UUID Options ---------
             // --------------------------------
-            $to_return[] = array(
+            $to_return[] = [
                 'schema_id'     => '',
                 'key'           => 'uuid_options',
                 'name_en'       => '-- UUID Options --',
                 'name_fr'       => '-- Options UUID --',
                 'is_repeater'   => false,
-                'child_fields'  => array(
-                    array( 
+                'child_fields'  => [
+                    [
                         'name'           => 'person_uuid',
                         'label_en'       => 'Person UUID',
                         'label_fr'       => 'Personne UUID',
@@ -498,10 +509,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'org_uuid',
                         'label_en'       => 'Organization UUID',
                         'label_fr'       => 'Organisation UUID',
@@ -509,11 +520,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                ),
-            );
+                    ],
+                ],
+            ];
 
             $child_fields[] = [
                 'name'           => $property_name,
@@ -523,7 +534,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 'default'        => $property_data['default'] ?? '',
                 'maximum'        => $property_data['maximum'] ?? '',
                 'minimum'        => $property_data['minimum'] ?? '',
-                'enum'           => $property_data['enum'] ?? array(),
+                'enum'           => $property_data['enum'] ?? [],
                 'path_to_field'  => 'attributes/schema/properties',
             ];
 
@@ -532,14 +543,14 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // --------------------------------
 
             // Add standard fields that don't change
-            $to_return[] = array(
+            $to_return[] = [
                 'schema_id'     => 'profile',
                 'key'           => 'profile_options',
                 'name_en'       => '-- Profile Options --',
                 'name_fr'       => '-- Options Profil --',
                 'is_repeater'   => false,
-                'child_fields'  => array(
-                    array( 
+                'child_fields'  => [
+                    [
                         'name'           => 'given_name',
                         'label_en'       => 'Given/First Name',
                         'label_fr'       => 'Prénom',
@@ -547,10 +558,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'family_name',
                         'label_en'       => 'Family/Last Name',
                         'label_fr'       => 'Nom de famille',
@@ -558,10 +569,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'additional_name',
                         'label_en'       => 'Additional Name',
                         'label_fr'       => 'Nom supplémentaire',
@@ -569,10 +580,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'alternate_name',
                         'label_en'       => 'Alternate Name',
                         'label_fr'       => 'Nom alternatif',
@@ -580,10 +591,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'full_name',
                         'label_en'       => 'Full Name',
                         'label_fr'       => 'Nom et prénom',
@@ -591,10 +602,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'identifying_number',
                         'label_en'       => 'Identifying Number',
                         'label_fr'       => 'Numéro d\'identification',
@@ -602,10 +613,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'slug',
                         'label_en'       => 'Slug',
                         'label_fr'       => 'Slug',
@@ -613,10 +624,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'gender',
                         'label_en'       => 'Gender',
                         'label_fr'       => 'Genre',
@@ -624,10 +635,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'honorific_prefix',
                         'label_en'       => 'Prefix',
                         'label_fr'       => 'Préfixe',
@@ -635,10 +646,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'honorific_suffix',
                         'label_en'       => 'Suffix',
                         'label_fr'       => 'Suffixe',
@@ -646,10 +657,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'preferred_pronoun',
                         'label_en'       => 'Preferred Pronoun',
                         'label_fr'       => 'Pronom préféré',
@@ -657,10 +668,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'job_title',
                         'label_en'       => 'Job Title',
                         'label_fr'       => 'Titre d\'emploi',
@@ -668,10 +679,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'birth_date',
                         'label_en'       => 'Birth Date',
                         'label_fr'       => 'Date de naissance',
@@ -679,10 +690,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'language',
                         'label_en'       => 'Language',
                         'label_fr'       => 'Langue',
@@ -690,10 +701,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'languages_spoken',
                         'label_en'       => 'Languages Spoken',
                         'label_fr'       => 'Langues parlées',
@@ -701,10 +712,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'languages_written',
                         'label_en'       => 'Languages Written',
                         'label_fr'       => 'Langues écrites',
@@ -712,11 +723,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                ),
-            );
+                    ],
+                ],
+            ];
 
             // TODO: Resume work on this when store_data_after_plugins_loaded() has been updated
             // to use a more specific hook
@@ -736,14 +747,14 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // --------------------------------
 
             // Add a header
-            $to_return[] = array(
+            $to_return[] = [
                 'schema_id'     => '',
                 'key'           => 'header_additional_info',
                 'name_en'       => '-- Additional Info: --',
                 'name_fr'       => '-- Information additionnelle: --',
                 'is_repeater'   => false,
-                'child_fields'  => array(
-                    array( 
+                'child_fields'  => [
+                    [
                         'name'           => '',
                         'label_en'       => '',
                         'label_fr'       => '',
@@ -751,52 +762,51 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                ),
-            );
-
+                    ],
+                ],
+            ];
 
             // Get all Additional Info Schemas
             $all_schemas = wicket_get_schemas();
             //wicket_gf_write_log($all_schemas);
 
-            foreach( $all_schemas['data'] as $schema ) {
+            foreach ($all_schemas['data'] as $schema) {
                 // Ensure needed attributes are present before adding to array
-                if( isset( $schema['id'] ) && isset( $schema['attributes'] ) ) {
-                    if( isset( $schema['attributes']['key'] ) ) {
+                if (isset($schema['id']) && isset($schema['attributes'])) {
+                    if (isset($schema['attributes']['key'])) {
 
-                        $items_array = self::wicket_schema_get_items_sub_array( $schema );
+                        $items_array = self::wicket_schema_get_items_sub_array($schema);
 
-                        if( !$items_array['is_repeater']) {
-                            $child_fields = array();
-                            if( isset( $schema['attributes']['schema'] ) ) {
+                        if (!$items_array['is_repeater']) {
+                            $child_fields = [];
+                            if (isset($schema['attributes']['schema'])) {
 
-                                $required_fields = array();
-                                if( isset( $schema['attributes']['schema']['required'] ) ) {
+                                $required_fields = [];
+                                if (isset($schema['attributes']['schema']['required'])) {
                                     $required_fields = $schema['attributes']['schema']['required'];
                                 }
 
-                                if( isset( $schema['attributes']['schema']['properties'] ) ) {
-                                    foreach( $schema['attributes']['schema']['properties'] as $property_name => $property_data ) {
+                                if (isset($schema['attributes']['schema']['properties'])) {
+                                    foreach ($schema['attributes']['schema']['properties'] as $property_name => $property_data) {
                                         // TODO: Add field required status
-                                        
-                                        $labels = self::wicket_schema_get_label_by_property_name( $schema, $property_name );
+
+                                        $labels = self::wicket_schema_get_label_by_property_name($schema, $property_name);
                                         $label_en = $labels['en'];
                                         $label_fr = $labels['fr'];
-                                        
-                                        if( empty( $label_en ) ) {
+
+                                        if (empty($label_en)) {
                                             $label_en = $property_name;
                                         }
-                                        if( empty( $label_fr ) ) {
+                                        if (empty($label_fr)) {
                                             $label_fr = $property_name;
                                         }
 
                                         $label_en = $label_en;
                                         $label_fr = $label_fr;
 
-                                        $is_required = in_array( $property_name, $required_fields );
+                                        $is_required = in_array($property_name, $required_fields);
 
                                         // wicket_gf_write_log($property_name . ':');
                                         // wicket_gf_write_log($property_data);
@@ -810,66 +820,66 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                             'required'       => $is_required,
                                             'maximum'        => $property_data['maximum'] ?? '',
                                             'minimum'        => $property_data['minimum'] ?? '',
-                                            'enum'           => $property_data['enum'] ?? array(),
+                                            'enum'           => $property_data['enum'] ?? [],
                                             'path_to_field'  => 'attributes/schema/properties',
                                         ];
                                     }
 
-                                    $to_return[] = array(
+                                    $to_return[] = [
                                         'schema_id'     => $schema['id'],
                                         'key'           => $schema['attributes']['key'] ?? '',
                                         'name_en'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['en'] ?? '',
                                         'name_fr'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['fr'] ?? '',
                                         'is_repeater'   => false,
                                         'child_fields'  => $child_fields,
-                                    );
+                                    ];
                                 }
                             }
                         } else {
                             // If it IS a repeater
-                            if( $schema['attributes']['key'] == 'education_details' ) {
+                            if ($schema['attributes']['key'] == 'education_details') {
                                 //wicket_gf_write_log("Education details:");
                                 //wicket_gf_write_log($schema);
                             }
                             // TODO: Pack more information about objects into the array and possibly reference the array position in the GF mapping
                             // value instead of the breadcrumbs
 
-                            $repeater_fields = array();
-                            if( isset( $items_array['items']['properties'] ) ) {
-                                foreach( $items_array['items']['properties'] as $property_name => $property_data ) {
-                                            
-                                    $labels = self::wicket_schema_get_label_by_property_name( $schema, $property_name, $items_array );
+                            $repeater_fields = [];
+                            if (isset($items_array['items']['properties'])) {
+                                foreach ($items_array['items']['properties'] as $property_name => $property_data) {
+
+                                    $labels = self::wicket_schema_get_label_by_property_name($schema, $property_name, $items_array);
                                     $label_en = $labels['en'];
                                     $label_fr = $labels['fr'];
 
-                                    if( empty( $label_en ) ) {
+                                    if (empty($label_en)) {
                                         $label_en = $property_name;
                                     }
-                                    if( empty( $label_fr ) ) {
+                                    if (empty($label_fr)) {
                                         $label_fr = $property_name;
                                     }
 
                                     $label_en = $label_en;
                                     $label_fr = $label_fr;
 
-                                    if( $property_data['type'] == 'object' ) {
+                                    if ($property_data['type'] == 'object') {
                                         wicket_gf_write_log('Object detected: ' . $property_name);
-                                        $object_data = self::expand_field_object( $schema, $property_name, $property_data );
+                                        $object_data = self::expand_field_object($schema, $property_name, $property_data);
 
-                                        if( isset( $object_data['oneOf'] ) ) {
-                                            foreach( $object_data['oneOf'] as $object_field_name => $object_field_data ) {
-                                                wicket_gf_write_log("Object field received:");
+                                        if (isset($object_data['oneOf'])) {
+                                            foreach ($object_data['oneOf'] as $object_field_name => $object_field_data) {
+                                                wicket_gf_write_log('Object field received:');
                                                 wicket_gf_write_log($object_field_name);
                                                 wicket_gf_write_log($object_field_data);
-                                                $required_fields = array();
-                                                if( isset( $object_field_data['required'] ) ) {
+                                                $required_fields = [];
+                                                if (isset($object_field_data['required'])) {
                                                     $required_fields = $object_field_data['required'];
                                                 }
-                                                if( isset( $object_field_data['properties'] ) ) {
-                                                    if( is_array( $object_field_data['properties'] ) ) {
-                                                        foreach( $object_field_data['properties'] as $object_field_prop_name => $object_field_prop_data ) {
-                                                            $is_required = in_array( $object_field_prop_name, $required_fields );
-                                                            
+                                                if (isset($object_field_data['properties'])) {
+                                                    if (is_array($object_field_data['properties'])) {
+                                                        foreach ($object_field_data['properties'] as $object_field_prop_name => $object_field_prop_data) {
+                                                            $is_required = in_array($object_field_prop_name, $required_fields);
+
                                                             $repeater_fields[] = [
                                                                 'name'           => $object_field_prop_name,
                                                                 'label_en'       => $label_en . ' | ' . $object_field_name . ' | ' . $object_field_prop_name,
@@ -879,7 +889,7 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                                                 'required'       => $is_required,
                                                                 'maximum'        => $object_field_prop_data['maximum'] ?? '',
                                                                 'minimum'        => $object_field_prop_data['minimum'] ?? '',
-                                                                'enum'           => $object_field_prop_data['enum'] ?? array(),
+                                                                'enum'           => $object_field_prop_data['enum'] ?? [],
                                                                 'path_to_field'  => $items_array['path_to_items'] . '/' . $property_name,
                                                             ];
                                                         }
@@ -901,12 +911,12 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                             }
                                         }
                                     } else {
-                                        $required_fields = array();
-                                        if( isset( $property_data['required'] ) ) {
+                                        $required_fields = [];
+                                        if (isset($property_data['required'])) {
                                             $required_fields = $property_data['required'];
                                         }
 
-                                        $is_required = in_array( $property_name, $required_fields );
+                                        $is_required = in_array($property_name, $required_fields);
 
                                         $repeater_fields[] = [
                                             'name'           => $property_name,
@@ -917,21 +927,21 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                             'required'       => $is_required,
                                             'maximum'        => $property_data['maximum'] ?? '',
                                             'minimum'        => $property_data['minimum'] ?? '',
-                                            'enum'           => $property_data['enum'] ?? array(),
+                                            'enum'           => $property_data['enum'] ?? [],
                                             'path_to_field'  => $items_array['path_to_items'] . '/properties',
                                         ];
                                     }
                                 }
                             }
 
-                            $to_return[] = array(
+                            $to_return[] = [
                                 'schema_id'     => $schema['id'],
                                 'key'           => $schema['attributes']['key'] ?? '',
                                 'name_en'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['en'] ?? '',
                                 'name_fr'       => $schema['attributes']['ui_schema']['ui:i18n']['title']['fr'] ?? '',
                                 'is_repeater'   => true,
                                 'child_fields'  => $repeater_fields,
-                            );
+                            ];
                         }
                     }
                 }
@@ -942,14 +952,14 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // --------------------------------
 
             // Add standard fields that don't change
-            $to_return[] = array(
+            $to_return[] = [
                 'schema_id'     => '',
                 'key'           => 'org_options',
                 'name_en'       => '-- Organization Options --',
                 'name_fr'       => '-- Options Organisation --',
                 'is_repeater'   => false,
-                'child_fields'  => array(
-                    array( 
+                'child_fields'  => [
+                    [
                         'name'           => 'type',
                         'label_en'       => 'Type',
                         'label_fr'       => 'Type',
@@ -957,10 +967,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'legal_name',
                         'label_en'       => 'Legal Name',
                         'label_fr'       => 'Legal Name',
@@ -968,10 +978,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'legal_name_en',
                         'label_en'       => 'Legal Name (En)',
                         'label_fr'       => 'Legal Name (En)',
@@ -979,10 +989,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'legal_name_fr',
                         'label_en'       => 'Legal Name (Fr)',
                         'label_fr'       => 'Legal Name (Fr)',
@@ -990,10 +1000,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'legal_name_es',
                         'label_en'       => 'Legal Name (Es)',
                         'label_fr'       => 'Legal Name (Es)',
@@ -1001,10 +1011,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'alternate_name',
                         'label_en'       => 'Alternate Name',
                         'label_fr'       => 'Nom alternatif',
@@ -1012,10 +1022,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'alternate_name_en',
                         'label_en'       => 'Alternate Name (En)',
                         'label_fr'       => 'Nom alternatif (En)',
@@ -1023,10 +1033,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'alternate_name_fr',
                         'label_en'       => 'Alternate Name (Fr)',
                         'label_fr'       => 'Nom alternatif (Fr)',
@@ -1034,10 +1044,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'alternate_name_es',
                         'label_en'       => 'Alternate Name (Es)',
                         'label_fr'       => 'Nom alternatif (Es)',
@@ -1045,10 +1055,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'description',
                         'label_en'       => 'Description',
                         'label_fr'       => 'Description',
@@ -1056,10 +1066,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'description_en',
                         'label_en'       => 'Description (En)',
                         'label_fr'       => 'Description (En)',
@@ -1067,10 +1077,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'description_fr',
                         'label_en'       => 'Description (Fr)',
                         'label_fr'       => 'Description (Fr)',
@@ -1078,10 +1088,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'description_es',
                         'label_en'       => 'Description (Es)',
                         'label_fr'       => 'Description (Es)',
@@ -1089,10 +1099,10 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                    array( 
+                    ],
+                    [
                         'name'           => 'identifying_number',
                         'label_en'       => 'Identifying Number',
                         'label_fr'       => 'Numéro d\'identification',
@@ -1100,11 +1110,11 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                         'default'        => '',
                         'maximum'        => '',
                         'minimum'        => '',
-                        'enum'           => array(),
+                        'enum'           => [],
                         'path_to_field'  => '',
-                    ),
-                ),
-            );
+                    ],
+                ],
+            ];
 
             // TODO: Continue work on this when store_data_after_plugins_loaded()
             // has been updated to use a more specific hook
@@ -1153,23 +1163,24 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             // ----------- Security -----------
             // --------------------------------
 
-            update_option( 'wicket_gf_member_fields', $to_return );
+            update_option('wicket_gf_member_fields', $to_return);
             wp_send_json_success();
         }
 
-        public static function wicket_schema_get_label_by_property_name( $schema, $property_name, $repeater_items_array = array() ) {
+        public static function wicket_schema_get_label_by_property_name($schema, $property_name, $repeater_items_array = [])
+        {
 
             $label_en = '';
             $label_fr = '';
 
-            if( !empty( $repeater_items_array  ) ) {
-                if( isset( $repeater_items_array['items_ui'][$property_name] ) ) {
-                    if( isset( $repeater_items_array['items_ui'][$property_name]['ui:i18n'] ) ) {
-                        if( isset( $repeater_items_array['items_ui'][$property_name]['ui:i18n']['label'] ) ) {
-                            if( isset( $repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['en'] ) ) {
+            if (!empty($repeater_items_array)) {
+                if (isset($repeater_items_array['items_ui'][$property_name])) {
+                    if (isset($repeater_items_array['items_ui'][$property_name]['ui:i18n'])) {
+                        if (isset($repeater_items_array['items_ui'][$property_name]['ui:i18n']['label'])) {
+                            if (isset($repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['en'])) {
                                 $label_en = $repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['en'];
                             }
-                            if( isset( $repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['fr'] ) ) {
+                            if (isset($repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['fr'])) {
                                 $label_fr = $repeater_items_array['items_ui'][$property_name]['ui:i18n']['label']['fr'];
                             }
                         }
@@ -1177,21 +1188,21 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             } else {
                 // Is not a repeater
-                if( isset( $schema['attributes']['ui_schema'] ) ) {
-                    if( isset( $schema['attributes']['ui_schema'][$property_name] ) ) {
-                        if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n'] ) ) {
-                            if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label'] ) ) {
-                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['en'] ) ) {
+                if (isset($schema['attributes']['ui_schema'])) {
+                    if (isset($schema['attributes']['ui_schema'][$property_name])) {
+                        if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n'])) {
+                            if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label'])) {
+                                if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['en'])) {
                                     $label_en = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['en'];
                                 }
-                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['fr'] ) ) {
+                                if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['fr'])) {
                                     $label_fr = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['label']['fr'];
                                 }
-                            } else if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description'] ) ) {
-                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['en'] ) ) {
+                            } elseif (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description'])) {
+                                if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['en'])) {
                                     $label_en = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['en'];
                                 }
-                                if( isset( $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['fr'] ) ) {
+                                if (isset($schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['fr'])) {
                                     $label_fr = $schema['attributes']['ui_schema'][$property_name]['ui:i18n']['description']['fr'];
                                 }
                             }
@@ -1200,86 +1211,88 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             }
 
-            return array(
+            return [
                 'en' => $label_en,
-                'fr' => $label_fr
-            );
+                'fr' => $label_fr,
+            ];
         }
 
-        public static function wicket_schema_get_items_sub_array( $schema ) {
-            if( isset( $schema['attributes'] ) ) {
-                if( isset( $schema['attributes']['ui_schema'] ) ) {
-                    foreach( $schema['attributes']['ui_schema'] as $key => $data ) {
+        public static function wicket_schema_get_items_sub_array($schema)
+        {
+            if (isset($schema['attributes'])) {
+                if (isset($schema['attributes']['ui_schema'])) {
+                    foreach ($schema['attributes']['ui_schema'] as $key => $data) {
                         // Note: wp_list_pluck() could be used, except that we need to build the path_to_items as we go
-                        if( $key == 'items' ) {
-                            if( !isset( $schema['attributes']['schema']['properties'] ) ) {
+                        if ($key == 'items') {
+                            if (!isset($schema['attributes']['schema']['properties'])) {
                                 $items = $schema['attributes']['schema']['items']['properties'][$key];
                                 // Note: for some reason one field is giving "Undefined array key "items"" even
                                 // though items is indeed in the array. Maybe misconfigured in the MDP or has a space somewhere
-                                if( empty($items) ) {
+                                if (empty($items)) {
                                     // wicket_gf_write_log("No items for some reason:");
                                     // wicket_gf_write_log($schema);
                                 }
-                                return array(
+
+                                return [
                                     'is_repeater'     => true,
                                     'repeater_depth'  => 1,
                                     'items'           => $items,
                                     'items_ui'        => $data,
                                     'path_to_items'   => 'attributes/schema/properties/' . $key,
-                                );
+                                ];
                             } else {
-                                return array(
+                                return [
                                     'is_repeater'     => true,
                                     'repeater_depth'  => 1,
                                     'items'           => $schema['attributes']['schema']['properties'][$key],
                                     'items_ui'        => $data,
                                     'path_to_items'   => 'attributes/schema/properties/' . $key,
-                                );
+                                ];
                             }
                         }
-                        if( is_array( $data ) ) {
-                            foreach( $data as $key2 => $data2 ) {
-                                if( $key2 == 'items' ) {
-                                    return array(
+                        if (is_array($data)) {
+                            foreach ($data as $key2 => $data2) {
+                                if ($key2 == 'items') {
+                                    return [
                                         'is_repeater'     => true,
                                         'repeater_depth'  => 2,
                                         'items'           => $schema['attributes']['schema']['properties'][$key][$key2],
                                         'items_ui'        => $data2,
                                         'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2,
-                                    );
+                                    ];
                                 }
-                                if( is_array( $data2 ) ) {
-                                    foreach( $data2 as $key3 => $data3 ) {
-                                        if( $key3 == 'items' ) {
-                                            return array(
+                                if (is_array($data2)) {
+                                    foreach ($data2 as $key3 => $data3) {
+                                        if ($key3 == 'items') {
+                                            return [
                                                 'is_repeater'     => true,
                                                 'repeater_depth'  => 3,
                                                 'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3],
                                                 'items_ui'        => $data3,
                                                 'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3,
-                                            );
+                                            ];
                                         }
-                                        if( is_array( $data3 ) ) {
-                                            foreach( $data3 as $key4 => $data4 ) {
-                                                if( $key4 == 'items' ) {
-                                                    return array(
+                                        if (is_array($data3)) {
+                                            foreach ($data3 as $key4 => $data4) {
+                                                if ($key4 == 'items') {
+                                                    return [
                                                         'is_repeater'     => true,
                                                         'repeater_depth'  => 4,
                                                         'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3][$key4],
                                                         'items_ui'        => $data4,
                                                         'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3 . '/' . $key4,
-                                                    );
+                                                    ];
                                                 }
-                                                if( is_array( $data4 ) ) {
-                                                    foreach( $data4 as $key5 => $data5 ) {
-                                                        if( $key5 == 'items' ) {
-                                                            return array(
+                                                if (is_array($data4)) {
+                                                    foreach ($data4 as $key5 => $data5) {
+                                                        if ($key5 == 'items') {
+                                                            return [
                                                                 'is_repeater'     => true,
                                                                 'repeater_depth'  => 5,
                                                                 'items'           => $schema['attributes']['schema']['properties'][$key][$key2][$key3][$key4][$key5],
                                                                 'items_ui'        => $data5,
                                                                 'path_to_items'   => 'attributes/schema/properties/' . $key . '/' . $key2 . '/' . $key3 . '/' . $key4 . '/' . $key5,
-                                                            );
+                                                            ];
                                                         }
                                                     }
                                                 }
@@ -1293,31 +1306,32 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                 }
             }
 
-            return array(
+            return [
                 'is_repeater'     => false,
                 'repeater_depth'  => 0,
-                'items'           => array(),
-                'items_ui'        => array()
-            );
+                'items'           => [],
+                'items_ui'        => [],
+            ];
         }
 
-        public static function wicket_schema_get_definition( $schema, $term, $follow_refs = false ) {
-            if( isset( $schema['attributes'] ) ) {
-                if( isset( $schema['attributes']['schema'] ) ) {
-                    if( isset( $schema['attributes']['schema']['definitions'] ) ) {
-                        if( isset( $schema['attributes']['schema']['definitions'][$term] ) ) {
+        public static function wicket_schema_get_definition($schema, $term, $follow_refs = false)
+        {
+            if (isset($schema['attributes'])) {
+                if (isset($schema['attributes']['schema'])) {
+                    if (isset($schema['attributes']['schema']['definitions'])) {
+                        if (isset($schema['attributes']['schema']['definitions'][$term])) {
                             $the_term = $schema['attributes']['schema']['definitions'][$term];
-                            if( !$follow_refs ) {
-                                return $the_term ;
+                            if (!$follow_refs) {
+                                return $the_term;
                             } else {
-                                if( isset( $the_term['properties'] ) ) {
-                                    foreach( $the_term['properties'] as $sub_term_key => $sub_term_val  ) {
-                                        if( is_array( $sub_term_val ) ) {
-                                            foreach( $sub_term_val as $sub_sub_term_key => $sub_sub_term_val ) {
-                                                if( $sub_sub_term_key == '$ref' ) {
+                                if (isset($the_term['properties'])) {
+                                    foreach ($the_term['properties'] as $sub_term_key => $sub_term_val) {
+                                        if (is_array($sub_term_val)) {
+                                            foreach ($sub_term_val as $sub_sub_term_key => $sub_sub_term_val) {
+                                                if ($sub_sub_term_key == '$ref') {
                                                     // Get the next needed definition
-                                                    $needed_def = self::get_end_of_string_by( $sub_sub_term_val, '/' ); 
-                                                    $definition = self::wicket_schema_get_definition( $schema, $needed_def, true );
+                                                    $needed_def = self::get_end_of_string_by($sub_sub_term_val, '/');
+                                                    $definition = self::wicket_schema_get_definition($schema, $needed_def, true);
                                                     $the_term['properties'][$sub_term_key] = $definition;
 
                                                     // TODO: Potentially handle further nested definitions
@@ -1326,7 +1340,8 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
                                         }
                                     }
                                 }
-                                return $the_term;   
+
+                                return $the_term;
                             }
                         }
                     }
@@ -1334,14 +1349,15 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             }
         }
 
-        public static function expand_field_object( $schema, $property_name, $property_data ) {
-            if( isset( $property_data['oneOf'] ) ) {
+        public static function expand_field_object($schema, $property_name, $property_data)
+        {
+            if (isset($property_data['oneOf'])) {
                 $i = 0;
-                foreach( $property_data['oneOf'] as $one_of ) {
-                    foreach( $one_of as $one_of_key => $one_of_val ) {
-                        if( $one_of_key == '$ref' ) {
-                            $needed_def = self::get_end_of_string_by( $one_of_val, '/' );
-                            $definition = self::wicket_schema_get_definition( $schema, $needed_def, true );
+                foreach ($property_data['oneOf'] as $one_of) {
+                    foreach ($one_of as $one_of_key => $one_of_val) {
+                        if ($one_of_key == '$ref') {
+                            $needed_def = self::get_end_of_string_by($one_of_val, '/');
+                            $definition = self::wicket_schema_get_definition($schema, $needed_def, true);
                             $property_data['oneOf'][$needed_def] = $definition;
                         }
                     }
@@ -1353,41 +1369,46 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             return $property_data;
         }
 
-        public static function get_end_of_string_by( $string, $delimiter ) {
-            $array = explode( $delimiter, $string );
-            return $array[ count( $array ) - 1 ];
+        public static function get_end_of_string_by($string, $delimiter)
+        {
+            $array = explode($delimiter, $string);
+
+            return $array[count($array) - 1];
         }
 
         // Credit: https://stackoverflow.com/a/263621
-        public static function array_depth($array) {
+        public static function array_depth($array)
+        {
             $max_indentation = 1;
-        
+
             $array_str = print_r($array, true);
             $lines = explode("\n", $array_str);
-        
+
             foreach ($lines as $line) {
                 $indentation = (strlen($line) - strlen(ltrim($line))) / 4;
-        
+
                 if ($indentation > $max_indentation) {
                     $max_indentation = $indentation;
                 }
             }
-        
+
             return (int) ceil(($max_indentation - 1) / 2) + 1;
         }
 
         /**
-         * Register scripts for conditional logic support
+         * Register scripts for conditional logic support.
          */
-        public function register_conditional_logic_scripts() {
+        public function register_conditional_logic_scripts()
+        {
             // Add a script to handle conditional logic updates for our custom fields
-            add_action('gform_enqueue_scripts', array($this, 'enqueue_conditional_logic_script'));
+            add_action('gform_enqueue_scripts', [$this, 'enqueue_conditional_logic_script']);
         }
 
         /**
-         * Enqueue script for conditional logic support
+         * Enqueue script for conditional logic support.
          */
-        public function enqueue_conditional_logic_script() {
+        public function enqueue_conditional_logic_script()
+        {
             // Only enqueue if we're on a form page
             // if (!GFCommon::is_form_page()) {
             //     return;
@@ -1396,45 +1417,46 @@ if ( ! class_exists( 'Wicket_Gf_Main' ) ) {
             wp_enqueue_script(
                 'wicket-gf-conditional-logic',
                 plugins_url('assets/js/wicket-gf-conditional-logic.js', __FILE__),
-                array('jquery', 'gform_conditional_logic'),
+                ['jquery', 'gform_conditional_logic'],
                 WICKET_WP_GF_VERSION,
                 true
             );
         }
-
     }
     new Wicket_Gf_Main();
 }
 
-/**
+/*
  * The generally-available Wicket Gravity Forms functions
  */
 
-if( !function_exists( 'wicket_gf_write_log' ) ) {
-    function wicket_gf_write_log( $log, $print_to_page = false ) {
-        if( $print_to_page ) {
-            print_r("<pre>");
+if (!function_exists('wicket_gf_write_log')) {
+    function wicket_gf_write_log($log, $print_to_page = false)
+    {
+        if ($print_to_page) {
+            print_r('<pre>');
             print_r($log);
-            print_r("</pre>");
+            print_r('</pre>');
         } else {
-            if ( is_array( $log ) || is_object( $log ) ) {
-                error_log( print_r( $log, true ) );
+            if (is_array($log) || is_object($log)) {
+                error_log(print_r($log, true));
             } else {
-                error_log( $log );
+                error_log($log);
             }
         }
     }
 }
 
-if( !function_exists( 'wicket_gf_get_form_id_by_slug' ) ) {
-    function wicket_gf_get_form_id_by_slug( $slug ) {
+if (!function_exists('wicket_gf_get_form_id_by_slug')) {
+    function wicket_gf_get_form_id_by_slug($slug)
+    {
         $current_mappings = get_option('wicket_gf_slug_mapping');
-        if ( empty( $current_mappings ) ) {
+        if (empty($current_mappings)) {
             return false;
         } else {
-            $current_mappings = json_decode( $current_mappings, true );
+            $current_mappings = json_decode($current_mappings, true);
 
-            if( isset( $current_mappings[$slug] ) ) {
+            if (isset($current_mappings[$slug])) {
                 return $current_mappings[$slug];
             } else {
                 return false;
@@ -1443,8 +1465,9 @@ if( !function_exists( 'wicket_gf_get_form_id_by_slug' ) ) {
     }
 }
 
-if( !function_exists( 'wicket_get_gf_mapping_addon' ) ) {
-    function wicket_get_gf_mapping_addon() {
+if (!function_exists('wicket_get_gf_mapping_addon')) {
+    function wicket_get_gf_mapping_addon()
+    {
         return GFWicketMappingAddOn::get_instance();
     }
 }

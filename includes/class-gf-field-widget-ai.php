@@ -1,37 +1,42 @@
-<?php 
+<?php
 
 if (class_exists('GF_Field')) {
-	class GFWicketFieldWidgetAi extends GF_Field {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
+    class GFWicketFieldWidgetAi extends GF_Field
+    {
+        // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
 
-		public $type = 'wicket_widget_ai';
- 
-		public function get_form_editor_field_title() {
-      return esc_attr__('Wicket Widget: Additional Info', 'wicket-gf');
-    }
+        public $type = 'wicket_widget_ai';
 
-    // Move the field to 'advanced fields'
-    public function get_form_editor_button() {
-      return [
-        'group' => 'advanced_fields',
-        'text'  => $this->get_form_editor_field_title(),
-      ];
-    }
+        public function get_form_editor_field_title()
+        {
+            return esc_attr__('Wicket Widget: Additional Info', 'wicket-gf');
+        }
 
-    function get_form_editor_field_settings() {
-      return [
-        'label_setting',
-        'description_setting',
-        'rules_setting',
-        'error_message_setting',
-        'css_class_setting',
-        'conditional_logic_field_setting'
-      ];
-    }
+        // Move the field to 'advanced fields'
+        public function get_form_editor_button()
+        {
+            return [
+                'group' => 'advanced_fields',
+                'text'  => $this->get_form_editor_field_title(),
+            ];
+        }
 
-    public static function custom_settings( $position, $form_id ) {
-      //create settings on position 25 (right after Field Label)
-      if ( $position == 25 ) { ?>
+        public function get_form_editor_field_settings()
+        {
+            return [
+                'label_setting',
+                'description_setting',
+                'rules_setting',
+                'error_message_setting',
+                'css_class_setting',
+                'conditional_logic_field_setting',
+            ];
+        }
+
+        public static function custom_settings($position, $form_id)
+        {
+            //create settings on position 25 (right after Field Label)
+            if ($position == 25) { ?>
         <?php ob_start(); ?>
 
         <div class="wicket_widget_ai_setting" 
@@ -124,11 +129,12 @@ if (class_exists('GF_Field')) {
         <?php echo ob_get_clean(); ?>
 
         <?php
-      }
-    }
+            }
+        }
 
-    public static function editor_script(){
-      ?>
+        public static function editor_script()
+        {
+            ?>
       <script>
       document.addEventListener('alpine:init', () => {
           Alpine.data('wwidgetAiData', () => ({
@@ -198,222 +204,224 @@ if (class_exists('GF_Field')) {
     </script>
 
     <?php
-    }
+        }
 
-    // Render the field
-    public function get_field_input($form, $value = '', $entry = null) {
-      if ( $this->is_form_editor() ) {
-        return '<p>Widget will show here on the frontend</p>';
-      }
-
-      $id = (int) $this->id;
-
-      $ai_widget_schemas = [[]];
-      $wwidget_ai_type = 'people';
-      $wwidget_ai_org_uuid = '';
-      $wwidget_ai_use_slugs = false;
-
-      //wicket_gf_write_log($form, true);
-
-      foreach( $form['fields'] as $field ) {
-        if( gettype( $field ) == 'object' ) {
-          if( get_class( $field ) == 'GFWicketFieldWidgetAi' ) {
-            if( $field->id == $id ) {
-              if( isset( $field->wwidget_ai_schemas ) ) {
-                $ai_widget_schemas = $field->wwidget_ai_schemas; 
-              }
-              if( isset( $field->wwidget_ai_type ) ) {
-                $wwidget_ai_type = $field->wwidget_ai_type; 
-              }
-              if( isset( $field->wwidget_ai_org_uuid ) ) {
-                $wwidget_ai_org_uuid = $field->wwidget_ai_org_uuid; 
-              }
-              if( isset( $field->wwidget_ai_use_slugs ) ) {
-                $wwidget_ai_use_slugs = $field->wwidget_ai_use_slugs; 
-              }
+        // Render the field
+        public function get_field_input($form, $value = '', $entry = null)
+        {
+            if ($this->is_form_editor()) {
+                return '<p>Widget will show here on the frontend</p>';
             }
-          }
+
+            $id = (int) $this->id;
+
+            $ai_widget_schemas = [[]];
+            $wwidget_ai_type = 'people';
+            $wwidget_ai_org_uuid = '';
+            $wwidget_ai_use_slugs = false;
+
+            //wicket_gf_write_log($form, true);
+
+            foreach ($form['fields'] as $field) {
+                if (gettype($field) == 'object') {
+                    if (get_class($field) == 'GFWicketFieldWidgetAi') {
+                        if ($field->id == $id) {
+                            if (isset($field->wwidget_ai_schemas)) {
+                                $ai_widget_schemas = $field->wwidget_ai_schemas;
+                            }
+                            if (isset($field->wwidget_ai_type)) {
+                                $wwidget_ai_type = $field->wwidget_ai_type;
+                            }
+                            if (isset($field->wwidget_ai_org_uuid)) {
+                                $wwidget_ai_org_uuid = $field->wwidget_ai_org_uuid;
+                            }
+                            if (isset($field->wwidget_ai_use_slugs)) {
+                                $wwidget_ai_use_slugs = $field->wwidget_ai_use_slugs;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Test if a UUID was manually saved, or if a field ID was saved instead (in the case of a multi-page form)
+            if (!str_contains($wwidget_ai_org_uuid, '-')) {
+                if (isset($_POST['input_' . $wwidget_ai_org_uuid])) {
+                    $field_value = $_POST['input_' . $wwidget_ai_org_uuid];
+                    if (str_contains($field_value, '-')) {
+                        $wwidget_ai_org_uuid = $field_value;
+                    }
+                }
+            }
+
+            // Re-form the $ai_widget_schemas array before passing to component
+            $cleaned_ai_widget_schemas = [];
+            if ($wwidget_ai_use_slugs) {
+                foreach ($ai_widget_schemas as $ai_item) {
+                    $cleaned_ai_widget_schemas[] = [
+                        'slug'           => $ai_item[0],
+                        'resourceSlug'   => $ai_item[1],
+                        'showAsRequired' => $ai_item[3],
+                    ];
+                }
+            } else {
+                foreach ($ai_widget_schemas as $ai_item) {
+                    $cleaned_ai_widget_schemas[] = [
+                        'id'             => $ai_item[0],
+                        'resourceId'     => $ai_item[1],
+                        'showAsRequired' => $ai_item[3] ?? false,
+                    ];
+                }
+            }
+
+            if (component_exists('widget-additional-info')) {
+                // Adding extra ob_start/clean since the component was jumping the gun for some reason
+                ob_start();
+
+                get_component('widget-additional-info', [
+                    'classes'                          => [],
+                    'additional_info_data_field_name'  => 'input_' . $id,
+                    'resource_type'                    => $wwidget_ai_type,
+                    'org_uuid'                         => $wwidget_ai_org_uuid,
+                    'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
+                ], true);
+
+                $component_output = ob_get_clean();
+
+                return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+            } else {
+                return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
+            }
+
         }
-      }
 
-      // Test if a UUID was manually saved, or if a field ID was saved instead (in the case of a multi-page form)
-      if( !str_contains( $wwidget_ai_org_uuid, '-' ) ) {
-        if( isset( $_POST['input_' . $wwidget_ai_org_uuid] ) ) {
-          $field_value = $_POST['input_' . $wwidget_ai_org_uuid];
-          if( str_contains( $field_value, '-' ) ) {
-            $wwidget_ai_org_uuid = $field_value;
-          }
+        // Override how to Save the field value
+        public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
+        {
+            $value_array = json_decode($value);
+            $user_id = wicket_current_person_uuid();
+            $wicket_settings = get_wicket_settings();
+
+            $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/additional_info';
+
+            return $link_to_user_profile;
+            //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
         }
-      }
 
-      // Re-form the $ai_widget_schemas array before passing to component
-      $cleaned_ai_widget_schemas = [];
-      if( $wwidget_ai_use_slugs ) {
-        foreach( $ai_widget_schemas as $ai_item ) {
-          $cleaned_ai_widget_schemas[] = [
-            'slug'           => $ai_item[0],
-            'resourceSlug'   => $ai_item[1],
-            'showAsRequired' => $ai_item[3],
-          ];
-        } 
-      } else {
-        foreach( $ai_widget_schemas as $ai_item ) {
-          $cleaned_ai_widget_schemas[] = [
-            'id'             => $ai_item[0],
-            'resourceId'     => $ai_item[1],
-            'showAsRequired' => $ai_item[3] ?? false,
-          ];
-        } 
-      }
-      
-      
+        public function validate($value, $form)
+        {
+            $value_array = json_decode($value, true);
+            // wicket_gf_write_log('Start validation for field ID: ' . $this->id);
+            // wicket_gf_write_log('Value array:');
+            // wicket_gf_write_log($value_array);
 
-      if( component_exists('widget-additional-info') ) {
-        // Adding extra ob_start/clean since the component was jumping the gun for some reason
-        ob_start();
+            $notFound = $value_array['notFound'] ?? [];
+            $validation = $value_array['validation'] ?? [];
+            $invalid = $value_array['invalid'] ?? [];
 
-        get_component( 'widget-additional-info', [ 
-          'classes'                          => [],
-          'additional_info_data_field_name'  => 'input_' . $id,
-          'resource_type'                    => $wwidget_ai_type,
-          'org_uuid'                         => $wwidget_ai_org_uuid,
-          'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
-        ], true );
+            if (count($invalid) > 0 && $this->isRequired) {
+                $this->failed_validation = true;
+                if (!empty($this->errorMessage)) {
+                    $this->validation_message = $this->errorMessage;
+                }
+            }
 
-        $component_output = ob_get_clean();
-        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
-      } else {
-        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
-      }
-       
+            // Find our field in the form to get the schemas
+            $id = (int) $this->id;
+            $field_schemas = [];
+            $use_slugs = false;
+
+            // Find this field's data in the form
+            foreach ($form['fields'] as $field) {
+                if (gettype($field) == 'object' && get_class($field) == 'GFWicketFieldWidgetAi' && $field->id == $id) {
+                    if (isset($field->wwidget_ai_schemas)) {
+                        $field_schemas = $field->wwidget_ai_schemas;
+                    }
+                    if (isset($field->wwidget_ai_use_slugs)) {
+                        $use_slugs = $field->wwidget_ai_use_slugs;
+                    }
+                    break;
+                }
+            }
+
+            // wicket_gf_write_log('Field schemas from form:');
+            // wicket_gf_write_log($field_schemas);
+            // wicket_gf_write_log('Use slugs: ' . ($use_slugs ? 'true' : 'false'));
+
+            // Check for required schemas that are empty
+            $missing_required = [];
+
+            foreach ($field_schemas as $schema) {
+                // Check if schema is configured to show as required (index 3 is "true")
+                // wicket_gf_write_log('Checking schema: ');
+                // wicket_gf_write_log($schema);
+
+                if (isset($schema[3]) && $schema[3] === 'true') {
+                    $schema_id = $schema[0]; // The schema ID/slug is at index 0
+                    // wicket_gf_write_log('Schema is required: ' . $schema_id);
+
+                    // Check if this required schema has data
+                    $schema_has_data = false;
+
+                    // Look for data in dataFields array where schema_slug matches our schema_id
+                    if (isset($value_array['dataFields']) && is_array($value_array['dataFields'])) {
+                        foreach ($value_array['dataFields'] as $dataField) {
+                            if (isset($dataField['schema_slug']) && $dataField['schema_slug'] === $schema_id) {
+                                // wicket_gf_write_log('Found data field for schema_id: ' . $schema_id);
+                                // wicket_gf_write_log('Data value:');
+                                // wicket_gf_write_log($dataField['value']);
+
+                                // Use the 'valid' flag provided by the component to determine if the field has valid data
+                                // This respects the component's own validation rules, including fields with intentionally empty values
+                                $schema_has_data = isset($dataField['valid']) && $dataField['valid'] == 1;
+
+                                break; // Found the schema we were looking for, no need to continue loop
+                            }
+                        }
+                    }
+
+                    if (!$schema_has_data) {
+                        // wicket_gf_write_log('No data found for schema_id: ' . $schema_id);
+                        // Use friendly name if available (index 2), otherwise use the ID/slug
+                        $display_name = !empty($schema[2]) ? $schema[2] : $schema_id;
+                        $missing_required[] = $display_name;
+                        // wicket_gf_write_log('Added to missing required: ' . $display_name);
+                    }
+                }
+            }
+
+            // wicket_gf_write_log('Missing required fields:');
+            // wicket_gf_write_log($missing_required);
+
+            // If we have missing required fields, set validation error
+            if (count($missing_required) > 0) {
+                $this->failed_validation = true;
+
+                // Use custom error message if set, otherwise create one
+                if (!empty($this->errorMessage)) {
+                    $this->validation_message = $this->errorMessage;
+                } else {
+                    $this->validation_message = sprintf(
+                        __('Please fill in the required information: %s', 'wicket-gf'),
+                        implode(', ', $missing_required)
+                    );
+                }
+                // wicket_gf_write_log('Validation failed with message: ' . $this->validation_message);
+            }
+        }
+
+        // Functions for how the field value gets displayed on the backend
+        // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
+        //   return __('Enter details', 'txtdomain');
+        // }
+        // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
+        //     return '';
+        // }
+
+        // Edit merge tag
+        // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
+        //   return $this->prettyListOutput($value);
+        // }
+
     }
-
-    // Override how to Save the field value
-    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
-      $value_array = json_decode($value);
-      $user_id = wicket_current_person_uuid();
-      $wicket_settings = get_wicket_settings(); 
-
-      $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/additional_info';
-
-      return $link_to_user_profile;
-      //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
-    }
-
-    public function validate($value, $form) {
-      $value_array = json_decode($value, true);
-      // wicket_gf_write_log('Start validation for field ID: ' . $this->id);
-      // wicket_gf_write_log('Value array:');
-      // wicket_gf_write_log($value_array);
-    
-      $notFound   = $value_array['notFound'] ?? [];
-      $validation = $value_array['validation'] ?? [];
-      $invalid    = $value_array['invalid'] ?? [];
-    
-      if(count($invalid) > 0 && $this->isRequired) {
-          $this->failed_validation = true;
-          if (!empty($this->errorMessage)) {
-              $this->validation_message = $this->errorMessage;
-          }
-      }
-    
-      // Find our field in the form to get the schemas
-      $id = (int) $this->id;
-      $field_schemas = [];
-      $use_slugs = false;
-      
-      // Find this field's data in the form
-      foreach ($form['fields'] as $field) {
-          if (gettype($field) == 'object' && get_class($field) == 'GFWicketFieldWidgetAi' && $field->id == $id) {
-              if (isset($field->wwidget_ai_schemas)) {
-                  $field_schemas = $field->wwidget_ai_schemas;
-              }
-              if (isset($field->wwidget_ai_use_slugs)) {
-                  $use_slugs = $field->wwidget_ai_use_slugs;
-              }
-              break;
-          }
-      }
-      
-      // wicket_gf_write_log('Field schemas from form:');
-      // wicket_gf_write_log($field_schemas);
-      // wicket_gf_write_log('Use slugs: ' . ($use_slugs ? 'true' : 'false'));
-      
-      // Check for required schemas that are empty
-      $missing_required = [];
-      
-      foreach ($field_schemas as $schema) {
-          // Check if schema is configured to show as required (index 3 is "true")
-          // wicket_gf_write_log('Checking schema: ');
-          // wicket_gf_write_log($schema);
-          
-          if (isset($schema[3]) && $schema[3] === 'true') {
-              $schema_id = $schema[0]; // The schema ID/slug is at index 0
-              // wicket_gf_write_log('Schema is required: ' . $schema_id);
-              
-              // Check if this required schema has data
-              $schema_has_data = false;
-              
-              // Look for data in dataFields array where schema_slug matches our schema_id
-              if (isset($value_array['dataFields']) && is_array($value_array['dataFields'])) {
-                  foreach ($value_array['dataFields'] as $dataField) {
-                      if (isset($dataField['schema_slug']) && $dataField['schema_slug'] === $schema_id) {
-                          // wicket_gf_write_log('Found data field for schema_id: ' . $schema_id);
-                          // wicket_gf_write_log('Data value:');
-                          // wicket_gf_write_log($dataField['value']);
-                          
-                          // Use the 'valid' flag provided by the component to determine if the field has valid data
-                          // This respects the component's own validation rules, including fields with intentionally empty values
-                          $schema_has_data = isset($dataField['valid']) && $dataField['valid'] == 1;
-                          
-                          break; // Found the schema we were looking for, no need to continue loop
-                      }
-                  }
-              }
-              
-              if (!$schema_has_data) {
-                  // wicket_gf_write_log('No data found for schema_id: ' . $schema_id);
-                  // Use friendly name if available (index 2), otherwise use the ID/slug
-                  $display_name = !empty($schema[2]) ? $schema[2] : $schema_id;
-                  $missing_required[] = $display_name;
-                  // wicket_gf_write_log('Added to missing required: ' . $display_name);
-              }
-          }
-      }
-      
-      // wicket_gf_write_log('Missing required fields:');
-      // wicket_gf_write_log($missing_required);
-      
-      // If we have missing required fields, set validation error
-      if (count($missing_required) > 0) {
-          $this->failed_validation = true;
-          
-          // Use custom error message if set, otherwise create one
-          if (!empty($this->errorMessage)) {
-              $this->validation_message = $this->errorMessage;
-          } else {
-              $this->validation_message = sprintf(
-                  __('Please fill in the required information: %s', 'wicket-gf'),
-                  implode(', ', $missing_required)
-              );
-          }
-          // wicket_gf_write_log('Validation failed with message: ' . $this->validation_message);
-      }
-    }
-
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
-
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
-
-	}
-	GF_Fields::register(new GFWicketFieldWidgetAi());
+    GF_Fields::register(new GFWicketFieldWidgetAi());
 }

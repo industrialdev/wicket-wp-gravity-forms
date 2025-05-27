@@ -1,54 +1,54 @@
 <?php
 /**
- * Admin file for Wicket Gravity Forms
+ * Admin file for Wicket Gravity Forms.
  *
- * @package  wicket-gravity-forms
  * @version  1.0.0
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
 }
 
-if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
-	/**
-	 * Admin class of module
-	 */
-	class Wicket_Gf_Admin {
+if (!class_exists('Wicket_Gf_Admin')) {
     /**
-		 * Constructor of class
-		 */
-		public function __construct() {}
+     * Admin class of module.
+     */
+    class Wicket_Gf_Admin
+    {
+        /**
+         * Constructor of class.
+         */
+        public function __construct() {}
 
-		// Settings link on plugin page
-		public static function add_settings_link($links)
-		{
-				$settings_link = '<a href="admin.php?page=wicket_gf">' . __('Settings') . '</a>';
-				array_push($links, $settings_link);
-				return $links;
-		}
+        // Settings link on plugin page
+        public static function add_settings_link($links)
+        {
+            $settings_link = '<a href="admin.php?page=wicket_gf">' . __('Settings') . '</a>';
+            array_push($links, $settings_link);
 
-		// Register Settings For a Plugin so they are grouped together
-		public static function register_settings()
-		{
-				add_option('wicket_gf_slug_mapping', '');
-				register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', ['sanitize_callback' => [__CLASS__, 'sanitize_slug_mapping']] );
-				register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
-				register_setting('wicket_gf_options_group', 'wicket_gf_orgss_auto_advance', null);
-		}
+            return $links;
+        }
 
-		// Create an options page
-		public static function register_options_page()
-		{
-				//add_options_page('Wicket Gravity Forms Settings', 'Wicket Gravity Forms Settings', 'manage_options', 'wicket_gf', array('Wicket_Gf_Main','options_page'));
-				add_submenu_page( 'gf_edit_forms', __('Wicket Gravity Forms Settings', 'wicket-gf'), __('Wicket Settings', 'wicket-gf'), 'manage_options', 'wicket_gf', array('Wicket_Gf_Admin','options_page') );
-		}
+        // Register Settings For a Plugin so they are grouped together
+        public static function register_settings()
+        {
+            add_option('wicket_gf_slug_mapping', '');
+            register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', ['sanitize_callback' => [__CLASS__, 'sanitize_slug_mapping']]);
+            register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
+            register_setting('wicket_gf_options_group', 'wicket_gf_orgss_auto_advance', null);
+        }
 
-		// Display Settings on Options Page
-		public static function options_page()
-		{ ?>
+        // Create an options page
+        public static function register_options_page()
+        {
+            //add_options_page('Wicket Gravity Forms Settings', 'Wicket Gravity Forms Settings', 'manage_options', 'wicket_gf', array('Wicket_Gf_Main','options_page'));
+            add_submenu_page('gf_edit_forms', __('Wicket Gravity Forms Settings', 'wicket-gf'), __('Wicket Settings', 'wicket-gf'), 'manage_options', 'wicket_gf', ['Wicket_Gf_Admin', 'options_page']);
+        }
+
+        // Display Settings on Options Page
+        public static function options_page()
+        { ?>
 				<div>
-						<?php // TODO: Move this to conditional admin enqueues if not already present in admin ?>
+						<?php // TODO: Move this to conditional admin enqueues if not already present in admin?>
 						<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 						<script src="https://cdn.tailwindcss.com"></script>
 						<script>
@@ -67,40 +67,40 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 
 						<p class="wgf-mb-2"><?php _e('This makes it easy to reference forms by their slug in coding using the <code>wicket_gf_get_form_id_by_slug()</code> function.', 'wicket-gf'); ?>
 
-						<?php 
-						$current_mappings_json = get_option('wicket_gf_slug_mapping');
+						<?php
+                        $current_mappings_json = get_option('wicket_gf_slug_mapping');
 
-						// --- DEBUGGING START ---
-						// echo "<pre>Raw get_option('wicket_gf_slug_mapping'):\n";
-						// var_dump($current_mappings_json); // Use var_dump for more detail on type/value
-						// echo "</pre>";
-						// --- DEBUGGING END ---
+            // --- DEBUGGING START ---
+            // echo "<pre>Raw get_option('wicket_gf_slug_mapping'):\n";
+            // var_dump($current_mappings_json); // Use var_dump for more detail on type/value
+            // echo "</pre>";
+            // --- DEBUGGING END ---
 
-						$current_mappings = json_decode( $current_mappings_json, true );
-						// Ensure we have a valid associative array, default if not
-						if ( !is_array($current_mappings) || ( !empty($current_mappings) && array_keys($current_mappings) === range(0, count($current_mappings) - 1) ) ) {
-								$current_mappings = [ 'example-form-slug' => '0' ];
-						}
-						// Ensure keys are properly slugified if loaded from old data
-						$sanitized_mappings = [];
-						foreach ($current_mappings as $key => $value) {
-								$newKey = strtolower(str_replace(' ', '-', $key)); // Replace spaces, lowercase
-								$newKey = preg_replace('/[^a-z0-9\-]/', '', $newKey); // Remove invalid chars (allow lowercase letters, numbers, hyphen)
-								$sanitized_mappings[$newKey] = $value;
-						}
-						$current_mappings = $sanitized_mappings;
+            $current_mappings = json_decode($current_mappings_json, true);
+            // Ensure we have a valid associative array, default if not
+            if (!is_array($current_mappings) || (!empty($current_mappings) && array_keys($current_mappings) === range(0, count($current_mappings) - 1))) {
+                $current_mappings = ['example-form-slug' => '0'];
+            }
+            // Ensure keys are properly slugified if loaded from old data
+            $sanitized_mappings = [];
+            foreach ($current_mappings as $key => $value) {
+                $newKey = strtolower(str_replace(' ', '-', $key)); // Replace spaces, lowercase
+                $newKey = preg_replace('/[^a-z0-9\-]/', '', $newKey); // Remove invalid chars (allow lowercase letters, numbers, hyphen)
+                $sanitized_mappings[$newKey] = $value;
+            }
+            $current_mappings = $sanitized_mappings;
 
-						// If mappings are empty after loading and sanitizing, add a default empty row
-						if (empty($current_mappings)) {
-								$current_mappings = ['' => '']; // Use empty key/value for a new row
-						}
+            // If mappings are empty after loading and sanitizing, add a default empty row
+            if (empty($current_mappings)) {
+                $current_mappings = ['' => '']; // Use empty key/value for a new row
+            }
 
-						// --- DEBUGGING START ---
-						// echo "<pre>PHP \$current_mappings (before passing to Alpine):\n";
-						// print_r($current_mappings);
-						// echo "</pre>";
-						// --- DEBUGGING END ---
-						?>
+            // --- DEBUGGING START ---
+            // echo "<pre>PHP \$current_mappings (before passing to Alpine):\n";
+            // print_r($current_mappings);
+            // echo "</pre>";
+            // --- DEBUGGING END ---
+            ?>
 
 						<div x-data='mappingUi(<?php echo json_encode($current_mappings); ?>)'>
 							<form id="wicket-gf-settings-form" method="post" action="options.php" class="wgf-mt-4">
@@ -113,14 +113,14 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 											type="text" 
 											:value="slug" 
 											x-on:input="updateSlug($event, slug)" 
-											placeholder="<?php _e('Slug', 'wicket-gf');?>" 
+											placeholder="<?php _e('Slug', 'wicket-gf'); ?>" 
 										/> 
 										<input 
 											class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" 
 											type="text" 
 											:value="id" 
 											x-on:input="updateId($event, slug)" 
-											placeholder="<?php _e('Form ID', 'wicket-gf');?>" 
+											placeholder="<?php _e('Form ID', 'wicket-gf'); ?>" 
 										/>
 										<button 
 											type="button"
@@ -228,7 +228,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 
 														if (!slugIsEmpty && idIsEmpty) {
 															this.isValid = false;
-															// this.validationMessage = '<?php _e("A slug is defined but the Form ID is missing or zero.", "wicket-gf"); ?>';
+															// this.validationMessage = '<?php _e('A slug is defined but the Form ID is missing or zero.', 'wicket-gf'); ?>';
 															break;
 														}
 														if (slugIsEmpty && !idIsEmpty) {
@@ -268,7 +268,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 										type="checkbox" 
 										name="wicket_gf_pagination_sidebar_layout" 
 										id="wicket_gf_pagination_sidebar_layout"
-										<?php checked( get_option('wicket_gf_pagination_sidebar_layout'), 'on' ); ?>
+										<?php checked(get_option('wicket_gf_pagination_sidebar_layout'), 'on'); ?>
 									>
 									<label for="wicket_gf_pagination_sidebar_layout" class="inline">Use Sidebar Pagination Layout</label>					
 								</div>
@@ -278,7 +278,7 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 										type="checkbox" 
 										name="wicket_gf_orgss_auto_advance" 
 										id="wicket_gf_orgss_auto_advance"
-										<?php checked( get_option('wicket_gf_orgss_auto_advance', true), 'on' ); ?>
+										<?php checked(get_option('wicket_gf_orgss_auto_advance', true), 'on'); ?>
 									>
 									<label for="wicket_gf_orgss_auto_advance" class="inline">Auto-advance to next page on org selection in the Org Search & Select</label>					
 								</div>
@@ -288,88 +288,91 @@ if ( ! class_exists( 'Wicket_Gf_Admin' ) ) {
 						</div>
 				</div>
 		<?php
-		}
+        }
 
-		/**
-		 * Sanitize the slug mapping input before saving.
-		 *
-		 * @param string $input Raw JSON string from the form.
-		 * @return string Sanitized JSON string to be saved.
-		 */
-		public static function sanitize_slug_mapping( $input ) {
-				$decoded = json_decode( stripslashes( $input ), true ); // Use stripslashes as WP adds them
+        /**
+         * Sanitize the slug mapping input before saving.
+         *
+         * @param string $input Raw JSON string from the form.
+         * @return string Sanitized JSON string to be saved.
+         */
+        public static function sanitize_slug_mapping($input)
+        {
+            $decoded = json_decode(stripslashes($input), true); // Use stripslashes as WP adds them
 
-				// -- DEBUGGING --
-				// error_log('Raw input to sanitize_slug_mapping: ' . $input);
-				// error_log('Stripslashed input: ' . stripslashes($input));
-				// error_log('Decoded input: ' . print_r($decoded, true));
-				// -- /DEBUGGING --
+            // -- DEBUGGING --
+            // error_log('Raw input to sanitize_slug_mapping: ' . $input);
+            // error_log('Stripslashed input: ' . stripslashes($input));
+            // error_log('Decoded input: ' . print_r($decoded, true));
+            // -- /DEBUGGING --
 
-				if ( $decoded === null && json_last_error() !== JSON_ERROR_NONE ) {
-						// If JSON decoding failed
-						// error_log('JSON decode failed in sanitize_slug_mapping. Error: ' . json_last_error_msg() . '. Resetting.');
-						add_settings_error(
-							'wicket_gf_slug_mapping',
-							'invalid_json',
-							__('Failed to save mappings due to invalid data format.', 'wicket-gf'),
-							'error'
-						);
-						return get_option('wicket_gf_slug_mapping'); // Return old value
-				}
+            if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+                // If JSON decoding failed
+                // error_log('JSON decode failed in sanitize_slug_mapping. Error: ' . json_last_error_msg() . '. Resetting.');
+                add_settings_error(
+                    'wicket_gf_slug_mapping',
+                    'invalid_json',
+                    __('Failed to save mappings due to invalid data format.', 'wicket-gf'),
+                    'error'
+                );
 
-				// Handle case where input was valid JSON but not an array (e.g., empty string submitted)
-				if (!is_array($decoded)) {
-						$decoded = [];
-				}
+                return get_option('wicket_gf_slug_mapping'); // Return old value
+            }
 
-				$sanitized_mappings = [];
-				$is_data_valid = true;
-				$validation_error_message = '';
+            // Handle case where input was valid JSON but not an array (e.g., empty string submitted)
+            if (!is_array($decoded)) {
+                $decoded = [];
+            }
 
-				foreach ($decoded as $key => $value) {
-						// Sanitize key (slug)
-						$newKey = strtolower(str_replace(' ', '-', $key)); // Replace spaces, lowercase
-						$newKey = preg_replace('/[^a-z0-9\-]/', '', $newKey); // Remove invalid chars (allow lowercase letters, numbers, hyphen)
+            $sanitized_mappings = [];
+            $is_data_valid = true;
+            $validation_error_message = '';
 
-						// Sanitize value (form ID - ensure it's numeric or empty)
-						$newValue = preg_replace( '/[^0-9]/', '', $value ); // Remove non-numeric characters
+            foreach ($decoded as $key => $value) {
+                // Sanitize key (slug)
+                $newKey = strtolower(str_replace(' ', '-', $key)); // Replace spaces, lowercase
+                $newKey = preg_replace('/[^a-z0-9\-]/', '', $newKey); // Remove invalid chars (allow lowercase letters, numbers, hyphen)
 
-						// Validation Check
-						$slugIsEmpty = empty($newKey);
-						$idIsEmpty = empty($newValue) || $newValue === '0'; // Treat 0 as empty for this validation
+                // Sanitize value (form ID - ensure it's numeric or empty)
+                $newValue = preg_replace('/[^0-9]/', '', $value); // Remove non-numeric characters
 
-						if (!$slugIsEmpty && $idIsEmpty) {
-							$is_data_valid = false;
-							$validation_error_message = __('A slug was defined but the Form ID was missing or zero.', 'wicket-gf');
-							break;
-						}
-						if ($slugIsEmpty && !$idIsEmpty) {
-							$is_data_valid = false;
-							$validation_error_message = __('A Form ID was defined but the slug was missing.', 'wicket-gf');
-							break;
-						}
+                // Validation Check
+                $slugIsEmpty = empty($newKey);
+                $idIsEmpty = empty($newValue) || $newValue === '0'; // Treat 0 as empty for this validation
 
-						// Allow empty keys for now, maybe add validation later if needed
-						// if( !empty($newKey) ) { 
-								$sanitized_mappings[$newKey] = $newValue;
-						// }
-				}
+                if (!$slugIsEmpty && $idIsEmpty) {
+                    $is_data_valid = false;
+                    $validation_error_message = __('A slug was defined but the Form ID was missing or zero.', 'wicket-gf');
+                    break;
+                }
+                if ($slugIsEmpty && !$idIsEmpty) {
+                    $is_data_valid = false;
+                    $validation_error_message = __('A Form ID was defined but the slug was missing.', 'wicket-gf');
+                    break;
+                }
 
-				// If validation failed, return the old value and show an error
-				if (!$is_data_valid) {
-					// error_log('Wicket GF: Slug mapping validation failed: ' . $validation_error_message . ' Input: ' . $input);
-					add_settings_error(
-						'wicket_gf_slug_mapping',
-						'invalid_mapping',
-						__('Failed to save mappings: ', 'wicket-gf') . $validation_error_message,
-						'error'
-					);
-					return get_option('wicket_gf_slug_mapping'); // Return old value
-				}
+                // Allow empty keys for now, maybe add validation later if needed
+                // if( !empty($newKey) ) {
+                $sanitized_mappings[$newKey] = $newValue;
+                // }
+            }
 
-				// error_log('Sanitized mappings to be saved: ' . print_r($sanitized_mappings, true));
+            // If validation failed, return the old value and show an error
+            if (!$is_data_valid) {
+                // error_log('Wicket GF: Slug mapping validation failed: ' . $validation_error_message . ' Input: ' . $input);
+                add_settings_error(
+                    'wicket_gf_slug_mapping',
+                    'invalid_mapping',
+                    __('Failed to save mappings: ', 'wicket-gf') . $validation_error_message,
+                    'error'
+                );
 
-				return json_encode( $sanitized_mappings );
-		}
-	}
+                return get_option('wicket_gf_slug_mapping'); // Return old value
+            }
+
+            // error_log('Sanitized mappings to be saved: ' . print_r($sanitized_mappings, true));
+
+            return json_encode($sanitized_mappings);
+        }
+    }
 }

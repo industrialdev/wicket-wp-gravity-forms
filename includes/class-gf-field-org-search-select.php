@@ -1,14 +1,16 @@
-<?php 
+<?php
 
 if (class_exists('GF_Field')) {
-	class GFWicketFieldOrgSearchSelect extends GF_Field {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
+    class GFWicketFieldOrgSearchSelect extends GF_Field
+    {
+        // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
 
-		public $type = 'wicket_org_search_select';
+        public $type = 'wicket_org_search_select';
 
-    public static function custom_settings( $position, $form_id ) {
-      //create settings on position 25 (right after Field Label)
-      if ( $position == 25 ) { ?>
+        public static function custom_settings($position, $form_id)
+        {
+            //create settings on position 25 (right after Field Label)
+            if ($position == 25) { ?>
         <?php ob_start(); ?>
 
         <div 
@@ -207,11 +209,12 @@ if (class_exists('GF_Field')) {
         <?php echo ob_get_clean(); ?>
 
         <?php
-      }
-    }
+            }
+        }
 
-    public static function editor_script(){
-      ?>
+        public static function editor_script()
+        {
+            ?>
       <script>
       document.addEventListener('alpine:init', () => {
           Alpine.data('orgssData', () => ({
@@ -400,300 +403,314 @@ if (class_exists('GF_Field')) {
     </script>
 
     <?php
-    }
- 
-		public function get_form_editor_field_title() {
-      return esc_attr__('Wicket Org Search/Select', 'wicket-gf');
-    }
+        }
 
-    // Move the field to 'advanced fields'
-    public function get_form_editor_button() {
-      return [
-        'group' => 'advanced_fields',
-        'text'  => $this->get_form_editor_field_title(),
-      ];
-    }
+        public function get_form_editor_field_title()
+        {
+            return esc_attr__('Wicket Org Search/Select', 'wicket-gf');
+        }
 
-    // Declare that this field supports conditional logic
-    public function is_conditional_logic_supported() {
-      return true;
-    }
+        // Move the field to 'advanced fields'
+        public function get_form_editor_button()
+        {
+            return [
+                'group' => 'advanced_fields',
+                'text'  => $this->get_form_editor_field_title(),
+            ];
+        }
 
-    function get_form_editor_field_settings() {
-      return [
-        'label_setting',
-        'description_setting',
-        'rules_setting',
-        'error_message_setting',
-        'css_class_setting',
-        'conditional_logic_field_setting',
-        'label_placement_setting',
-      ];
-    }
+        // Declare that this field supports conditional logic
+        public function is_conditional_logic_supported()
+        {
+            return true;
+        }
 
-    // Render the field
-    public function get_field_input($form, $value = '', $entry = null) {
-      if ( $this->is_form_editor() ) {
-        return '<p>Org Search/Select UI will show here on the frontend.</p><p><strong>Note:</strong> This 
+        public function get_form_editor_field_settings()
+        {
+            return [
+                'label_setting',
+                'description_setting',
+                'rules_setting',
+                'error_message_setting',
+                'css_class_setting',
+                'conditional_logic_field_setting',
+                'label_placement_setting',
+            ];
+        }
+
+        // Render the field
+        public function get_field_input($form, $value = '', $entry = null)
+        {
+            if ($this->is_form_editor()) {
+                return '<p>Org Search/Select UI will show here on the frontend.</p><p><strong>Note:</strong> This 
         element does <strong><em>not</em></strong> display correctly in the GF Preview mode and will appear broken; it\'s recommended 
         to create a test page with this form on it to properly test the Org Search/Select functionality.</p>';
-      }
-
-      $id = (int) $this->id;
-
-      $search_mode                                   = 'org';
-      $search_org_type                               = '';
-      $relationship_type_upon_org_creation           = 'employee';
-      $relationship_mode                             = 'person_to_organization';
-      $new_org_type_override                         = '';
-      $org_term_singular                             = 'Organization';
-      $org_term_plural                               = 'Organizations';
-      $orgss_no_results_message                      = '';
-      $disable_org_creation                          = false;
-      $checkbox_id_new_org                           = '';
-      $disable_selecting_orgs_with_active_membership = false;
-      $grant_roster_man_on_purchase                  = false;
-      $orgss_grant_org_editor_on_select              = false;
-      $orgss_grant_org_editor_on_purchase            = false;
-      $orgss_hide_remove_buttons                     = false;
-      $orgss_hide_select_buttons                     = false;
-      $orgss_display_removal_alert_message           = false;
-      $orgss_active_membership_alert_title           = '';
-      $orgss_active_membership_alert_body            = '';
-      $orgss_active_membership_alert_button_1_text   = '';
-      $orgss_active_membership_alert_button_1_url    = '';
-      $orgss_active_membership_alert_button_1_style  = '';
-      $orgss_active_membership_alert_button_1_new_tab = false;
-      $orgss_active_membership_alert_button_2_text   = '';
-      $orgss_active_membership_alert_button_2_url    = '';
-      $orgss_active_membership_alert_button_2_style  = '';
-      $orgss_active_membership_alert_button_2_new_tab = false;
-
-      //wicket_gf_write_log($form, true);
-
-      foreach( $form['fields'] as $field ) {
-        if( gettype( $field ) == 'object' ) {
-          if( get_class( $field ) == 'GFWicketFieldOrgSearchSelect' ) {
-            if( $field->id == $id ) {
-              if( isset( $field->orgss_search_mode ) ) {
-                $search_mode = $field->orgss_search_mode;
-              }
-              if( isset( $field->orgss_search_org_type ) ) {
-                $search_org_type = $field->orgss_search_org_type;
-              }
-              if( isset( $field->orgss_relationship_type_upon_org_creation ) ) {
-                $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
-              }
-              if( isset( $field->orgss_relationship_mode ) ) {
-                $relationship_mode = $field->orgss_relationship_mode;
-              }
-              if( isset( $field->orgss_new_org_type_override ) ) {
-                $new_org_type_override = $field->orgss_new_org_type_override;
-              }
-              if( isset( $field->orgss_org_term_singular ) ) {
-                $org_term_singular = $field->orgss_org_term_singular;
-              }
-              if( isset( $field->orgss_org_term_plural ) ) {
-                $org_term_plural = $field->orgss_org_term_plural;
-              }
-              if( isset( $field->orgss_no_results_message ) ) {
-                $orgss_no_results_message = $field->orgss_no_results_message;
-              }
-              if( isset( $field->orgss_disable_org_creation ) ) {
-                $disable_org_creation = $field->orgss_disable_org_creation;
-              }
-              if( isset( $field->orgss_checkbox_id_new_org ) ) {
-                $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
-              }
-              if( isset( $field->orgss_disable_selecting_orgs_with_active_membership ) ) {
-                $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
-              }
-              if( isset( $field->orgss_active_membership_alert_title ) ) {
-                $orgss_active_membership_alert_title = $field->orgss_active_membership_alert_title;
-              }
-              if( isset( $field->orgss_active_membership_alert_body ) ) {
-                $orgss_active_membership_alert_body = $field->orgss_active_membership_alert_body;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_1_text ) ) {
-                $orgss_active_membership_alert_button_1_text = $field->orgss_active_membership_alert_button_1_text;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_1_url ) ) {
-                $orgss_active_membership_alert_button_1_url = $field->orgss_active_membership_alert_button_1_url;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_1_style ) ) {
-                $orgss_active_membership_alert_button_1_style = $field->orgss_active_membership_alert_button_1_style;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_1_new_tab ) ) {
-                $orgss_active_membership_alert_button_1_new_tab = $field->orgss_active_membership_alert_button_1_new_tab;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_2_text ) ) {
-                $orgss_active_membership_alert_button_2_text = $field->orgss_active_membership_alert_button_2_text;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_2_url ) ) {
-                $orgss_active_membership_alert_button_2_url = $field->orgss_active_membership_alert_button_2_url;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_2_style ) ) {
-                $orgss_active_membership_alert_button_2_style = $field->orgss_active_membership_alert_button_2_style;
-              }
-              if( isset( $field->orgss_active_membership_alert_button_2_new_tab ) ) {
-                $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
-              }
-              if( isset( $field->orgss_grant_roster_man_on_purchase ) ) {
-                $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
-              }
-              if( isset( $field->orgss_grant_org_editor_on_select ) ) {
-                $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
-              }
-              if( isset( $field->orgss_grant_org_editor_on_purchase ) ) {
-                $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
-              }
-              if( isset( $field->orgss_hide_remove_buttons ) ) {
-                $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
-              }
-              if( isset( $field->orgss_hide_select_buttons ) ) {
-                $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
-              }
-              if( isset( $field->orgss_display_removal_alert_message ) ) {
-                $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
-              }
             }
-          }
+
+            $id = (int) $this->id;
+
+            $search_mode = 'org';
+            $search_org_type = '';
+            $relationship_type_upon_org_creation = 'employee';
+            $relationship_mode = 'person_to_organization';
+            $new_org_type_override = '';
+            $org_term_singular = 'Organization';
+            $org_term_plural = 'Organizations';
+            $orgss_no_results_message = '';
+            $disable_org_creation = false;
+            $checkbox_id_new_org = '';
+            $disable_selecting_orgs_with_active_membership = false;
+            $grant_roster_man_on_purchase = false;
+            $orgss_grant_org_editor_on_select = false;
+            $orgss_grant_org_editor_on_purchase = false;
+            $orgss_hide_remove_buttons = false;
+            $orgss_hide_select_buttons = false;
+            $orgss_display_removal_alert_message = false;
+            $orgss_active_membership_alert_title = '';
+            $orgss_active_membership_alert_body = '';
+            $orgss_active_membership_alert_button_1_text = '';
+            $orgss_active_membership_alert_button_1_url = '';
+            $orgss_active_membership_alert_button_1_style = '';
+            $orgss_active_membership_alert_button_1_new_tab = false;
+            $orgss_active_membership_alert_button_2_text = '';
+            $orgss_active_membership_alert_button_2_url = '';
+            $orgss_active_membership_alert_button_2_style = '';
+            $orgss_active_membership_alert_button_2_new_tab = false;
+
+            //wicket_gf_write_log($form, true);
+
+            foreach ($form['fields'] as $field) {
+                if (gettype($field) == 'object') {
+                    if (get_class($field) == 'GFWicketFieldOrgSearchSelect') {
+                        if ($field->id == $id) {
+                            if (isset($field->orgss_search_mode)) {
+                                $search_mode = $field->orgss_search_mode;
+                            }
+                            if (isset($field->orgss_search_org_type)) {
+                                $search_org_type = $field->orgss_search_org_type;
+                            }
+                            if (isset($field->orgss_relationship_type_upon_org_creation)) {
+                                $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
+                            }
+                            if (isset($field->orgss_relationship_mode)) {
+                                $relationship_mode = $field->orgss_relationship_mode;
+                            }
+                            if (isset($field->orgss_new_org_type_override)) {
+                                $new_org_type_override = $field->orgss_new_org_type_override;
+                            }
+                            if (isset($field->orgss_org_term_singular)) {
+                                $org_term_singular = $field->orgss_org_term_singular;
+                            }
+                            if (isset($field->orgss_org_term_plural)) {
+                                $org_term_plural = $field->orgss_org_term_plural;
+                            }
+                            if (isset($field->orgss_no_results_message)) {
+                                $orgss_no_results_message = $field->orgss_no_results_message;
+                            }
+                            if (isset($field->orgss_disable_org_creation)) {
+                                $disable_org_creation = $field->orgss_disable_org_creation;
+                            }
+                            if (isset($field->orgss_checkbox_id_new_org)) {
+                                $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
+                            }
+                            if (isset($field->orgss_disable_selecting_orgs_with_active_membership)) {
+                                $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
+                            }
+                            if (isset($field->orgss_active_membership_alert_title)) {
+                                $orgss_active_membership_alert_title = $field->orgss_active_membership_alert_title;
+                            }
+                            if (isset($field->orgss_active_membership_alert_body)) {
+                                $orgss_active_membership_alert_body = $field->orgss_active_membership_alert_body;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_1_text)) {
+                                $orgss_active_membership_alert_button_1_text = $field->orgss_active_membership_alert_button_1_text;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_1_url)) {
+                                $orgss_active_membership_alert_button_1_url = $field->orgss_active_membership_alert_button_1_url;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_1_style)) {
+                                $orgss_active_membership_alert_button_1_style = $field->orgss_active_membership_alert_button_1_style;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_1_new_tab)) {
+                                $orgss_active_membership_alert_button_1_new_tab = $field->orgss_active_membership_alert_button_1_new_tab;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_2_text)) {
+                                $orgss_active_membership_alert_button_2_text = $field->orgss_active_membership_alert_button_2_text;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_2_url)) {
+                                $orgss_active_membership_alert_button_2_url = $field->orgss_active_membership_alert_button_2_url;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_2_style)) {
+                                $orgss_active_membership_alert_button_2_style = $field->orgss_active_membership_alert_button_2_style;
+                            }
+                            if (isset($field->orgss_active_membership_alert_button_2_new_tab)) {
+                                $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
+                            }
+                            if (isset($field->orgss_grant_roster_man_on_purchase)) {
+                                $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
+                            }
+                            if (isset($field->orgss_grant_org_editor_on_select)) {
+                                $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
+                            }
+                            if (isset($field->orgss_grant_org_editor_on_purchase)) {
+                                $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
+                            }
+                            if (isset($field->orgss_hide_remove_buttons)) {
+                                $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
+                            }
+                            if (isset($field->orgss_hide_select_buttons)) {
+                                $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
+                            }
+                            if (isset($field->orgss_display_removal_alert_message)) {
+                                $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (component_exists('org-search-select')) {
+                $component_output = get_component('org-search-select', [
+                    'classes'                                       => [],
+                    'search_mode'                                   => $search_mode,
+                    'search_org_type'                               => $search_org_type,
+                    'relationship_type_upon_org_creation'           => $relationship_type_upon_org_creation,
+                    'relationship_mode'                             => $relationship_mode,
+                    'new_org_type_override'                         => $new_org_type_override,
+                    'selected_uuid_hidden_field_name'               => 'input_' . $id,
+                    'checkbox_id_new_org'                           => $checkbox_id_new_org,
+                    'key'                                           => $id,
+                    'org_term_singular'                             => $org_term_singular,
+                    'org_term_plural'                               => $org_term_plural,
+                    'no_results_found_message'                      => $orgss_no_results_message,
+                    'disable_create_org_ui'                         => $disable_org_creation,
+                    'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
+                    'active_membership_alert_title'                 => $orgss_active_membership_alert_title,
+                    'active_membership_alert_body'                  => $orgss_active_membership_alert_body,
+                    'active_membership_alert_button_1_text'         => $orgss_active_membership_alert_button_1_text,
+                    'active_membership_alert_button_1_url'          => $orgss_active_membership_alert_button_1_url,
+                    'active_membership_alert_button_1_style'        => $orgss_active_membership_alert_button_1_style,
+                    'active_membership_alert_button_1_new_tab'      => $orgss_active_membership_alert_button_1_new_tab,
+                    'active_membership_alert_button_2_text'         => $orgss_active_membership_alert_button_2_text,
+                    'active_membership_alert_button_2_url'          => $orgss_active_membership_alert_button_2_url,
+                    'active_membership_alert_button_2_style'        => $orgss_active_membership_alert_button_2_style,
+                    'active_membership_alert_button_2_new_tab'      => $orgss_active_membership_alert_button_2_new_tab,
+                    'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
+                    'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
+                    'grant_org_editor_on_purchase'                  => $orgss_grant_org_editor_on_purchase,
+                    'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
+                    'hide_select_buttons'                           => $orgss_hide_select_buttons,
+                    'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
+                    'form_id'                                       => $form['id'] ?? 0,
+                ], false);
+
+                // Hidden field for Gravity Forms conditional logic
+                $hidden_field = sprintf(
+                    '<input type="hidden" name="input_%d" id="input_%s_%d" value="%s" class="gf_org_search_select_input" />',
+                    $id,
+                    $form['id'] ?? 0,
+                    $id,
+                    esc_attr($value)
+                );
+
+                return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+            } else {
+                return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
+            }
         }
-      }
 
-      if( component_exists('org-search-select') ) {
-        $component_output = get_component( 'org-search-select', [ 
-          'classes'                                       => [],
-          'search_mode'                                   => $search_mode, 
-          'search_org_type'                               => $search_org_type,
-          'relationship_type_upon_org_creation'           => $relationship_type_upon_org_creation,
-          'relationship_mode'                             => $relationship_mode,
-          'new_org_type_override'                         => $new_org_type_override,
-          'selected_uuid_hidden_field_name'               => 'input_' . $id,
-          'checkbox_id_new_org'                           => $checkbox_id_new_org,
-          'key'                                           => $id,
-          'org_term_singular'                             => $org_term_singular,
-          'org_term_plural'                               => $org_term_plural,
-          'no_results_found_message'                      => $orgss_no_results_message,
-          'disable_create_org_ui'                         => $disable_org_creation,
-          'disable_selecting_orgs_with_active_membership' => $disable_selecting_orgs_with_active_membership,
-          'active_membership_alert_title'                 => $orgss_active_membership_alert_title,
-          'active_membership_alert_body'                  => $orgss_active_membership_alert_body,
-          'active_membership_alert_button_1_text'         => $orgss_active_membership_alert_button_1_text,
-          'active_membership_alert_button_1_url'          => $orgss_active_membership_alert_button_1_url,
-          'active_membership_alert_button_1_style'        => $orgss_active_membership_alert_button_1_style,
-          'active_membership_alert_button_1_new_tab'      => $orgss_active_membership_alert_button_1_new_tab,
-          'active_membership_alert_button_2_text'         => $orgss_active_membership_alert_button_2_text,
-          'active_membership_alert_button_2_url'          => $orgss_active_membership_alert_button_2_url,
-          'active_membership_alert_button_2_style'        => $orgss_active_membership_alert_button_2_style,
-          'active_membership_alert_button_2_new_tab'      => $orgss_active_membership_alert_button_2_new_tab,
-          'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
-          'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
-          'grant_org_editor_on_purchase'                  => $orgss_grant_org_editor_on_purchase,
-          'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
-          'hide_select_buttons'                           => $orgss_hide_select_buttons,
-          'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
-          'form_id'                                       => isset($form['id']) ? $form['id'] : 0,
-        ], false );
-        
-        // Hidden field for Gravity Forms conditional logic
-        $hidden_field = sprintf(
-          '<input type="hidden" name="input_%d" id="input_%s_%d" value="%s" class="gf_org_search_select_input" />',
-          $id,
-          isset($form['id']) ? $form['id'] : 0,
-          $id,
-          esc_attr($value)
-        );
-        
-        return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
-      } else {
-        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
-      } 
-    }
+        // Make sure the field value is properly recognized for conditional logic
+        public function get_value_submission($field_values, $get_from_post_global_var = true)
+        {
+            $input_name = 'input_' . $this->id;
 
-    // Make sure the field value is properly recognized for conditional logic
-    public function get_value_submission($field_values, $get_from_post_global_var = true) {
-      $input_name = 'input_' . $this->id;
-      
-      if ($get_from_post_global_var) {
-        // Get value from the $_POST
-        $value = rgpost($input_name);
-      } else {
-        // Get value from the provided array
-        $value = isset($field_values[$input_name]) ? $field_values[$input_name] : '';
-      }
-      
-      return $value;
-    }
-    
-    // This function is needed to ensure field inputs are properly processed for conditional logic
-    public function get_field_value($value, $form, $input_name, $lead_id, $lead) {
-      if (empty($value)) {
-        return '';
-      }
-      return $value;
-    }
-    
-    // Helper method to ensure conditional logic sees the value correctly
-    public function is_value_submission_empty($form_id) {
-      $input_name = 'input_' . $this->id;
-      $value = rgpost($input_name);
-      return empty($value);
-    }
+            if ($get_from_post_global_var) {
+                // Get value from the $_POST
+                $value = rgpost($input_name);
+            } else {
+                // Get value from the provided array
+                $value = $field_values[$input_name] ?? '';
+            }
 
-    // Specify which event to listen for with conditional logic
-    public function get_conditional_logic_event($event) {
-      return 'change';
-    }
-    
-    // Return the current field value for conditional logic
-    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead) {
-      return $value;
-    }
-    
-    // Make the field compatible with Gravity Forms entry details
-    public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-      if (empty($value)) {
-        return '';
-      }
-      
-      // You could format the UUID to be more readable here if desired
-      return esc_html($value);
-    }
-    
-    // Ensure the field works properly in entry list views
-    public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-      if (empty($value)) {
-        return '';
-      }
-      
-      return esc_html($value);
-    }
+            return $value;
+        }
 
-    // This function isn't needed, as Gravity Forms will already flag the field if its marked
-    // as 'required' but the user doesn't provide a value
-    // public function validate( $value, $form ) {      
-    //   if (strlen(trim($value)) <= 0) {
-    //     $this->failed_validation = true;
-    //     if ( ! empty( $this->errorMessage ) ) {
-    //         $this->validation_message = $this->errorMessage;
-    //     }
-    //   }
-    // }
+        // This function is needed to ensure field inputs are properly processed for conditional logic
+        public function get_field_value($value, $form, $input_name, $lead_id, $lead)
+        {
+            if (empty($value)) {
+                return '';
+            }
 
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
+            return $value;
+        }
 
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
+        // Helper method to ensure conditional logic sees the value correctly
+        public function is_value_submission_empty($form_id)
+        {
+            $input_name = 'input_' . $this->id;
+            $value = rgpost($input_name);
 
-	}
-	GF_Fields::register(new GFWicketFieldOrgSearchSelect());
+            return empty($value);
+        }
+
+        // Specify which event to listen for with conditional logic
+        public function get_conditional_logic_event($event)
+        {
+            return 'change';
+        }
+
+        // Return the current field value for conditional logic
+        public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
+        {
+            return $value;
+        }
+
+        // Make the field compatible with Gravity Forms entry details
+        public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen')
+        {
+            if (empty($value)) {
+                return '';
+            }
+
+            // You could format the UUID to be more readable here if desired
+            return esc_html($value);
+        }
+
+        // Ensure the field works properly in entry list views
+        public function get_value_entry_list($value, $entry, $field_id, $columns, $form)
+        {
+            if (empty($value)) {
+                return '';
+            }
+
+            return esc_html($value);
+        }
+
+        // This function isn't needed, as Gravity Forms will already flag the field if its marked
+        // as 'required' but the user doesn't provide a value
+        // public function validate( $value, $form ) {
+        //   if (strlen(trim($value)) <= 0) {
+        //     $this->failed_validation = true;
+        //     if ( ! empty( $this->errorMessage ) ) {
+        //         $this->validation_message = $this->errorMessage;
+        //     }
+        //   }
+        // }
+
+        // Functions for how the field value gets displayed on the backend
+        // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
+        //   return __('Enter details', 'txtdomain');
+        // }
+        // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
+        //     return '';
+        // }
+
+        // Edit merge tag
+        // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
+        //   return $this->prettyListOutput($value);
+        // }
+
+    }
+    GF_Fields::register(new GFWicketFieldOrgSearchSelect());
 }
