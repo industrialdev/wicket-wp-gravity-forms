@@ -145,9 +145,9 @@ if (!class_exists('Wicket_Gf_Main')) {
             require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
 
             // Custom field: Wicket Hidden Data Bind
-            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-wicket-data-hidden.php';
-            add_action('gform_field_standard_settings', ['GFWicketDataHiddenField', 'render_wicket_live_update_settings'], 10, 2);
-            add_action('gform_editor_js', ['GFWicketDataHiddenField', 'editor_script']); // Hook for the JS
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-data-bind-hidden.php';
+            add_action('gform_field_standard_settings', ['GFDataBindHiddenField', 'render_wicket_live_update_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFDataBindHiddenField', 'editor_script']); // Hook for the JS
 
             // Custom field: org profile widget
             require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
@@ -1475,17 +1475,17 @@ if (!class_exists('Wicket_Gf_Main')) {
                     (function() {
                         function wicketLogWidgetEvent(eventName, e) {
                             console.log(`%c${eventName} Event Detected!`, 'color: blue; font-weight: bold;');
-                            console.log('Full Event Detail:', e.detail);
+                            //console.log('Full Event Detail:', e.detail);
 
                             if (e.detail) {
                                 if (e.detail.dataFields) {
                                     console.log('Data Fields:', e.detail.dataFields);
                                 }
                                 if (e.detail.resource) {
-                                    console.log('Resource:', e.detail.resource);
+                                    //console.log('Resource:', e.detail.resource);
                                 }
                                 if (e.detail.validation) {
-                                    console.log('Validation:', e.detail.validation);
+                                    //console.log('Validation:', e.detail.validation);
                                 }
                             }
                         }
@@ -1497,12 +1497,12 @@ if (!class_exists('Wicket_Gf_Main')) {
                             });
 
                             // Listen for save success event
-                            /*window.addEventListener('wwidget-component-additional-info-save-success', function(e) {
-                                wicketLogWidgetEvent('SAVE_SUCCESS', e);
+                            window.addEventListener('wwidget-component-additional-info-save-success', function(e) {
+                                //wicketLogWidgetEvent('SAVE_SUCCESS', e);
                             });
 
                             // Listen for delete success event
-                            window.addEventListener('wwidget-component-additional-info-delete-success', function(e) {
+                            /*window.addEventListener('wwidget-component-additional-info-delete-success', function(e) {
                                 wicketLogWidgetEvent('DELETE_SUCCESS', e);
                             });*/
                         }
