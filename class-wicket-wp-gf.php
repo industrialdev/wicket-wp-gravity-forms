@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author  Wicket Inc.
  *
@@ -42,6 +43,8 @@ if (!class_exists('Wicket_Gf_Main')) {
      */
     class Wicket_Gf_Main
     {
+        private static bool $live_update_script_enqueued = false;
+
         /**
          * Class variables.
          */
@@ -100,6 +103,12 @@ if (!class_exists('Wicket_Gf_Main')) {
 
             // Register scripts for conditional logic
             $this->register_conditional_logic_scripts();
+
+            // Conditionally enqueue live update script for Wicket Hidden Data Bind fields
+            add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_live_update_script'], 10, 2);
+
+            // Add action for the debug script
+            add_action('wp_footer', [$this, 'output_wicket_event_debugger_script']);
         }
 
         public static function gf_mapping_addon_load()
@@ -129,11 +138,16 @@ if (!class_exists('Wicket_Gf_Main')) {
             add_action('gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect', 'custom_settings'], 10, 2);
             add_action('gform_editor_js', ['GFWicketFieldOrgSearchSelect', 'editor_script']);
 
+            // Custom field: user mdp tags
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
+
             // Custom field: individual profile widget
             require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
 
-            // Custom field: user mdp tags
-            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
+            // Custom field: Wicket Hidden Data Bind
+            require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-wicket-data-hidden.php';
+            add_action('gform_field_standard_settings', ['GFWicketDataHiddenField', 'render_wicket_live_update_settings'], 10, 2);
+            add_action('gform_editor_js', ['GFWicketDataHiddenField', 'editor_script']); // Hook for the JS
 
             // Custom field: org profile widget
             require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
@@ -152,7 +166,6 @@ if (!class_exists('Wicket_Gf_Main')) {
 
             // Apply pre-form-render actions based on our settings above as needed
             add_filter('gform_pre_render', ['Wicket_Gf_Main', 'gf_custom_pre_render'], 50, 1);
-
         }
 
         public static function gf_editor_global_custom_scripts()
@@ -169,12 +182,12 @@ if (!class_exists('Wicket_Gf_Main')) {
             if ($position == 25) {
                 ob_start(); ?>
 
-                <div class="wicket_global_custom_settings">
-					<input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);" onkeypress="SetFieldProperty('hide_label', this.checked);">
-					<label for="hide_label" class="inline">Hide Label</label>
-                </div>
+                <li class="wicket_global_custom_settings field_setting">
+                    <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);" onkeypress="SetFieldProperty('hide_label', this.checked);">
+                    <label for="hide_label" class="inline">Hide Label</label>
+                </li>
 
-                <?php echo ob_get_clean();
+            <?php echo ob_get_clean();
             }
         }
 
@@ -186,14 +199,14 @@ if (!class_exists('Wicket_Gf_Main')) {
                 ob_start(); ?>
 
                 <script>
-                    window.addEventListener('load', function () {
-                    if (document.querySelector('body') !== null) {
+                    window.addEventListener('load', function() {
+                        if (document.querySelector('body') !== null) {
 
-                        // Check and see if the page is using the steps version of pagination,
-                        // and if so re-format it
-                        let paginationStepsCheck = document.querySelector('.gf_page_steps');
-                        if( paginationStepsCheck != null ) {
-                            document.head.insertAdjacentHTML("beforeend", `
+                            // Check and see if the page is using the steps version of pagination,
+                            // and if so re-format it
+                            let paginationStepsCheck = document.querySelector('.gf_page_steps');
+                            if (paginationStepsCheck != null) {
+                                document.head.insertAdjacentHTML("beforeend", `
                             <style>
                                 @media(min-width:768px) {
                                     form[id^=gform_] {
@@ -283,13 +296,12 @@ if (!class_exists('Wicket_Gf_Main')) {
                                     border-color: var(--border-interactive, #cfd3d9);
                                 }
                             </style>`);
+                            }
                         }
-                    }
                     });
-
                 </script>
 
-                <?php $output = ob_get_clean();
+            <?php $output = ob_get_clean();
 
                 // Dynamically create and add this HTML form field on render
                 $props = [
@@ -365,7 +377,6 @@ if (!class_exists('Wicket_Gf_Main')) {
                     }
                 }
             }
-
         }
 
         public function enqueue_frontend_scripts_styles()
@@ -467,10 +478,10 @@ if (!class_exists('Wicket_Gf_Main')) {
             $theme = $a['theme'];
 
             return '<div class="container wicket-gf-shortcode">' .
-                    do_shortcode(
-                        "[gravityform id='" . $form_id . "' title='" . $title . "' description='" . $description . "' ajax='" . $ajax . "' tabindex='" . $tabindex . "' field_values='" . $field_values . "' theme='" . $theme . "']"
-                    ) .
-                    '</div>';
+                do_shortcode(
+                    "[gravityform id='" . $form_id . "' title='" . $title . "' description='" . $description . "' ajax='" . $ajax . "' tabindex='" . $tabindex . "' field_values='" . $field_values . "' theme='" . $theme . "']"
+                ) .
+                '</div>';
         }
 
         public static function register_rest_routes()
@@ -1421,6 +1432,91 @@ if (!class_exists('Wicket_Gf_Main')) {
                 WICKET_WP_GF_VERSION,
                 true
             );
+        }
+
+        public function conditionally_enqueue_live_update_script($form, $is_ajax): void
+        {
+            if (self::$live_update_script_enqueued || is_admin()) {
+                return;
+            }
+
+            if (empty($form) || !isset($form['fields']) || !is_array($form['fields'])) {
+                return;
+            }
+
+            $should_enqueue = false;
+            foreach ($form['fields'] as $field) {
+                // Check if $field is an object and has the necessary properties
+                if (is_object($field) && isset($field->type) && $field->type === 'wicket_data_hidden' && !empty($field->liveUpdateEnabled)) {
+                    $should_enqueue = true;
+                    break;
+                }
+            }
+
+            if ($should_enqueue) {
+                $plugin_url = plugin_dir_url(__FILE__);
+                wp_enqueue_script(
+                    'wicket-gf-live-update',
+                    $plugin_url . 'assets/js/wicket-gf-live-update.js',
+                    ['jquery', 'gform_gravityforms'], // Assuming Wicket SDK is globally available or enqueued elsewhere
+                    WICKET_WP_GF_VERSION,
+                    true
+                );
+                self::$live_update_script_enqueued = true;
+            }
+        }
+
+        public function output_wicket_event_debugger_script(): void
+        {
+            // Check if WP_ENV is defined and is 'development' or 'staging'
+            if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
+                ?>
+                <script type="text/javascript" id="wicket-gf-event-debugger">
+                    (function() {
+                        function wicketLogWidgetEvent(eventName, e) {
+                            console.log(`%c${eventName} Event Detected!`, 'color: blue; font-weight: bold;');
+                            console.log('Full Event Detail:', e.detail);
+
+                            if (e.detail) {
+                                if (e.detail.dataFields) {
+                                    console.log('Data Fields:', e.detail.dataFields);
+                                }
+                                if (e.detail.resource) {
+                                    console.log('Resource:', e.detail.resource);
+                                }
+                                if (e.detail.validation) {
+                                    console.log('Validation:', e.detail.validation);
+                                }
+                            }
+                        }
+
+                        function initializeWidgetListeners() {
+                            // Listen for widget loaded event
+                            window.addEventListener('wwidget-component-additional-info-loaded', function(e) {
+                                wicketLogWidgetEvent('LOADED', e);
+                            });
+
+                            // Listen for save success event
+                            /*window.addEventListener('wwidget-component-additional-info-save-success', function(e) {
+                                wicketLogWidgetEvent('SAVE_SUCCESS', e);
+                            });
+
+                            // Listen for delete success event
+                            window.addEventListener('wwidget-component-additional-info-delete-success', function(e) {
+                                wicketLogWidgetEvent('DELETE_SUCCESS', e);
+                            });*/
+                        }
+
+                        // Check for Wicket and initialize
+                        if (typeof window.Wicket !== 'undefined') {
+                            window.Wicket.ready(initializeWidgetListeners);
+                        } else {
+                            console.error('Wicket is not loaded yet');
+                        }
+                    })();
+                </script>
+<?php
+            }
         }
     }
     new Wicket_Gf_Main();

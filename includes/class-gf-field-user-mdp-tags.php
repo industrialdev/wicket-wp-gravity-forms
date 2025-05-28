@@ -28,7 +28,11 @@ class GFWicketFieldUserMdpTags extends GF_Field
 
         // Set default label for admin
         if (empty($this->label)) {
-            $this->label = esc_html__('Wicket User Tags (Hidden)', 'wicket-gf');
+            /*
+            If strings are made translatable at the constructor, WP will throw an error:
+            Function _load_textdomain_just_in_time was called incorrectly. Translation loading for the wicket-gf domain was triggered too early. This is usually an indicator for some code in the plugin or theme running too early. Translations should be loaded at the init action or later.
+            */
+            $this->label = 'Wicket User Tags (Hidden)'; // Default non-translated label
         }
     }
 
