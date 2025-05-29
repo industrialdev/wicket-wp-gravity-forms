@@ -228,6 +228,7 @@ class GFWicketFieldWidgetAi extends GF_Field
         }
 
         $id = (int) $this->id;
+        $unique_component_id = 'wicket-ai-widget-' . $id; // Generate a unique ID for the component instance
 
         $ai_widget_schemas = [[]];
         $wwidget_ai_type = 'people';
@@ -292,6 +293,7 @@ class GFWicketFieldWidgetAi extends GF_Field
             ob_start();
 
             get_component('widget-additional-info', [
+                'id'                               => $unique_component_id, // Pass the unique ID to the component
                 'classes'                          => [],
                 'additional_info_data_field_name'  => 'input_' . $id,
                 'resource_type'                    => $wwidget_ai_type,
