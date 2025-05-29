@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.27
+ * Version:           2.0.28
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -1472,7 +1472,7 @@ if (!class_exists('Wicket_Gf_Main')) {
             if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
                 ?>
                 <script type="text/javascript" id="wicket-gf-event-debugger">
-                    (function() {
+                    document.addEventListener("DOMContentLoaded", function() {
                         function wicketLogWidgetEvent(eventName, e) {
                             console.log(`%c${eventName} Event Detected!`, 'color: blue; font-weight: bold;');
                             //console.log('Full Event Detail:', e.detail);
@@ -1480,7 +1480,10 @@ if (!class_exists('Wicket_Gf_Main')) {
                             if (e.detail) {
                                 if (e.detail.dataFields) {
                                     console.log('Data Fields:', e.detail.dataFields);
+                                } else {
+                                    console.log('Event Detail:', e.detail);
                                 }
+
                                 if (e.detail.resource) {
                                     //console.log('Resource:', e.detail.resource);
                                 }
@@ -1492,14 +1495,18 @@ if (!class_exists('Wicket_Gf_Main')) {
 
                         function initializeWidgetListeners() {
                             // Listen for widget loaded event
-                            window.addEventListener('wwidget-component-additional-info-loaded', function(e) {
+                            window.addEventListener('wwidget-component-common-loaded', function(e) {
                                 wicketLogWidgetEvent('LOADED', e);
                             });
 
+                            /*window.addEventListener('wwidget-component-additional-info-loaded', function(e) {
+                                wicketLogWidgetEvent('LOADED', e);
+                            });*/
+
                             // Listen for save success event
-                            window.addEventListener('wwidget-component-additional-info-save-success', function(e) {
-                                //wicketLogWidgetEvent('SAVE_SUCCESS', e);
-                            });
+                            /*window.addEventListener('wwidget-component-additional-info-save-success', function(e) {
+                                wicketLogWidgetEvent('SAVE_SUCCESS', e);
+                            });*/
 
                             // Listen for delete success event
                             /*window.addEventListener('wwidget-component-additional-info-delete-success', function(e) {
@@ -1513,7 +1520,7 @@ if (!class_exists('Wicket_Gf_Main')) {
                         } else {
                             console.error('Wicket is not loaded yet');
                         }
-                    })();
+                    });
                 </script>
 <?php
             }
