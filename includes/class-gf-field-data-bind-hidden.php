@@ -94,7 +94,7 @@ class GFDataBindHiddenField extends GF_Field
     </label>
 </li>
 
-<?php // Summary View (initially hidden, shown by JS) ?>
+<?php // Summary View (initially hidden, shown by JS)?>
 <li class="live_update_summary_setting field_setting" id="liveUpdateSummaryContainer" style="display:none;">
     <label class="section_label"><?php esc_html_e('Current Live Update Configuration', 'wicket-gf'); ?></label>
     <div id="liveUpdateSummaryDetails" style="padding-bottom: 10px;">
@@ -106,7 +106,7 @@ class GFDataBindHiddenField extends GF_Field
     <button type="button" id="wicketResetLiveUpdateSettingsButton" class="button gf_input_button" onclick="handleWicketResetLiveUpdateSettings(this)"><?php esc_html_e('Change Settings', 'wicket-gf'); ?></button>
 </li>
 
-<?php // Selector View (conditionally hidden/shown by JS) ?>
+<?php // Selector View (conditionally hidden/shown by JS)?>
 <div id="wicketLiveUpdateSelectorsWrapper">
     <li class="live_update_data_source_setting field_setting">
         <label for="liveUpdateDataSource" class="section_label">
@@ -199,8 +199,8 @@ class GFDataBindHiddenField extends GF_Field
             if (canShowSummary && !forceSwitchToSelectors) { // Check forceSwitchToSelectors
                 // Summary Mode
                 var dataSourceDisplay = field.liveUpdateDataSource;
-                if (field.liveUpdateDataSource === 'person') dataSourceDisplay = '<?php esc_html_e("Person (Current User)", "wicket-gf"); ?>';
-                if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e("Organization", "wicket-gf"); ?>';
+                if (field.liveUpdateDataSource === 'person') dataSourceDisplay = '<?php esc_html_e('Person (Current User)', 'wicket-gf'); ?>';
+                if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e('Organization', 'wicket-gf'); ?>';
                 $summaryContainer.find('#summaryDataSourceText').text(dataSourceDisplay);
 
                 if (field.liveUpdateDataSource === 'organization' && field.liveUpdateOrganizationUuid) {
@@ -252,8 +252,8 @@ class GFDataBindHiddenField extends GF_Field
                     wicketHandleDataSourceChange(dataSourceToUseForLoading, $context, false);
                 } else {
                     // No data source to load from (e.g. after reset, or new field with no selection)
-                    $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>');
-                    $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>');
+                    $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>');
+                    $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>');
                     // Ensure Org UUID field is hidden if no data source implies it shouldn't be shown
                     // (this is typically handled by the check on currentDataSourceInDropdown for $orgUuidFieldLi visibility)
                 }
@@ -278,10 +278,10 @@ class GFDataBindHiddenField extends GF_Field
 
         // Always reset schema and value key dropdowns when data source changes or is cleared
         $schemaSlugDropdown.html(
-            '<option value=\"\"><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>'
+            '<option value=\"\"><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>'
         );
         $valueKeyDropdown.html(
-            '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+            '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
         );
 
         if (!isInitialLoad) {
@@ -300,7 +300,7 @@ class GFDataBindHiddenField extends GF_Field
             if (orgUuid && orgUuid.length > 30) { // Basic check for UUID-like string
                 wicketFetchSchemas(dataSource, orgUuid, $context);
             } else if (!orgUuid && !isInitialLoad) {
-                 $schemaSlugDropdown.html('<option value=\"\"><?php esc_html_e("Enter Organization UUID", "wicket-gf"); ?></option>');
+                 $schemaSlugDropdown.html('<option value=\"\"><?php esc_html_e('Enter Organization UUID', 'wicket-gf'); ?></option>');
             }
         } else {
             $orgUuidFieldLi.hide();
@@ -322,10 +322,10 @@ class GFDataBindHiddenField extends GF_Field
             wicketFetchSchemas(dataSource, orgUuid, $context);
         } else if (dataSource === 'organization') {
             $schemaSlugDropdown.html(
-                '<option value=\"\"><?php esc_html_e("Enter valid Org UUID", "wicket-gf"); ?></option>'
+                '<option value=\"\"><?php esc_html_e('Enter valid Org UUID', 'wicket-gf'); ?></option>'
             );
             $valueKeyDropdown.html(
-                '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+                '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
             );
             SetFieldProperty('liveUpdateSchemaSlug', ''); // Clear if UUID becomes invalid
             SetFieldProperty('liveUpdateValueKey', '');
@@ -337,11 +337,11 @@ class GFDataBindHiddenField extends GF_Field
 
         var $schemaSlugDropdown = $context.find('#liveUpdateSchemaSlug');
         $schemaSlugDropdown.html(
-            '<option value=\"\"><?php esc_html_e("Loading...", "wicket-gf"); ?></option>'
+            '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>'
         );
         var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
         $valueKeyDropdown.html(
-            '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+            '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
         );
 
         jQuery.ajax({
@@ -349,14 +349,14 @@ class GFDataBindHiddenField extends GF_Field
             type: 'POST',
             data: {
                 action: 'gf_wicket_get_mdp_schemas',
-                nonce: '<?php echo wp_create_nonce("gf_wicket_mdp_nonce"); ?>',
+                nonce: '<?php echo wp_create_nonce('gf_wicket_mdp_nonce'); ?>',
                 data_source: dataSource,
                 organization_uuid: orgUuid,
                 form_id: typeof form !== 'undefined' ? form.id : 0
             },
             success: function(response) {
                 $schemaSlugDropdown.html(
-                    '<option value=\"\"><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>'
+                    '<option value=\"\"><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>'
                 );
                 if (response.success && response.data) {
                     jQuery.each(response.data, function(value, text) {
@@ -377,9 +377,9 @@ class GFDataBindHiddenField extends GF_Field
                     }
                 } else {
                     var errorMessage =
-                        '<?php esc_html_e("Error: ", "wicket-gf"); ?>' +
+                        '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
                         (response.data ||
-                            '<?php esc_html_e("Could not load schemas.", "wicket-gf"); ?>'
+                            '<?php esc_html_e('Could not load schemas.', 'wicket-gf'); ?>'
                         );
                     $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(
                         errorMessage));
@@ -388,10 +388,10 @@ class GFDataBindHiddenField extends GF_Field
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 var errorMessage =
-                    '<?php esc_html_e("AJAX Error: ", "wicket-gf"); ?>' +
+                    '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' +
                     textStatus + ' - ' + errorThrown;
                 $schemaSlugDropdown.html(
-                    '<option value=\"\"><?php esc_html_e("Error loading schemas", "wicket-gf"); ?></option>'
+                    '<option value=\"\"><?php esc_html_e('Error loading schemas', 'wicket-gf'); ?></option>'
                 );
                 $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
                 wicketHandleSchemaSlugChange('', $context); // Ensure value key is reset on error
@@ -404,7 +404,7 @@ class GFDataBindHiddenField extends GF_Field
 
         var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
         $valueKeyDropdown.html( // Set to loading or default
-            schemaSlug ? '<option value=\"\"><?php esc_html_e("Loading...", "wicket-gf"); ?></option>' : '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+            schemaSlug ? '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>' : '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
         );
 
         if (!schemaSlug) {
@@ -420,7 +420,7 @@ class GFDataBindHiddenField extends GF_Field
             type: 'POST',
             data: {
                 action: 'gf_wicket_get_mdp_value_keys',
-                nonce: '<?php echo wp_create_nonce("gf_wicket_mdp_nonce"); ?>',
+                nonce: '<?php echo wp_create_nonce('gf_wicket_mdp_nonce'); ?>',
                 data_source: dataSource,
                 schema_data_slug: schemaSlug,
                 organization_uuid: orgUuid,
@@ -428,7 +428,7 @@ class GFDataBindHiddenField extends GF_Field
             },
             success: function(response) {
                 $valueKeyDropdown.html(
-                    '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+                    '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
                 );
                 if (response.success && response.data) {
                     jQuery.each(response.data, function(value, text) {
@@ -444,19 +444,19 @@ class GFDataBindHiddenField extends GF_Field
                     }
                 } else {
                     var errorMessage =
-                        '<?php esc_html_e("Error: ", "wicket-gf"); ?>' +
+                        '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
                         (response.data ||
-                            '<?php esc_html_e("Could not load value keys.", "wicket-gf"); ?>'
+                            '<?php esc_html_e('Could not load value keys.', 'wicket-gf'); ?>'
                         );
                     $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 var errorMessage =
-                    '<?php esc_html_e("AJAX Error: ", "wicket-gf"); ?>' +
+                    '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' +
                     textStatus + ' - ' + errorThrown;
                 $valueKeyDropdown.html(
-                    '<option value=\"\"><?php esc_html_e("Error loading value keys", "wicket-gf"); ?></option>'
+                    '<option value=\"\"><?php esc_html_e('Error loading value keys', 'wicket-gf'); ?></option>'
                 );
                 $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
             }
@@ -491,8 +491,8 @@ class GFDataBindHiddenField extends GF_Field
         // Clear UI elements in selectors
         $context.find('#liveUpdateDataSource').val('');
         $context.find('#liveUpdateOrganizationUuid').val('');
-        $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>').val('');
-        $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>').val('');
+        $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>').val('');
+        $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>').val('');
 
         refreshWicketLiveUpdateView(buttonElement, true); // Pass true to force selector view
     }
@@ -565,12 +565,14 @@ class GFDataBindHiddenField extends GF_Field
 
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
+
                     return;
                 }
 
                 $person_data_response = wicket_get_person_by_id($person_uuid);
                 if (!$person_data_response || is_wp_error($person_data_response)) {
                     wp_send_json_error('Failed to fetch person data.');
+
                     return;
                 }
 
@@ -581,12 +583,12 @@ class GFDataBindHiddenField extends GF_Field
                     if (method_exists($person_data_response, 'included')) {
                         try {
                             $included_data = $person_data_response->included();
-                            if ($included_data instanceof \Illuminate\Support\Collection) {
+                            if ($included_data instanceof Illuminate\Support\Collection) {
                                 $included_items_array = $included_data->all();
                             } elseif (is_array($included_data)) {
                                 $included_items_array = $included_data;
                             }
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Error calling included()
                         }
                     }
@@ -594,7 +596,7 @@ class GFDataBindHiddenField extends GF_Field
                     // Attempt 2: Direct access to 'included' property (fallback)
                     if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
                         $included_data_prop = $person_data_response->included;
-                        if ($included_data_prop instanceof \Illuminate\Support\Collection) {
+                        if ($included_data_prop instanceof Illuminate\Support\Collection) {
                             $included_items_array = $included_data_prop->all();
                         } elseif (is_array($included_data_prop)) {
                             $included_items_array = $included_data_prop;
@@ -606,19 +608,19 @@ class GFDataBindHiddenField extends GF_Field
                         try {
                             $response_as_array = $person_data_response->toJsonAPI();
                             if (isset($response_as_array['included'])) {
-                                if ($response_as_array['included'] instanceof \Illuminate\Support\Collection) {
+                                if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
                                     $included_items_array = $response_as_array['included']->all();
                                 } elseif (is_array($response_as_array['included'])) {
                                     $included_items_array = $response_as_array['included'];
                                 }
                             }
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Error calling toJsonAPI()
                         }
                     }
                 } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
                     $included_data_from_main_array = $person_data_response['included'];
-                    if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
+                    if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
                         $included_items_array = $included_data_from_main_array->all();
                     } elseif (is_array($included_data_from_main_array)) {
                         $included_items_array = $included_data_from_main_array;
@@ -627,7 +629,7 @@ class GFDataBindHiddenField extends GF_Field
 
                 if (is_array($included_items_array)) {
                     foreach ($included_items_array as $item) {
-                        $item_arr = is_object($item) ? (array)$item : $item;
+                        $item_arr = is_object($item) ? (array) $item : $item;
 
                         if (isset($item_arr['type']) && $item_arr['type'] === 'json_schemas') {
                             $attributes = $item_arr['attributes'] ?? null;
@@ -657,12 +659,14 @@ class GFDataBindHiddenField extends GF_Field
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
+
                     return;
                 }
 
                 $org_data_response = wicket_get_organization($organization_uuid, 'jsonSchemasAvailable');
                 if (!$org_data_response || is_wp_error($org_data_response)) {
                     wp_send_json_error('Failed to fetch organization data.');
+
                     return;
                 }
 
@@ -694,7 +698,7 @@ class GFDataBindHiddenField extends GF_Field
                                         continue;
                                     }
                                     $option_value = $schema_identifier . '.' . $property_key;
-                                    $option_text = $property_definition['title'] ?? ucfirst(str_replace('_', ' ', (string)$property_key));
+                                    $option_text = $property_definition['title'] ?? ucfirst(str_replace('_', ' ', (string) $property_key));
                                     $options[$option_value] = $option_text;
                                 }
                             }
@@ -703,15 +707,18 @@ class GFDataBindHiddenField extends GF_Field
                 }
             } else {
                 wp_send_json_error('Invalid data source specified.');
+
                 return;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             wp_send_json_error('API Error: ' . $e->getMessage());
+
             return;
         }
 
         if (empty($options)) {
             wp_send_json_error('No schemas found for the selected source.');
+
             return;
         }
 
@@ -732,6 +739,7 @@ class GFDataBindHiddenField extends GF_Field
 
         if (empty($schema_data_slug)) {
             wp_send_json_error('Schema/Data Slug is required.');
+
             return;
         }
 
@@ -740,12 +748,14 @@ class GFDataBindHiddenField extends GF_Field
                 $person_uuid = wicket_current_person_uuid();
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
+
                     return;
                 }
 
                 $person_data_response = wicket_get_person_by_id($person_uuid);
                 if (!$person_data_response || is_wp_error($person_data_response)) {
                     wp_send_json_error('Failed to fetch person data.');
+
                     return;
                 }
 
@@ -779,7 +789,7 @@ class GFDataBindHiddenField extends GF_Field
                             if (is_array($data_fields_attr)) {
                                 $person_attributes_arr = ['data_fields' => $data_fields_attr];
                             }
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Error calling getAttribute()
                         }
                     }
@@ -791,26 +801,26 @@ class GFDataBindHiddenField extends GF_Field
                             if (isset($response_array['attributes']['data_fields']) && is_array($response_array['attributes']['data_fields'])) {
                                 $person_attributes_arr = $response_array['attributes'];
                             }
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Error calling toJsonAPI()
                         }
                     }
                 } elseif (is_array($person_data_response) && isset($person_data_response['attributes']['data_fields'])) {
                     $person_attributes_arr = $person_data_response['attributes'];
                 } elseif (is_array($person_data_response) && isset($person_data_response['data_fields'])) {
-                     $person_attributes_arr = ['data_fields' => $person_data_response['data_fields']];
+                    $person_attributes_arr = ['data_fields' => $person_data_response['data_fields']];
                 }
 
                 if (is_array($person_attributes_arr) && isset($person_attributes_arr['data_fields']) && is_array($person_attributes_arr['data_fields'])) {
                     $data_fields_array = $person_attributes_arr['data_fields'];
 
                     foreach ($data_fields_array as $schema_value_arr) {
-                        $current_schema_value_arr = is_object($schema_value_arr) ? (array)$schema_value_arr : $schema_value_arr;
+                        $current_schema_value_arr = is_object($schema_value_arr) ? (array) $schema_value_arr : $schema_value_arr;
                         $identifier = $current_schema_value_arr['schema_slug'] ?? $current_schema_value_arr['key'] ?? null;
 
                         if ($identifier && $identifier === $schema_data_slug) {
                             if (isset($current_schema_value_arr['value']) && (is_object($current_schema_value_arr['value']) || is_array($current_schema_value_arr['value']))) {
-                                $value_data = is_object($current_schema_value_arr['value']) ? (array)$current_schema_value_arr['value'] : $current_schema_value_arr['value'];
+                                $value_data = is_object($current_schema_value_arr['value']) ? (array) $current_schema_value_arr['value'] : $current_schema_value_arr['value'];
                                 foreach (array_keys($value_data) as $key) {
                                     $options[$key] = ucfirst(str_replace('_', ' ', $key));
                                 }
@@ -824,60 +834,75 @@ class GFDataBindHiddenField extends GF_Field
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
+
                     return;
                 }
 
                 $org_data_response = wicket_get_organization($organization_uuid, 'jsonSchemasAvailable');
                 if (!$org_data_response || is_wp_error($org_data_response)) {
                     wp_send_json_error('Failed to fetch organization data.');
+
                     return;
                 }
 
                 $included_resources = $org_data_response['included'] ?? [];
                 $found_schema = false;
 
-                list($schema_key_filter, $property_key_filter) = array_pad(explode('.', $schema_data_slug, 2), 2, null);
+                [$schema_key_filter, $property_key_filter] = array_pad(explode('.', $schema_data_slug, 2), 2, null);
                 if (!$property_key_filter) {
                     wp_send_json_error('Invalid schema/data slug format for organization.');
+
                     return;
                 }
 
                 if (is_array($included_resources)) {
                     foreach ($included_resources as $included_item) {
-                        if (!is_array($included_item)) continue;
+                        if (!is_array($included_item)) {
+                            continue;
+                        }
 
                         if (isset($included_item['type']) && $included_item['type'] === 'json_schemas') {
                             $attributes = $included_item['attributes'] ?? null;
-                            if (!is_array($attributes)) continue;
+                            if (!is_array($attributes)) {
+                                continue;
+                            }
 
                             $current_schema_slug_from_attributes = $attributes['slug'] ?? $attributes['key'] ?? null;
 
                             if ($current_schema_slug_from_attributes && $current_schema_slug_from_attributes === $schema_key_filter) {
                                 $schema_definition = $attributes['schema'] ?? null;
-                                if (!is_array($schema_definition)) continue;
+                                if (!is_array($schema_definition)) {
+                                    continue;
+                                }
 
                                 $properties = $schema_definition['properties'] ?? null;
-                                if (!is_array($properties) || !isset($properties[$property_key_filter])) continue;
+                                if (!is_array($properties) || !isset($properties[$property_key_filter])) {
+                                    continue;
+                                }
 
                                 $target_property = $properties[$property_key_filter];
-                                if (!is_array($target_property)) continue;
+                                if (!is_array($target_property)) {
+                                    continue;
+                                }
 
                                 $found_schema = true;
                                 if (isset($target_property['enum']) && is_array($target_property['enum'])) {
                                     foreach ($target_property['enum'] as $enum_value) {
-                                        $label = $target_property['enumNames'][array_search($enum_value, $target_property['enum'])] ?? ucfirst(str_replace('_', ' ', (string)$enum_value));
-                                        $options[(string)$enum_value] = $label;
+                                        $label = $target_property['enumNames'][array_search($enum_value, $target_property['enum'])] ?? ucfirst(str_replace('_', ' ', (string) $enum_value));
+                                        $options[(string) $enum_value] = $label;
                                     }
                                 } elseif (isset($target_property['items']['enum']) && is_array($target_property['items']['enum'])) {
                                     $item_enums = $target_property['items']['enum'];
                                     $item_enum_names = $target_property['items']['enumNames'] ?? [];
                                     foreach ($item_enums as $enum_value) {
-                                        $label = $item_enum_names[array_search($enum_value, $item_enums)] ?? ucfirst(str_replace('_', ' ', (string)$enum_value));
-                                        $options[(string)$enum_value] = $label;
+                                        $label = $item_enum_names[array_search($enum_value, $item_enums)] ?? ucfirst(str_replace('_', ' ', (string) $enum_value));
+                                        $options[(string) $enum_value] = $label;
                                     }
                                 } elseif (isset($target_property['type']) && $target_property['type'] === 'object' && isset($target_property['properties']) && is_array($target_property['properties'])) {
                                     foreach ($target_property['properties'] as $sub_prop_key => $sub_prop_def) {
-                                        if (!is_array($sub_prop_def)) continue;
+                                        if (!is_array($sub_prop_def)) {
+                                            continue;
+                                        }
                                         $options[$sub_prop_key] = $sub_prop_def['title'] ?? ucfirst(str_replace('_', ' ', $sub_prop_key));
                                     }
                                 } else {
@@ -886,20 +911,25 @@ class GFDataBindHiddenField extends GF_Field
                                 break;
                             }
                         }
-                        if ($found_schema) break;
+                        if ($found_schema) {
+                            break;
+                        }
                     }
                 }
             } else {
                 wp_send_json_error('Invalid data source specified.');
+
                 return;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             wp_send_json_error('API Error: ' . $e->getMessage());
+
             return;
         }
 
         if (empty($options)) {
             wp_send_json_success(['_self' => 'Value (no sub-keys)']);
+
             return;
         }
 
