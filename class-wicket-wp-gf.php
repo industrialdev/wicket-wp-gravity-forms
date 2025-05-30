@@ -13,6 +13,9 @@
  * Support:           https://wicket.io
  * Domain Path:       /languages
  * Text Domain:       wicket-gf
+ * Requires at least: 6.6
+ * Requires PHP: 8.1
+ * Requires Plugins: gravityforms
  */
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
