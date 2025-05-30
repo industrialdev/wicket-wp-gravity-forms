@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.29
+ * Version:           2.0.30
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -181,11 +181,16 @@ if (!class_exists('Wicket_Gf_Main')) {
 
         public static function gf_editor_global_custom_fields($position, $form_id)
         {
-            //create settings on position 25 (right after Field Label)
+            // Create settings on position 25 (right after Field Label)
             if ($position == 25) {
                 ob_start(); ?>
 
-                <li class="wicket_global_custom_settings field_setting">
+                <li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
+                    <style>
+                        .wicket_global_custom_settings_hide_label {
+                            display: block !important;
+                        }
+                    </style>
                     <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);" onkeypress="SetFieldProperty('hide_label', this.checked);">
                     <label for="hide_label" class="inline">Hide Label</label>
                 </li>
