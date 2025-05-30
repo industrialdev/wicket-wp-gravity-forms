@@ -30,9 +30,6 @@ class GFDataBindHiddenField extends GF_Field
 
     public function get_input_type(): string
     {
-        // By returning 'text', we make it more likely for Gravity Forms to include this field
-        // as a source for conditional logic, as 'hidden' input types are often excluded.
-        // The actual rendered input will still be type='hidden' via get_field_input().
         return 'text';
     }
 
@@ -50,21 +47,36 @@ class GFDataBindHiddenField extends GF_Field
                 'tooltip' => '<h6>' . esc_html__('Enable Live Update', 'wicket-gf') . '</h6>' .
                     esc_html__('Enable real-time updates from Wicket Widgets on the same page. The field will listen for Wicket Widget SAVE_SUCCESS events.', 'wicket-gf'),
             ],
-            'live_update_widget_source_setting' => [
-                'label'   => esc_html__('Live Update: Widget Source', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Widget Source', 'wicket-gf') . '</h6>' .
-                    esc_html__('Select the type of Wicket Widget (e.g., Profile, Additional Info) that will provide the data. This helps target events from specific widgets if multiple are on the page.', 'wicket-gf'),
+            'live_update_data_source_setting' => [ // Changed from live_update_widget_source_setting
+                'label'   => esc_html__('Live Update: Data Source', 'wicket-gf'), // Changed label
+                'type'    => 'select', // Explicitly type as select
+                'options' => [ // Add options directly here for initial render
+                    'person'       => esc_html__('Person (Current User)', 'wicket-gf'),
+                    'organization' => esc_html__('Organization', 'wicket-gf'),
+                ],
+                'tooltip' => '<h6>' . esc_html__('Data Source', 'wicket-gf') . '</h6>' .
+                    esc_html__('Select if the data comes from the current Person or a specific Organization.', 'wicket-gf'),
             ],
-            'live_update_schema_key_setting' => [
-                'type'    => 'text', // Add type hint for persistence
-                'label'   => esc_html__('Live Update: Schema/Data Key', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Schema/Data Key', 'wicket-gf') . '</h6>' .
-                    esc_html__('Enter the schema key or data field key from the Wicket widget\'s SAVE_SUCCESS event payload (e.g., \'fte\', \'primary_email\', \'custom_fields.your_field_machine_name\').', 'wicket-gf'),
+            'live_update_organization_uuid_setting' => [ // New setting
+                'type'    => 'text',
+                'label'   => esc_html__('Live Update: Organization UUID', 'wicket-gf'),
+                'tooltip' => '<h6>' . esc_html__('Organization UUID', 'wicket-gf') . '</h6>' .
+                    esc_html__('Enter the UUID of the Wicket Organization. Required if Data Source is Organization.', 'wicket-gf'),
+                'class'   => 'wicket-gf-dependent-setting wicket-gf-org-setting', // Add class for JS show/hide
+            ],
+            'live_update_schema_slug_setting' => [ // Changed from live_update_schema_key_setting
+                'type'    => 'select', // Change to select
+                'label'   => esc_html__('Live Update: Schema/Data Slug', 'wicket-gf'), // Changed label
+                'tooltip' => '<h6>' . esc_html__('Schema/Data Slug', 'wicket-gf') . '</h6>' .
+                    esc_html__('Select the schema or data slug. This will be populated based on the Data Source.', 'wicket-gf'),
+                'class'   => 'wicket-gf-dependent-setting',
             ],
             'live_update_value_key_setting' => [
-                'label'   => esc_html__('Live Update: Value Key (Optional)', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Value Key (Optional)', 'wicket-gf') . '</h6>' .
-                    esc_html__('If the data is nested within the Schema/Data Key, enter the sub-key to extract the specific value (e.g., if Schema Key is \'primary_email\', Value Key might be \'address\'). Leave blank or use \'value\' to use the direct value of the Schema/Data Key.', 'wicket-gf'),
+                'type'    => 'select', // Change to select
+                'label'   => esc_html__('Live Update: Value Key', 'wicket-gf'), // Changed label (removed Optional)
+                'tooltip' => '<h6>' . esc_html__('Value Key', 'wicket-gf') . '</h6>' .
+                    esc_html__('Select the specific value key from the chosen schema. This will be populated after selecting a Schema/Data Slug.', 'wicket-gf'),
+                'class'   => 'wicket-gf-dependent-setting',
             ],
         ];
     }
@@ -73,149 +85,418 @@ class GFDataBindHiddenField extends GF_Field
     {
         if ($position == 25) {
             ?>
-            <li class="live_update_enable_setting field_setting">
-                <input type="checkbox" id="liveUpdateEnabled" onclick="SetFieldProperty('liveUpdateEnabled', this.checked); toggleWicketLiveUpdateSettings(this.checked, this);" />
-                <label for="liveUpdateEnabled" class="inline">
-                    <?php esc_html_e('Enable Live Update', 'wicket-gf'); ?>
-                    <?php gform_tooltip('live_update_enable_setting'); ?>
-                </label>
-            </li>
+<li class="live_update_enable_setting field_setting">
+    <input type="checkbox" id="liveUpdateEnabled"
+        onclick="SetFieldProperty('liveUpdateEnabled', this.checked); refreshWicketLiveUpdateView(jQuery(this).closest('ul.gform-settings-panel__fields'));" />
+    <label for="liveUpdateEnabled" class="inline">
+        <?php esc_html_e('Enable Live Update', 'wicket-gf'); ?>
+        <?php gform_tooltip('live_update_enable_setting'); ?>
+    </label>
+</li>
 
-            <li class="live_update_widget_source_setting field_setting wicket-gf-dependent-setting">
-                <label for="liveUpdateWidgetSource" class="section_label">
-                    <?php esc_html_e('Live Update: Widget Source', 'wicket-gf'); ?>
-                    <?php gform_tooltip('live_update_widget_source_setting'); ?>
-                </label>
-                <select id="liveUpdateWidgetSource" onchange="SetFieldProperty('liveUpdateWidgetSource', this.value);">
-                    <option value=""><?php esc_html_e('Select Widget Source', 'wicket-gf'); ?></option>
-                    <option value="additional_info"><?php esc_html_e('Additional Info', 'wicket-gf'); ?></option>
-                    <option value="profile"><?php esc_html_e('Profile', 'wicket-gf'); ?></option>
-                </select>
-            </li>
+<?php // Summary View (initially hidden, shown by JS) ?>
+<li class="live_update_summary_setting field_setting" id="liveUpdateSummaryContainer" style="display:none;">
+    <label class="section_label"><?php esc_html_e('Current Live Update Configuration', 'wicket-gf'); ?></label>
+    <div id="liveUpdateSummaryDetails" style="padding-bottom: 10px;">
+        <p><strong><?php esc_html_e('Data Source:', 'wicket-gf'); ?></strong> <span id="summaryDataSourceText"></span></p>
+        <p id="summaryOrgUuidContainer" style="display:none;"><strong><?php esc_html_e('Organization UUID:', 'wicket-gf'); ?></strong> <span id="summaryOrgUuidText"></span></p>
+        <p><strong><?php esc_html_e('Schema/Data Slug:', 'wicket-gf'); ?></strong> <span id="summarySchemaSlugText"></span></p>
+        <p><strong><?php esc_html_e('Value Key:', 'wicket-gf'); ?></strong> <span id="summaryValueKeyText"></span></p>
+    </div>
+    <button type="button" id="wicketResetLiveUpdateSettingsButton" class="button gf_input_button" onclick="handleWicketResetLiveUpdateSettings(this)"><?php esc_html_e('Change Settings', 'wicket-gf'); ?></button>
+</li>
 
-            <li class="live_update_schema_key_setting field_setting wicket-gf-dependent-setting">
-                <label for="liveUpdateSchemaKey" class="section_label">
-                    <?php esc_html_e('Live Update: Schema/Data Key', 'wicket-gf'); ?>
-                    <?php gform_tooltip('live_update_schema_key_setting'); ?>
-                </label>
-                <input type="text" id="liveUpdateSchemaKey" class="fieldwidth-3" onkeyup="SetFieldProperty('liveUpdateSchemaKey', this.value);" />
-            </li>
+<?php // Selector View (conditionally hidden/shown by JS) ?>
+<div id="wicketLiveUpdateSelectorsWrapper">
+    <li class="live_update_data_source_setting field_setting">
+        <label for="liveUpdateDataSource" class="section_label">
+            <?php esc_html_e('Live Update: Data Source', 'wicket-gf'); ?>
+            <?php gform_tooltip('live_update_data_source_setting'); ?>
+        </label>
+        <select id="liveUpdateDataSource"
+            onchange="SetFieldProperty('liveUpdateDataSource', this.value); wicketHandleDataSourceChange(this.value, jQuery(this).closest('ul.gform-settings-panel__fields'));">
+            <option value="">
+                <?php esc_html_e('Select Data Source', 'wicket-gf'); ?>
+            </option>
+            <option value="person">
+                <?php esc_html_e('Person (Current User)', 'wicket-gf'); ?>
+            </option>
+            <option value="organization">
+                <?php esc_html_e('Organization', 'wicket-gf'); ?>
+            </option>
+        </select>
+    </li>
 
-            <li class="live_update_value_key_setting field_setting wicket-gf-dependent-setting">
-                <label for="liveUpdateValueKey" class="section_label">
-                    <?php esc_html_e('Live Update: Value Key (Optional)', 'wicket-gf'); ?>
-                    <?php gform_tooltip('live_update_value_key_setting'); ?>
-                </label>
-                <input type="text" id="liveUpdateValueKey" class="fieldwidth-3" onkeyup="SetFieldProperty('liveUpdateValueKey', this.value);" />
-            </li>
-        <?php
+    <li class="live_update_organization_uuid_setting field_setting wicket-gf-org-setting" style="display:none;">
+        <label for="liveUpdateOrganizationUuid" class="section_label">
+            <?php esc_html_e('Live Update: Organization UUID', 'wicket-gf'); ?>
+            <?php gform_tooltip('live_update_organization_uuid_setting'); ?>
+        </label>
+        <input type="text" id="liveUpdateOrganizationUuid" class="fieldwidth-3"
+            onkeyup="SetFieldProperty('liveUpdateOrganizationUuid', this.value); wicketHandleOrgUuidChange(this.value, jQuery(this).closest('ul.gform-settings-panel__fields'));" />
+    </li>
+
+    <li class="live_update_schema_slug_setting field_setting">
+        <label for="liveUpdateSchemaSlug" class="section_label">
+            <?php esc_html_e('Live Update: Schema/Data Slug', 'wicket-gf'); ?>
+            <?php gform_tooltip('live_update_schema_slug_setting'); ?>
+        </label>
+        <select id="liveUpdateSchemaSlug" class="fieldwidth-3"
+            onchange="SetFieldProperty('liveUpdateSchemaSlug', this.value); wicketHandleSchemaSlugChange(this.value, jQuery(this).closest('ul.gform-settings-panel__fields'));">
+            <option value="">
+                <?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?>
+            </option>
+            <?php // Options will be populated by JavaScript?>
+        </select>
+    </li>
+
+    <li class="live_update_value_key_setting field_setting">
+        <label for="liveUpdateValueKey" class="section_label">
+            <?php esc_html_e('Live Update: Value Key', 'wicket-gf'); ?>
+            <?php gform_tooltip('live_update_value_key_setting'); ?>
+        </label>
+        <select id="liveUpdateValueKey" class="fieldwidth-3"
+            onchange="SetFieldProperty('liveUpdateValueKey', this.value);">
+            <option value="">
+                <?php esc_html_e('Select Value Key', 'wicket-gf'); ?>
+            </option>
+            <?php // Options will be populated by JavaScript?>
+        </select>
+    </li>
+</div>
+<?php
         }
     }
 
     public static function editor_script(): void
     {
         ?>
-        <script type="text/javascript">
-            // Placed toggleWicketLiveUpdateSettings first to ensure it's defined when called.
-            function toggleWicketLiveUpdateSettings(enabled, checkboxElement = null) {
-                var $context = jQuery(document); // Default context
-                if (checkboxElement) {
-                    var $panel = jQuery(checkboxElement).closest('.gform_editor_panel_content');
-                    if ($panel.length) {
-                        $context = $panel;
+<script type="text/javascript">
+    // Ensure this script is loaded after jQuery and gform_field_settings.js
+
+    function getContext(element) {
+        var $context = jQuery(element).closest('ul.gform-settings-panel__fields');
+        if (!$context.length) $context = jQuery(element).closest('.settings_panel_content');
+        if (!$context.length) $context = jQuery(element).closest('.gform_editor_panel_content');
+        if (!$context.length) $context = jQuery('#gform_selected_field_settings'); // Fallback to main settings area
+        if (!$context.length) $context = jQuery(document); // Absolute fallback
+        return $context;
+    }
+
+    function refreshWicketLiveUpdateView(contextElement, forceSwitchToSelectors = false) { // Added forceSwitchToSelectors
+        var $context = getContext(contextElement);
+        var field = GetSelectedField();
+
+        var $summaryContainer = $context.find('#liveUpdateSummaryContainer');
+        var $selectorsWrapper = $context.find('#wicketLiveUpdateSelectorsWrapper');
+        var $orgUuidFieldLi = $selectorsWrapper.find('.live_update_organization_uuid_setting'); // Org UUID LI within selectors
+        var $orgSummaryContainerP = $summaryContainer.find('#summaryOrgUuidContainer');
+
+        if (field.liveUpdateEnabled) {
+            // Determine if we should be in summary mode
+            var canShowSummary = field.liveUpdateDataSource && field.liveUpdateSchemaSlug && field.liveUpdateValueKey;
+
+            if (canShowSummary && !forceSwitchToSelectors) { // Check forceSwitchToSelectors
+                // Summary Mode
+                var dataSourceDisplay = field.liveUpdateDataSource;
+                if (field.liveUpdateDataSource === 'person') dataSourceDisplay = '<?php esc_html_e("Person (Current User)", "wicket-gf"); ?>';
+                if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e("Organization", "wicket-gf"); ?>';
+                $summaryContainer.find('#summaryDataSourceText').text(dataSourceDisplay);
+
+                if (field.liveUpdateDataSource === 'organization' && field.liveUpdateOrganizationUuid) {
+                    $summaryContainer.find('#summaryOrgUuidText').text(field.liveUpdateOrganizationUuid);
+                    $orgSummaryContainerP.show();
+                } else {
+                    $orgSummaryContainerP.hide();
+                }
+                // For schema slug and value key, we display the stored value.
+                // Fetching the display text would require another AJAX or storing it.
+                $summaryContainer.find('#summarySchemaSlugText').text(field.liveUpdateSchemaSlug);
+                $summaryContainer.find('#summaryValueKeyText').text(field.liveUpdateValueKey);
+
+                $summaryContainer.show();
+                $selectorsWrapper.hide();
+            } else {
+                // Selector Mode (either not fully configured or forced by reset)
+                $summaryContainer.hide();
+                $selectorsWrapper.show();
+
+                // Explicitly show relevant individual selector items
+                $selectorsWrapper.find('.live_update_data_source_setting').show();
+                $selectorsWrapper.find('.live_update_schema_slug_setting').show();
+                $selectorsWrapper.find('.live_update_value_key_setting').show();
+                // Org UUID field visibility is handled below based on data source
+
+                var currentDataSourceInDropdown = $context.find('#liveUpdateDataSource').val();
+                // Visibility of Org UUID field depends on the current UI selection for Data Source
+                if (currentDataSourceInDropdown === 'organization') {
+                    $orgUuidFieldLi.show();
+                } else {
+                    $orgUuidFieldLi.hide();
+                }
+
+                var dataSourceToUseForLoading;
+                if (forceSwitchToSelectors) {
+                    // If forced to selectors (i.e., after a reset), don't attempt to load anything automatically.
+                    // The UI has been reset by the button handler, user needs to select again.
+                    dataSourceToUseForLoading = '';
+                } else {
+                    // Normal selector mode (e.g. initial load, field not fully configured)
+                    // Try current UI selection first, then fallback to stored field property.
+                    dataSourceToUseForLoading = currentDataSourceInDropdown || field.liveUpdateDataSource;
+                }
+
+                if (dataSourceToUseForLoading) {
+                    // isInitialLoad = false: if data source changes, dependent properties should be cleared by SetFieldProperty.
+                    // AJAX success handlers will try to restore saved schema/key if they match new options.
+                    wicketHandleDataSourceChange(dataSourceToUseForLoading, $context, false);
+                } else {
+                    // No data source to load from (e.g. after reset, or new field with no selection)
+                    $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>');
+                    $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>');
+                    // Ensure Org UUID field is hidden if no data source implies it shouldn't be shown
+                    // (this is typically handled by the check on currentDataSourceInDropdown for $orgUuidFieldLi visibility)
+                }
+            }
+        } else {
+            // Live Update Disabled
+            $summaryContainer.hide();
+            $selectorsWrapper.hide();
+        }
+    }
+
+    // Old toggleWicketLiveUpdateSettings is effectively replaced by refreshWicketLiveUpdateView
+    // for managing summary vs selectors.
+    // The individual show/hide of org_uuid_setting within selectors is handled by wicketHandleDataSourceChange.
+
+    function wicketHandleDataSourceChange(dataSource, context = null, isInitialLoad = false) {
+        var $context = getContext(context || document.body); // Ensure context
+
+        var $orgUuidFieldLi = $context.find('#wicketLiveUpdateSelectorsWrapper .live_update_organization_uuid_setting');
+        var $schemaSlugDropdown = $context.find('#liveUpdateSchemaSlug');
+        var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
+
+        // Always reset schema and value key dropdowns when data source changes or is cleared
+        $schemaSlugDropdown.html(
+            '<option value=\"\"><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>'
+        );
+        $valueKeyDropdown.html(
+            '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+        );
+
+        if (!isInitialLoad) {
+            SetFieldProperty('liveUpdateSchemaSlug', '');
+            SetFieldProperty('liveUpdateValueKey', '');
+            // If dataSource is being cleared, also clear org UUID property
+            if (!dataSource) {
+                SetFieldProperty('liveUpdateOrganizationUuid', '');
+                $context.find('#liveUpdateOrganizationUuid').val(''); // Clear the input field as well
+            }
+        }
+
+        if (dataSource === 'organization') {
+            $orgUuidFieldLi.show();
+            var orgUuid = $context.find('#liveUpdateOrganizationUuid').val();
+            if (orgUuid && orgUuid.length > 30) { // Basic check for UUID-like string
+                wicketFetchSchemas(dataSource, orgUuid, $context);
+            } else if (!orgUuid && !isInitialLoad) {
+                 $schemaSlugDropdown.html('<option value=\"\"><?php esc_html_e("Enter Organization UUID", "wicket-gf"); ?></option>');
+            }
+        } else {
+            $orgUuidFieldLi.hide();
+            if (dataSource === 'person') {
+                wicketFetchSchemas(dataSource, null, $context);
+            }
+        }
+    }
+
+    function wicketHandleOrgUuidChange(orgUuid, context = null) {
+        var $context = getContext(context || document.body); // Ensure context
+        var dataSource = $context.find('#liveUpdateDataSource').val();
+        var uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        var $schemaSlugDropdown = $context.find('#liveUpdateSchemaSlug');
+        var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
+
+        if (dataSource === 'organization' && orgUuid && uuidRegex.test(orgUuid)) {
+            wicketFetchSchemas(dataSource, orgUuid, $context);
+        } else if (dataSource === 'organization') {
+            $schemaSlugDropdown.html(
+                '<option value=\"\"><?php esc_html_e("Enter valid Org UUID", "wicket-gf"); ?></option>'
+            );
+            $valueKeyDropdown.html(
+                '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+            );
+            SetFieldProperty('liveUpdateSchemaSlug', ''); // Clear if UUID becomes invalid
+            SetFieldProperty('liveUpdateValueKey', '');
+        }
+    }
+
+    function wicketFetchSchemas(dataSource, orgUuid = null, context = null) {
+        var $context = getContext(context || document.body); // Ensure context
+
+        var $schemaSlugDropdown = $context.find('#liveUpdateSchemaSlug');
+        $schemaSlugDropdown.html(
+            '<option value=\"\"><?php esc_html_e("Loading...", "wicket-gf"); ?></option>'
+        );
+        var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
+        $valueKeyDropdown.html(
+            '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+        );
+
+        jQuery.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'gf_wicket_get_mdp_schemas',
+                nonce: '<?php echo wp_create_nonce("gf_wicket_mdp_nonce"); ?>',
+                data_source: dataSource,
+                organization_uuid: orgUuid,
+                form_id: typeof form !== 'undefined' ? form.id : 0
+            },
+            success: function(response) {
+                $schemaSlugDropdown.html(
+                    '<option value=\"\"><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>'
+                );
+                if (response.success && response.data) {
+                    jQuery.each(response.data, function(value, text) {
+                        $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', value)
+                            .text(text));
+                    });
+
+                    var currentField = GetSelectedField();
+                    var savedSchemaSlug = currentField.liveUpdateSchemaSlug;
+
+                    if (savedSchemaSlug && $schemaSlugDropdown.find('option[value=\"' + savedSchemaSlug + '\"]').length > 0) {
+                        $schemaSlugDropdown.val(savedSchemaSlug);
+                        // Trigger change to load value keys if a schema was auto-selected
+                        wicketHandleSchemaSlugChange(savedSchemaSlug, $context);
                     } else {
-                        var $ul = jQuery(checkboxElement).closest('ul');
-                        if ($ul.length) $context = $ul;
+                        // If no saved schema or saved schema not in options, ensure value key is reset
+                        wicketHandleSchemaSlugChange('', $context);
                     }
                 } else {
-                    // Attempt to find a general context for wicket_data_hidden if no element is passed
-                    var $activeWicketPanel = jQuery('#gform_fields .field_selected.gf_wicket_data_hidden_admin .settings_panel_content');
-                    if ($activeWicketPanel.length) {
-                        $context = $activeWicketPanel;
-                    } else {
-                        // Fallback if a very specific panel isn't found but an ID is available
-                        var $anyLiveUpdateCheckbox = jQuery('#liveUpdateEnabled');
-                        if ($anyLiveUpdateCheckbox.length) {
-                            var $panelFallback = $anyLiveUpdateCheckbox.first().closest('.gform_editor_panel_content');
-                            if ($panelFallback.length) $context = $panelFallback;
-                            else {
-                                var $ulFallback = $anyLiveUpdateCheckbox.first().closest('ul');
-                                if ($ulFallback.length) $context = $ulFallback;
-                            }
-                        }
-                    }
+                    var errorMessage =
+                        '<?php esc_html_e("Error: ", "wicket-gf"); ?>' +
+                        (response.data ||
+                            '<?php esc_html_e("Could not load schemas.", "wicket-gf"); ?>'
+                        );
+                    $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(
+                        errorMessage));
+                    wicketHandleSchemaSlugChange('', $context); // Ensure value key is reset on error
                 }
-                //console.log('GFDataBindHiddenField: toggleWicketLiveUpdateSettings context:', $context.length ? $context.get(0) : 'Not Found', 'Enabled:', enabled);
-                $context.find('.wicket-gf-dependent-setting').css('display', enabled ? '' : 'none');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var errorMessage =
+                    '<?php esc_html_e("AJAX Error: ", "wicket-gf"); ?>' +
+                    textStatus + ' - ' + errorThrown;
+                $schemaSlugDropdown.html(
+                    '<option value=\"\"><?php esc_html_e("Error loading schemas", "wicket-gf"); ?></option>'
+                );
+                $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
+                wicketHandleSchemaSlugChange('', $context); // Ensure value key is reset on error
             }
+        });
+    }
 
-            jQuery(document).on('gform_load_field_settings', function(event, field, form) {
-                //console.log('GFDataBindHiddenField: gform_load_field_settings event. Field Type: ' + field.type, 'Field Object:', field);
+    function wicketHandleSchemaSlugChange(schemaSlug, context = null) {
+        var $context = getContext(context || document.body); // Ensure context
 
-                if (field.type === 'wicket_data_hidden') {
-                    //console.log('GFDataBindHiddenField: Processing settings for wicket_data_hidden.');
+        var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
+        $valueKeyDropdown.html( // Set to loading or default
+            schemaSlug ? '<option value=\"\"><?php esc_html_e("Loading...", "wicket-gf"); ?></option>' : '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+        );
 
-                    // It's possible that IDs are not unique if GF reuses templates before assigning field-specific IDs.
-                    // Try to scope the search for #liveUpdateEnabled to the current field's settings area if possible.
-                    // Formidable Forms, for example, wraps settings in a div with id like 'frm_field_settings_field_XYZ'
-                    // Gravity Forms might have something like 'field_settings_for_FIELDID' or within #gform_selected_field_settings
-                    var $fieldSpecificSettingsArea = jQuery('#gform_selected_field_settings'); // A common GF container for the selected field
-                    if (!$fieldSpecificSettingsArea.length) {
-                        // Fallback if the above is not found, try a broader context
-                        $fieldSpecificSettingsArea = jQuery('#field_settings_tab_container .gform_editor_panel_content');
-                        //console.log('GFDataBindHiddenField: Using fallback settings area:', $fieldSpecificSettingsArea.length ? $fieldSpecificSettingsArea.get(0) : 'Fallback not found');
+        if (!schemaSlug) {
+            SetFieldProperty('liveUpdateValueKey', '');
+            return;
+        }
+
+        var dataSource = $context.find('#liveUpdateDataSource').val();
+        var orgUuid = (dataSource === 'organization') ? $context.find('#liveUpdateOrganizationUuid').val() : null;
+
+        jQuery.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'gf_wicket_get_mdp_value_keys',
+                nonce: '<?php echo wp_create_nonce("gf_wicket_mdp_nonce"); ?>',
+                data_source: dataSource,
+                schema_data_slug: schemaSlug,
+                organization_uuid: orgUuid,
+                form_id: typeof form !== 'undefined' ? form.id : 0
+            },
+            success: function(response) {
+                $valueKeyDropdown.html(
+                    '<option value=\"\"><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>'
+                );
+                if (response.success && response.data) {
+                    jQuery.each(response.data, function(value, text) {
+                        $valueKeyDropdown.append(jQuery('<option></option>').attr('value', value).text(
+                            text));
+                        });
+
+                    var currentField = GetSelectedField();
+                    var savedValueKey = currentField.liveUpdateValueKey;
+
+                    if (savedValueKey && $valueKeyDropdown.find('option[value=\"' + savedValueKey + '\"]').length > 0) {
+                        $valueKeyDropdown.val(savedValueKey);
                     }
-                    if (!$fieldSpecificSettingsArea.length) {
-                        $fieldSpecificSettingsArea = jQuery(document); // Absolute fallback
-                        //console.warn('GFDataBindHiddenField: Could not find specific settings area, using document scope. This might lead to issues if multiple such fields exist.');
-                    }
-
-                    var $checkbox = $fieldSpecificSettingsArea.find('#liveUpdateEnabled');
-                    //console.log('GFDataBindHiddenField: Checkbox #liveUpdateEnabled found in scope:', $checkbox.length ? $checkbox.get(0) : 'Not found in scope');
-
-                    var $liveUpdateEnableLi = $checkbox.closest('li.live_update_enable_setting');
-                    //console.log('GFDataBindHiddenField: li.live_update_enable_setting (closest to checkbox):', $liveUpdateEnableLi.length ? $liveUpdateEnableLi.get(0) : 'Not found');
-
-                    if ($liveUpdateEnableLi.length) {
-                        //console.log('GFDataBindHiddenField: Attempting to show li.live_update_enable_setting. Current style:', $liveUpdateEnableLi.attr('style'));
-                        $liveUpdateEnableLi.css('display', ''); // Force display by removing style or setting to default
-                        $liveUpdateEnableLi.show(); // jQuery's .show()
-                        //console.log('GFDataBindHiddenField: li.live_update_enable_setting style after .css("display", "") and .show():', $liveUpdateEnableLi.attr('style'));
-                    } else {
-                        //console.error('GFDataBindHiddenField: CRITICAL - Could not find li.live_update_enable_setting to make it visible.');
-                    }
-
-                    if ($checkbox.length) {
-                        $checkbox.prop('checked', field.liveUpdateEnabled || false);
-                        //console.log('GFDataBindHiddenField: Checkbox #liveUpdateEnabled checked state set to:', field.liveUpdateEnabled || false);
-
-                        // Scope other field settings to the parent of the LI or the specific settings area
-                        var $settingsScope = $liveUpdateEnableLi.length ? $liveUpdateEnableLi.parent() : $fieldSpecificSettingsArea;
-
-                        $settingsScope.find('#liveUpdateWidgetSource').val(field.liveUpdateWidgetSource || '');
-                        if (typeof field.liveUpdateSchemaKey !== 'undefined') {
-                            jQuery('#liveUpdateSchemaKey').val(field.liveUpdateSchemaKey);
-                            //console.log('GFDataBindHiddenField: #liveUpdateSchemaKey value set from field.liveUpdateSchemaKey:', field.liveUpdateSchemaKey);
-                        } else {
-                            //console.log('GFDataBindHiddenField: field.liveUpdateSchemaKey is undefined.');
-                        }
-                        $settingsScope.find('#liveUpdateValueKey').val(field.liveUpdateValueKey || '');
-                        //console.log('GFDataBindHiddenField: Dependent field values set.');
-
-                        var liveUpdateCheckboxElement = $checkbox.get(0);
-                        if (typeof toggleWicketLiveUpdateSettings === 'function') {
-                            //console.log('GFDataBindHiddenField: Calling toggleWicketLiveUpdateSettings.');
-                            toggleWicketLiveUpdateSettings(field.liveUpdateEnabled || false, liveUpdateCheckboxElement);
-                        } else {
-                            //console.error('GFDataBindHiddenField: toggleWicketLiveUpdateSettings function is undefined!');
-                        }
-                    } else {
-                        //console.error('GFDataBindHiddenField: Checkbox #liveUpdateEnabled not found. Cannot set initial values or toggle dependents.');
-                    }
-                    //console.log('GFDataBindHiddenField: Finished processing settings for wicket_data_hidden.');
+                } else {
+                    var errorMessage =
+                        '<?php esc_html_e("Error: ", "wicket-gf"); ?>' +
+                        (response.data ||
+                            '<?php esc_html_e("Could not load value keys.", "wicket-gf"); ?>'
+                        );
+                    $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
                 }
-            });
-        </script>
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var errorMessage =
+                    '<?php esc_html_e("AJAX Error: ", "wicket-gf"); ?>' +
+                    textStatus + ' - ' + errorThrown;
+                $valueKeyDropdown.html(
+                    '<option value=\"\"><?php esc_html_e("Error loading value keys", "wicket-gf"); ?></option>'
+                );
+                $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
+            }
+        });
+    }
+
+    jQuery(document).on('gform_load_field_settings', function(event, field, form) {
+        if (field.type === 'wicket_data_hidden') {
+            var $fieldSettingsArea = getContext(jQuery('#liveUpdateEnabled')); // Use a known element within the settings panel for context
+
+            $fieldSettingsArea.find('#liveUpdateEnabled').prop('checked', field.liveUpdateEnabled || false);
+
+            // Set initial values for controls in the selectors wrapper
+            // These values will be used by refreshWicketLiveUpdateView if it goes into selector mode,
+            // or if it needs to decide if summary mode is possible.
+            $fieldSettingsArea.find('#liveUpdateDataSource').val(field.liveUpdateDataSource || '');
+            $fieldSettingsArea.find('#liveUpdateOrganizationUuid').val(field.liveUpdateOrganizationUuid || '');
+            // SchemaSlug and ValueKey are not directly set here; they are restored by their respective AJAX handlers if needed.
+
+            refreshWicketLiveUpdateView($fieldSettingsArea.find('#liveUpdateEnabled').get(0));
+        }
+    });
+
+    function handleWicketResetLiveUpdateSettings(buttonElement) {
+        var $context = getContext(buttonElement);
+
+        SetFieldProperty('liveUpdateDataSource', '');
+        SetFieldProperty('liveUpdateOrganizationUuid', '');
+        SetFieldProperty('liveUpdateSchemaSlug', '');
+        SetFieldProperty('liveUpdateValueKey', '');
+
+        // Clear UI elements in selectors
+        $context.find('#liveUpdateDataSource').val('');
+        $context.find('#liveUpdateOrganizationUuid').val('');
+        $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e("Select Schema/Data Slug", "wicket-gf"); ?></option>').val('');
+        $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e("Select Value Key", "wicket-gf"); ?></option>').val('');
+
+        refreshWicketLiveUpdateView(buttonElement, true); // Pass true to force selector view
+    }
+</script>
 <?php
     }
 
@@ -241,18 +522,22 @@ class GFDataBindHiddenField extends GF_Field
         $field_id = sprintf('input_%d_%d', $form['id'], $this->id);
         $input_value = esc_attr($value);
         $data_attributes = '';
-        $class_attribute = ''; // Initialize class attribute
+        $class_attribute = '';
 
         if (!empty($this->liveUpdateEnabled)) {
-            $class_attribute = " class='wicket-gf-live-update-target'"; // Add the target class
+            $class_attribute = " class='wicket-gf-live-update-target'";
             $data_attributes .= ' data-live-update-enabled="true"';
-            if (!empty($this->liveUpdateWidgetSource)) {
-                $data_attributes .= ' data-live-update-widget-source="' . esc_attr($this->liveUpdateWidgetSource) . '"';
+
+            if (!empty($this->liveUpdateDataSource)) { // Changed from liveUpdateWidgetSource
+                $data_attributes .= ' data-live-update-data-source="' . esc_attr($this->liveUpdateDataSource) . '"';
             }
 
-            if (!empty($this->liveUpdateSchemaKey)) {
-                // The user is expected to enter the schema SLUG directly in the field settings.
-                $data_attributes .= ' data-live-update-schema-key="' . esc_attr($this->liveUpdateSchemaKey) . '"';
+            if ($this->liveUpdateDataSource === 'organization' && !empty($this->liveUpdateOrganizationUuid)) { // New
+                $data_attributes .= ' data-live-update-organization-uuid="' . esc_attr($this->liveUpdateOrganizationUuid) . '"';
+            }
+
+            if (!empty($this->liveUpdateSchemaSlug)) { // Changed from liveUpdateSchemaKey
+                $data_attributes .= ' data-live-update-schema-slug="' . esc_attr($this->liveUpdateSchemaSlug) . '"';
             }
 
             if (isset($this->liveUpdateValueKey)) {
@@ -260,9 +545,370 @@ class GFDataBindHiddenField extends GF_Field
             }
         }
 
-        // Add $class_attribute to the sprintf
         return sprintf("<input name='input_%d' id='%s' type='hidden'%s value='%s'%s />", $id, $field_id, $class_attribute, $input_value, $data_attributes);
     }
+
+    /**
+     * AJAX handler to get MDP schemas for the selected data source.
+     */
+    public static function ajax_get_mdp_schemas()
+    {
+        check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
+
+        $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
+        $organization_uuid = isset($_POST['organization_uuid']) ? sanitize_text_field(wp_unslash($_POST['organization_uuid'])) : null;
+        $options = [];
+
+        try {
+            if ($data_source === 'person') {
+                $person_uuid = wicket_current_person_uuid();
+
+                if (empty($person_uuid)) {
+                    wp_send_json_error('Could not retrieve current person UUID.');
+                    return;
+                }
+
+                $person_data_response = wicket_get_person_by_id($person_uuid);
+                if (!$person_data_response || is_wp_error($person_data_response)) {
+                    wp_send_json_error('Failed to fetch person data.');
+                    return;
+                }
+
+                $included_items_array = null;
+
+                if (is_object($person_data_response)) {
+                    // Attempt 1: Use the included() method
+                    if (method_exists($person_data_response, 'included')) {
+                        try {
+                            $included_data = $person_data_response->included();
+                            if ($included_data instanceof \Illuminate\Support\Collection) {
+                                $included_items_array = $included_data->all();
+                            } elseif (is_array($included_data)) {
+                                $included_items_array = $included_data;
+                            }
+                        } catch (\Exception $e) {
+                            // Error calling included()
+                        }
+                    }
+
+                    // Attempt 2: Direct access to 'included' property (fallback)
+                    if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
+                        $included_data_prop = $person_data_response->included;
+                        if ($included_data_prop instanceof \Illuminate\Support\Collection) {
+                            $included_items_array = $included_data_prop->all();
+                        } elseif (is_array($included_data_prop)) {
+                            $included_items_array = $included_data_prop;
+                        }
+                    }
+
+                    // Attempt 3: Using toJsonAPI()['included'] (fallback)
+                    if (is_null($included_items_array) && method_exists($person_data_response, 'toJsonAPI')) {
+                        try {
+                            $response_as_array = $person_data_response->toJsonAPI();
+                            if (isset($response_as_array['included'])) {
+                                if ($response_as_array['included'] instanceof \Illuminate\Support\Collection) {
+                                    $included_items_array = $response_as_array['included']->all();
+                                } elseif (is_array($response_as_array['included'])) {
+                                    $included_items_array = $response_as_array['included'];
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Error calling toJsonAPI()
+                        }
+                    }
+                } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
+                    $included_data_from_main_array = $person_data_response['included'];
+                    if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
+                        $included_items_array = $included_data_from_main_array->all();
+                    } elseif (is_array($included_data_from_main_array)) {
+                        $included_items_array = $included_data_from_main_array;
+                    }
+                }
+
+                if (is_array($included_items_array)) {
+                    foreach ($included_items_array as $item) {
+                        $item_arr = is_object($item) ? (array)$item : $item;
+
+                        if (isset($item_arr['type']) && $item_arr['type'] === 'json_schemas') {
+                            $attributes = $item_arr['attributes'] ?? null;
+                            if (is_array($attributes)) {
+                                $identifier = $attributes['slug'] ?? $attributes['key'] ?? null;
+                                if ($identifier) {
+                                    $title = null;
+                                    $schema_def = $attributes['schema'] ?? null;
+                                    if (is_array($schema_def) && isset($schema_def['title'])) {
+                                        $title = $schema_def['title'];
+                                    }
+                                    $ui_schema = $attributes['ui_schema'] ?? null;
+                                    if (!$title && is_array($ui_schema)) {
+                                        if (isset($ui_schema['ui:i18n']['title']['en'])) {
+                                            $title = $ui_schema['ui:i18n']['title']['en'];
+                                        } elseif (isset($ui_schema['title'])) {
+                                            $title = $ui_schema['title'];
+                                        }
+                                    }
+                                    $option_text = $title ? $title : ucfirst(str_replace('_', ' ', $identifier));
+                                    $options[$identifier] = $option_text;
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif ($data_source === 'organization') {
+                if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
+                    wp_send_json_error('Invalid or missing Organization UUID.');
+                    return;
+                }
+
+                $org_data_response = wicket_get_organization($organization_uuid, 'jsonSchemasAvailable');
+                if (!$org_data_response || is_wp_error($org_data_response)) {
+                    wp_send_json_error('Failed to fetch organization data.');
+                    return;
+                }
+
+                $included_resources = $org_data_response['included'] ?? [];
+
+                if (!empty($included_resources) && is_array($included_resources)) {
+                    foreach ($included_resources as $included_item) {
+                        if (!is_array($included_item)) {
+                            continue;
+                        }
+
+                        if (isset($included_item['type']) && $included_item['type'] === 'json_schemas') {
+                            $attributes = $included_item['attributes'] ?? null;
+                            if (!is_array($attributes)) {
+                                continue;
+                            }
+
+                            $schema_definition = $attributes['schema'] ?? null;
+                            if (!is_array($schema_definition) || !isset($schema_definition['properties'])) {
+                                continue;
+                            }
+
+                            $properties = $schema_definition['properties'];
+                            $schema_identifier = $attributes['slug'] ?? $attributes['key'] ?? 'unknown_schema_' . ($included_item['id'] ?? uniqid());
+
+                            if (is_array($properties)) {
+                                foreach ($properties as $property_key => $property_definition) {
+                                    if (!is_array($property_definition)) {
+                                        continue;
+                                    }
+                                    $option_value = $schema_identifier . '.' . $property_key;
+                                    $option_text = $property_definition['title'] ?? ucfirst(str_replace('_', ' ', (string)$property_key));
+                                    $options[$option_value] = $option_text;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                wp_send_json_error('Invalid data source specified.');
+                return;
+            }
+        } catch (\Exception $e) {
+            wp_send_json_error('API Error: ' . $e->getMessage());
+            return;
+        }
+
+        if (empty($options)) {
+            wp_send_json_error('No schemas found for the selected source.');
+            return;
+        }
+
+        wp_send_json_success($options);
+    }
+
+    /**
+     * AJAX handler to get MDP value keys for the selected schema/data slug.
+     */
+    public static function ajax_get_mdp_value_keys()
+    {
+        check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
+
+        $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
+        $schema_data_slug = isset($_POST['schema_data_slug']) ? sanitize_text_field(wp_unslash($_POST['schema_data_slug'])) : null;
+        $organization_uuid = isset($_POST['organization_uuid']) ? sanitize_text_field(wp_unslash($_POST['organization_uuid'])) : null;
+        $options = [];
+
+        if (empty($schema_data_slug)) {
+            wp_send_json_error('Schema/Data Slug is required.');
+            return;
+        }
+
+        try {
+            if ($data_source === 'person') {
+                $person_uuid = wicket_current_person_uuid();
+                if (empty($person_uuid)) {
+                    wp_send_json_error('Could not retrieve current person UUID.');
+                    return;
+                }
+
+                $person_data_response = wicket_get_person_by_id($person_uuid);
+                if (!$person_data_response || is_wp_error($person_data_response)) {
+                    wp_send_json_error('Failed to fetch person data.');
+                    return;
+                }
+
+                $person_attributes_arr = null;
+                if (is_object($person_data_response)) {
+                    // Attempt 1: Direct access to data_fields property
+                    if (property_exists($person_data_response, 'data_fields')) {
+                        $data_fields_prop = $person_data_response->data_fields;
+                        if (is_array($data_fields_prop)) {
+                            $person_attributes_arr = ['data_fields' => $data_fields_prop];
+                        }
+                    }
+
+                    // Attempt 2: Access attributes property, then look for data_fields
+                    if (is_null($person_attributes_arr) && property_exists($person_data_response, 'attributes')) {
+                        $attrs = $person_data_response->attributes;
+                        if (is_array($attrs) && isset($attrs['data_fields'])) {
+                            $person_attributes_arr = $attrs;
+                        } elseif (is_object($attrs) && method_exists($attrs, 'toArray')) {
+                            $attrs_array = $attrs->toArray();
+                            if (isset($attrs_array['data_fields'])) {
+                                $person_attributes_arr = $attrs_array;
+                            }
+                        }
+                    }
+
+                    // Attempt 3: Using getAttribute('data_fields') method
+                    if (is_null($person_attributes_arr) && method_exists($person_data_response, 'getAttribute')) {
+                        try {
+                            $data_fields_attr = $person_data_response->getAttribute('data_fields');
+                            if (is_array($data_fields_attr)) {
+                                $person_attributes_arr = ['data_fields' => $data_fields_attr];
+                            }
+                        } catch (\Exception $e) {
+                            // Error calling getAttribute()
+                        }
+                    }
+
+                    // Attempt 4: Using toJsonAPI() and looking for attributes.data_fields
+                    if (is_null($person_attributes_arr) && method_exists($person_data_response, 'toJsonAPI')) {
+                        try {
+                            $response_array = $person_data_response->toJsonAPI();
+                            if (isset($response_array['attributes']['data_fields']) && is_array($response_array['attributes']['data_fields'])) {
+                                $person_attributes_arr = $response_array['attributes'];
+                            }
+                        } catch (\Exception $e) {
+                            // Error calling toJsonAPI()
+                        }
+                    }
+                } elseif (is_array($person_data_response) && isset($person_data_response['attributes']['data_fields'])) {
+                    $person_attributes_arr = $person_data_response['attributes'];
+                } elseif (is_array($person_data_response) && isset($person_data_response['data_fields'])) {
+                     $person_attributes_arr = ['data_fields' => $person_data_response['data_fields']];
+                }
+
+                if (is_array($person_attributes_arr) && isset($person_attributes_arr['data_fields']) && is_array($person_attributes_arr['data_fields'])) {
+                    $data_fields_array = $person_attributes_arr['data_fields'];
+
+                    foreach ($data_fields_array as $schema_value_arr) {
+                        $current_schema_value_arr = is_object($schema_value_arr) ? (array)$schema_value_arr : $schema_value_arr;
+                        $identifier = $current_schema_value_arr['schema_slug'] ?? $current_schema_value_arr['key'] ?? null;
+
+                        if ($identifier && $identifier === $schema_data_slug) {
+                            if (isset($current_schema_value_arr['value']) && (is_object($current_schema_value_arr['value']) || is_array($current_schema_value_arr['value']))) {
+                                $value_data = is_object($current_schema_value_arr['value']) ? (array)$current_schema_value_arr['value'] : $current_schema_value_arr['value'];
+                                foreach (array_keys($value_data) as $key) {
+                                    $options[$key] = ucfirst(str_replace('_', ' ', $key));
+                                }
+                            } elseif (isset($current_schema_value_arr['value'])) {
+                                $options['_self'] = 'Value';
+                            }
+                            break;
+                        }
+                    }
+                }
+            } elseif ($data_source === 'organization') {
+                if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
+                    wp_send_json_error('Invalid or missing Organization UUID.');
+                    return;
+                }
+
+                $org_data_response = wicket_get_organization($organization_uuid, 'jsonSchemasAvailable');
+                if (!$org_data_response || is_wp_error($org_data_response)) {
+                    wp_send_json_error('Failed to fetch organization data.');
+                    return;
+                }
+
+                $included_resources = $org_data_response['included'] ?? [];
+                $found_schema = false;
+
+                list($schema_key_filter, $property_key_filter) = array_pad(explode('.', $schema_data_slug, 2), 2, null);
+                if (!$property_key_filter) {
+                    wp_send_json_error('Invalid schema/data slug format for organization.');
+                    return;
+                }
+
+                if (is_array($included_resources)) {
+                    foreach ($included_resources as $included_item) {
+                        if (!is_array($included_item)) continue;
+
+                        if (isset($included_item['type']) && $included_item['type'] === 'json_schemas') {
+                            $attributes = $included_item['attributes'] ?? null;
+                            if (!is_array($attributes)) continue;
+
+                            $current_schema_slug_from_attributes = $attributes['slug'] ?? $attributes['key'] ?? null;
+
+                            if ($current_schema_slug_from_attributes && $current_schema_slug_from_attributes === $schema_key_filter) {
+                                $schema_definition = $attributes['schema'] ?? null;
+                                if (!is_array($schema_definition)) continue;
+
+                                $properties = $schema_definition['properties'] ?? null;
+                                if (!is_array($properties) || !isset($properties[$property_key_filter])) continue;
+
+                                $target_property = $properties[$property_key_filter];
+                                if (!is_array($target_property)) continue;
+
+                                $found_schema = true;
+                                if (isset($target_property['enum']) && is_array($target_property['enum'])) {
+                                    foreach ($target_property['enum'] as $enum_value) {
+                                        $label = $target_property['enumNames'][array_search($enum_value, $target_property['enum'])] ?? ucfirst(str_replace('_', ' ', (string)$enum_value));
+                                        $options[(string)$enum_value] = $label;
+                                    }
+                                } elseif (isset($target_property['items']['enum']) && is_array($target_property['items']['enum'])) {
+                                    $item_enums = $target_property['items']['enum'];
+                                    $item_enum_names = $target_property['items']['enumNames'] ?? [];
+                                    foreach ($item_enums as $enum_value) {
+                                        $label = $item_enum_names[array_search($enum_value, $item_enums)] ?? ucfirst(str_replace('_', ' ', (string)$enum_value));
+                                        $options[(string)$enum_value] = $label;
+                                    }
+                                } elseif (isset($target_property['type']) && $target_property['type'] === 'object' && isset($target_property['properties']) && is_array($target_property['properties'])) {
+                                    foreach ($target_property['properties'] as $sub_prop_key => $sub_prop_def) {
+                                        if (!is_array($sub_prop_def)) continue;
+                                        $options[$sub_prop_key] = $sub_prop_def['title'] ?? ucfirst(str_replace('_', ' ', $sub_prop_key));
+                                    }
+                                } else {
+                                    $options['_self'] = 'Value';
+                                }
+                                break;
+                            }
+                        }
+                        if ($found_schema) break;
+                    }
+                }
+            } else {
+                wp_send_json_error('Invalid data source specified.');
+                return;
+            }
+        } catch (\Exception $e) {
+            wp_send_json_error('API Error: ' . $e->getMessage());
+            return;
+        }
+
+        if (empty($options)) {
+            wp_send_json_success(['_self' => 'Value (no sub-keys)']);
+            return;
+        }
+
+        wp_send_json_success($options);
+    }
 }
+
+// Register AJAX handlers
+add_action('wp_ajax_gf_wicket_get_mdp_schemas', ['GFDataBindHiddenField', 'ajax_get_mdp_schemas']);
+add_action('wp_ajax_gf_wicket_get_mdp_value_keys', ['GFDataBindHiddenField', 'ajax_get_mdp_value_keys']);
 
 GF_Fields::register(new GFDataBindHiddenField());
