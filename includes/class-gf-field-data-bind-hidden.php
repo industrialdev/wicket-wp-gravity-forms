@@ -51,7 +51,7 @@ class GFDataBindHiddenField extends GF_Field
                 'label'   => esc_html__('Live Update: Data Source', 'wicket-gf'), // Changed label
                 'type'    => 'select', // Explicitly type as select
                 'options' => [ // Add options directly here for initial render
-                    'person'       => esc_html__('Person (Current User)', 'wicket-gf'),
+                    'person_addinfo' => esc_html__('Person Add. Info. (Current User)', 'wicket-gf'),
                     'organization' => esc_html__('Organization', 'wicket-gf'),
                 ],
                 'tooltip' => '<h6>' . esc_html__('Data Source', 'wicket-gf') . '</h6>' .
@@ -118,8 +118,8 @@ class GFDataBindHiddenField extends GF_Field
             <option value="">
                 <?php esc_html_e('Select Data Source', 'wicket-gf'); ?>
             </option>
-            <option value="person">
-                <?php esc_html_e('Person (Current User)', 'wicket-gf'); ?>
+            <option value="person_addinfo">
+                <?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>
             </option>
             <option value="organization">
                 <?php esc_html_e('Organization', 'wicket-gf'); ?>
@@ -199,7 +199,7 @@ class GFDataBindHiddenField extends GF_Field
             if (canShowSummary && !forceSwitchToSelectors) { // Check forceSwitchToSelectors
                 // Summary Mode
                 var dataSourceDisplay = field.liveUpdateDataSource;
-                if (field.liveUpdateDataSource === 'person') dataSourceDisplay = '<?php esc_html_e('Person (Current User)', 'wicket-gf'); ?>';
+                if (field.liveUpdateDataSource === 'person_addinfo') dataSourceDisplay = '<?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>';
                 if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e('Organization', 'wicket-gf'); ?>';
                 $summaryContainer.find('#summaryDataSourceText').text(dataSourceDisplay);
 
@@ -304,7 +304,7 @@ class GFDataBindHiddenField extends GF_Field
             }
         } else {
             $orgUuidFieldLi.hide();
-            if (dataSource === 'person') {
+            if (dataSource === 'person_addinfo') {
                 wicketFetchSchemas(dataSource, null, $context);
             }
         }
@@ -560,7 +560,7 @@ class GFDataBindHiddenField extends GF_Field
         $options = [];
 
         try {
-            if ($data_source === 'person') {
+            if ($data_source === 'person_addinfo') {
                 $person_uuid = wicket_current_person_uuid();
 
                 if (empty($person_uuid)) {
@@ -744,7 +744,7 @@ class GFDataBindHiddenField extends GF_Field
         }
 
         try {
-            if ($data_source === 'person') {
+            if ($data_source === 'person_addinfo') {
                 $person_uuid = wicket_current_person_uuid();
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
