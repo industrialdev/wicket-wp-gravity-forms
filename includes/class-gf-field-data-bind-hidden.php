@@ -595,8 +595,9 @@ class GFDataBindHiddenField extends GF_Field
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
                     $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found', array('source' => 'wicket-gf'));
+                    $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
+
                     return;
                 }
 
@@ -604,6 +605,7 @@ class GFDataBindHiddenField extends GF_Field
 
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
+
                     return;
                 }
 
@@ -698,14 +700,16 @@ class GFDataBindHiddenField extends GF_Field
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
                     $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found for person_profile', array('source' => 'wicket-gf'));
+                    $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
+
                     return;
                 }
 
                 $person_uuid = wicket_current_person_uuid();
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
+
                     return;
                 }
 
@@ -713,15 +717,16 @@ class GFDataBindHiddenField extends GF_Field
                 $person_data_response = wicket_get_person_by_id($person_uuid, 'organizations,phones,emails,addresses,web_addresses');
                 if (!$person_data_response || is_wp_error($person_data_response)) {
                     wp_send_json_error('Failed to fetch person profile data.');
+
                     return;
                 }
 
                 $logger = wc_get_logger();
-                $logger->debug('Person data response type: ' . gettype($person_data_response), array('source' => 'wicket-gf'));
+                $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
 
                 if (is_object($person_data_response)) {
-                    $logger->debug('Person response class: ' . get_class($person_data_response), array('source' => 'wicket-gf'));
-                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), array('source' => 'wicket-gf'));
+                    $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
+                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
                 }
 
                 // Extract person attributes from API response
@@ -927,14 +932,16 @@ class GFDataBindHiddenField extends GF_Field
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
                     $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found in value_keys', array('source' => 'wicket-gf'));
+                    $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
+
                     return;
                 }
 
                 $person_uuid = wicket_current_person_uuid();
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
+
                     return;
                 }
 
@@ -1024,12 +1031,14 @@ class GFDataBindHiddenField extends GF_Field
                     $person_uuid = wicket_current_person_uuid();
                     if (empty($person_uuid)) {
                         wp_send_json_error('Could not retrieve current person UUID.');
+
                         return;
                     }
 
                     $person_data_response = wicket_get_person_by_id($person_uuid, 'organizations,phones,emails,addresses,web_addresses');
                     if (!$person_data_response || is_wp_error($person_data_response)) {
                         wp_send_json_error('Failed to fetch person profile data.');
+
                         return;
                     }
 
@@ -1177,12 +1186,14 @@ class GFDataBindHiddenField extends GF_Field
                     $person_uuid = wicket_current_person_uuid();
                     if (empty($person_uuid)) {
                         wp_send_json_error('Could not retrieve current person UUID.');
+
                         return;
                     }
 
                     $person_data_response = wicket_get_person_by_id($person_uuid, 'addresses');
                     if (!$person_data_response || is_wp_error($person_data_response)) {
                         wp_send_json_error('Failed to fetch person profile data.');
+
                         return;
                     }
 
