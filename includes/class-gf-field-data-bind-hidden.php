@@ -594,8 +594,8 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
+                    // $logger = wc_get_logger();
+                    // $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -668,6 +668,9 @@ class GFDataBindHiddenField extends GF_Field
                 }
 
                 if (is_array($included_items_array)) {
+                    // $logger = wc_get_logger();
+                    // $logger->debug('Processing included items for person_addinfo schemas', ['source' => 'wicket-gf', 'count' => count($included_items_array)]);
+
                     foreach ($included_items_array as $item) {
                         $item_arr = is_object($item) ? (array) $item : $item;
 
@@ -677,30 +680,83 @@ class GFDataBindHiddenField extends GF_Field
                                 $identifier = $attributes['slug'] ?? $attributes['key'] ?? null;
                                 if ($identifier) {
                                     $title = null;
-                                    $schema_def = $attributes['schema'] ?? null;
-                                    if (is_array($schema_def) && isset($schema_def['title'])) {
-                                        $title = $schema_def['title'];
-                                    }
+
+                                    // Log the full attributes for debugging
+                                    // $logger->debug('Processing schema item', [
+                                    //     'source' => 'wicket-gf',
+                                    //     'identifier' => $identifier,
+                                    //     'attributes_keys' => array_keys($attributes),
+                                    //     'full_attributes' => $attributes // Temporarily add full dump
+                                    // ]);
+
+                                    // PRIORITY 1: Try to extract title from ui_schema (most user-friendly)
                                     $ui_schema = $attributes['ui_schema'] ?? null;
-                                    if (!$title && is_array($ui_schema)) {
+                                    if (is_array($ui_schema)) {
                                         if (isset($ui_schema['ui:i18n']['title']['en'])) {
                                             $title = $ui_schema['ui:i18n']['title']['en'];
+                                            // $logger->debug('Found title in ui_schema.ui:i18n.title.en', ['source' => 'wicket-gf', 'title' => $title]);
                                         } elseif (isset($ui_schema['title'])) {
                                             $title = $ui_schema['title'];
+                                            // $logger->debug('Found title in ui_schema.title', ['source' => 'wicket-gf', 'title' => $title]);
+                                        } elseif (isset($ui_schema['ui:title'])) {
+                                            $title = $ui_schema['ui:title'];
+                                            // $logger->debug('Found title in ui_schema.ui:title', ['source' => 'wicket-gf', 'title' => $title]);
                                         }
                                     }
-                                    $option_text = $title ? $title : ucfirst(str_replace('_', ' ', $identifier));
-                                    $options[$identifier] = $option_text;
+
+                                    // PRIORITY 2: Try to extract title from attributes directly
+                                    if (!$title && isset($attributes['title'])) {
+                                        $title = $attributes['title'];
+                                        // $logger->debug('Found title in attributes.title', ['source' => 'wicket-gf', 'title' => $title]);
+                                    }
+
+                                    // PRIORITY 3: Try to extract title from attributes.name
+                                    if (!$title && isset($attributes['name'])) {
+                                        $title = $attributes['name'];
+                                        // $logger->debug('Found title in attributes.name', ['source' => 'wicket-gf', 'title' => $title]);
+                                    }
+
+                                    // PRIORITY 4: Try label field
+                                    if (!$title && isset($attributes['label'])) {
+                                        $title = $attributes['label'];
+                                        // $logger->debug('Found title in attributes.label', ['source' => 'wicket-gf', 'title' => $title]);
+                                    }
+
+                                    // PRIORITY 5: Try to extract title from schema definition (fallback only)
+                                    if (!$title) {
+                                        $schema_def = $attributes['schema'] ?? null;
+                                        if (is_array($schema_def)) {
+                                            if (isset($schema_def['title']) && $schema_def['title'] !== $identifier) {
+                                                // Only use schema title if it's different from the identifier
+                                                $title = $schema_def['title'];
+                                                // $logger->debug('Found title in schema.title', ['source' => 'wicket-gf', 'title' => $title]);
+                                            } elseif (isset($schema_def['description'])) {
+                                                $title = $schema_def['description'];
+                                                // $logger->debug('Found title in schema.description', ['source' => 'wicket-gf', 'title' => $title]);
+                                            }
+                                        }
+                                    }
+
+                                    // Enhanced fallback: create better human-readable names from slugs
+                                    if (!$title) {
+                                        $title = ucwords(str_replace(['_', '-'], ' ', $identifier));
+                                        // $logger->debug('Using fallback title', ['source' => 'wicket-gf', 'title' => $title]);
+                                    }
+
+                                    $options[$identifier] = $title;
+                                    // $logger->debug('Added schema option', ['source' => 'wicket-gf', 'identifier' => $identifier, 'title' => $title]);
                                 }
                             }
                         }
                     }
+
+                    // $logger->debug('Final options for person_addinfo', ['source' => 'wicket-gf', 'options' => $options]);
                 }
             } elseif ($data_source === 'person_profile') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
+                    // $logger = wc_get_logger();
+                    // $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -721,13 +777,13 @@ class GFDataBindHiddenField extends GF_Field
                     return;
                 }
 
-                $logger = wc_get_logger();
-                $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
+                // $logger = wc_get_logger();
+                // $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
 
-                if (is_object($person_data_response)) {
-                    $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
-                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
-                }
+                // if (is_object($person_data_response)) {
+                //     $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
+                //     $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
+                // }
 
                 // Extract person attributes from API response
                 $person_data = null;
@@ -931,8 +987,8 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
+                    // $logger = wc_get_logger();
+                    // $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -1406,4 +1462,3 @@ add_action('wp_ajax_gf_wicket_get_mdp_schemas', ['GFDataBindHiddenField', 'ajax_
 add_action('wp_ajax_gf_wicket_get_mdp_value_keys', ['GFDataBindHiddenField', 'ajax_get_mdp_value_keys']);
 
 GF_Fields::register(new GFDataBindHiddenField());
-?>
