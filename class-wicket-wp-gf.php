@@ -1482,7 +1482,6 @@ if (!class_exists('Wicket_Gf_Main')) {
                 <script type="text/javascript" id="wicket-gf-event-debugger">
                     document.addEventListener("DOMContentLoaded", function() {
                         function wicketLogWidgetEvent(eventName, e) {
-                            console.log(`%c${eventName} Event Detected!`, 'color: blue; font-weight: bold;');
                             //console.log('Full Event Detail:', e.detail);
 
                             if (e.detail) {
