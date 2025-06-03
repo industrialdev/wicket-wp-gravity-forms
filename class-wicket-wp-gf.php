@@ -1486,9 +1486,9 @@ if (!class_exists('Wicket_Gf_Main')) {
 
                             if (e.detail) {
                                 if (e.detail.dataFields) {
-                                    console.log('Data Fields:', e.detail.dataFields);
+                                    //console.log('Data Fields:', e.detail.dataFields);
                                 } else {
-                                    console.log('Event Detail:', e.detail);
+                                    //console.log('Event Detail:', e.detail);
                                 }
 
                                 if (e.detail.resource) {
@@ -1525,7 +1525,7 @@ if (!class_exists('Wicket_Gf_Main')) {
                         if (typeof window.Wicket !== 'undefined') {
                             window.Wicket.ready(initializeWidgetListeners);
                         } else {
-                            console.error('Wicket is not loaded yet');
+                            // console.error('Wicket is not loaded yet');
                         }
                     });
                 </script>

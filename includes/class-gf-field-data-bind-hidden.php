@@ -43,12 +43,12 @@ class GFDataBindHiddenField extends GF_Field
             'conditional_logic_field_setting',
             'visibility_setting',
             'live_update_enable_setting' => [
-                'label'   => esc_html__('Enable Live Update', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Enable Live Update', 'wicket-gf') . '</h6>' .
+                'label'   => esc_html__('Enable Data Bind', 'wicket-gf'),
+                'tooltip' => '<h6>' . esc_html__('Enable Data Bind', 'wicket-gf') . '</h6>' .
                     esc_html__('Enable real-time updates from Wicket Widgets on the same page. The field will listen for Wicket Widget SAVE_SUCCESS events.', 'wicket-gf'),
             ],
             'live_update_data_source_setting' => [ // Changed from live_update_widget_source_setting
-                'label'   => esc_html__('Live Update: Data Source', 'wicket-gf'), // Changed label
+                'label'   => esc_html__('Bind: Data Source', 'wicket-gf'), // Changed label
                 'type'    => 'select', // Explicitly type as select
                 'options' => [ // Add options directly here for initial render
                     'person_addinfo' => esc_html__('Person Add. Info. (Current User)', 'wicket-gf'),
@@ -60,21 +60,21 @@ class GFDataBindHiddenField extends GF_Field
             ],
             'live_update_organization_uuid_setting' => [ // New setting
                 'type'    => 'text',
-                'label'   => esc_html__('Live Update: Organization UUID', 'wicket-gf'),
+                'label'   => esc_html__('Bind: Organization UUID', 'wicket-gf'),
                 'tooltip' => '<h6>' . esc_html__('Organization UUID', 'wicket-gf') . '</h6>' .
                     esc_html__('Enter the UUID of the Wicket Organization. Required if Data Source is Organization.', 'wicket-gf'),
                 'class'   => 'wicket-gf-dependent-setting wicket-gf-org-setting', // Add class for JS show/hide
             ],
             'live_update_schema_slug_setting' => [ // Changed from live_update_schema_key_setting
                 'type'    => 'select', // Change to select
-                'label'   => esc_html__('Live Update: Schema/Data Slug', 'wicket-gf'), // Changed label
+                'label'   => esc_html__('Bind: Schema/Data Slug', 'wicket-gf'), // Changed label
                 'tooltip' => '<h6>' . esc_html__('Schema/Data Slug', 'wicket-gf') . '</h6>' .
                     esc_html__('Select the schema or data slug. This will be populated based on the Data Source.', 'wicket-gf'),
                 'class'   => 'wicket-gf-dependent-setting',
             ],
             'live_update_value_key_setting' => [
                 'type'    => 'select', // Change to select
-                'label'   => esc_html__('Live Update: Value Key', 'wicket-gf'), // Changed label (removed Optional)
+                'label'   => esc_html__('Bind: Value Key', 'wicket-gf'), // Changed label (removed Optional)
                 'tooltip' => '<h6>' . esc_html__('Value Key', 'wicket-gf') . '</h6>' .
                     esc_html__('Select the specific value key from the chosen schema. This will be populated after selecting a Schema/Data Slug.', 'wicket-gf'),
                 'class'   => 'wicket-gf-dependent-setting',
@@ -90,28 +90,35 @@ class GFDataBindHiddenField extends GF_Field
     <input type="checkbox" id="liveUpdateEnabled"
         onclick="SetFieldProperty('liveUpdateEnabled', this.checked); refreshWicketLiveUpdateView(jQuery(this).closest('ul.gform-settings-panel__fields'));" />
     <label for="liveUpdateEnabled" class="inline">
-        <?php esc_html_e('Enable Live Update', 'wicket-gf'); ?>
+        <?php esc_html_e('Enable Data Bing', 'wicket-gf'); ?>
         <?php gform_tooltip('live_update_enable_setting'); ?>
     </label>
 </li>
 
 <?php // Summary View (initially hidden, shown by JS)?>
 <li class="live_update_summary_setting field_setting" id="liveUpdateSummaryContainer" style="display:none;">
-    <label class="section_label"><?php esc_html_e('Current Live Update Configuration', 'wicket-gf'); ?></label>
+    <label
+        class="section_label"><?php esc_html_e('Current Data Bind Configuration', 'wicket-gf'); ?></label>
     <div id="liveUpdateSummaryDetails" style="padding-bottom: 10px;">
-        <p><strong><?php esc_html_e('Data Source:', 'wicket-gf'); ?></strong> <span id="summaryDataSourceText"></span></p>
-        <p id="summaryOrgUuidContainer" style="display:none;"><strong><?php esc_html_e('Organization UUID:', 'wicket-gf'); ?></strong> <span id="summaryOrgUuidText"></span></p>
-        <p><strong><?php esc_html_e('Schema/Data Slug:', 'wicket-gf'); ?></strong> <span id="summarySchemaSlugText"></span></p>
-        <p><strong><?php esc_html_e('Value Key:', 'wicket-gf'); ?></strong> <span id="summaryValueKeyText"></span></p>
+        <p><strong><?php esc_html_e('Data Source:', 'wicket-gf'); ?></strong>
+            <span id="summaryDataSourceText"></span></p>
+        <p id="summaryOrgUuidContainer" style="display:none;">
+            <strong><?php esc_html_e('Organization UUID:', 'wicket-gf'); ?></strong>
+            <span id="summaryOrgUuidText"></span></p>
+        <p><strong><?php esc_html_e('Schema/Data Slug:', 'wicket-gf'); ?></strong>
+            <span id="summarySchemaSlugText"></span></p>
+        <p><strong><?php esc_html_e('Value Key:', 'wicket-gf'); ?></strong>
+            <span id="summaryValueKeyText"></span></p>
     </div>
-    <button type="button" id="wicketResetLiveUpdateSettingsButton" class="button gf_input_button" onclick="handleWicketResetLiveUpdateSettings(this)"><?php esc_html_e('Change Settings', 'wicket-gf'); ?></button>
+    <button type="button" id="wicketResetLiveUpdateSettingsButton" class="button gf_input_button"
+        onclick="handleWicketResetLiveUpdateSettings(this)"><?php esc_html_e('Change Settings', 'wicket-gf'); ?></button>
 </li>
 
 <?php // Selector View (conditionally hidden/shown by JS)?>
 <div id="wicketLiveUpdateSelectorsWrapper">
     <li class="live_update_data_source_setting field_setting">
         <label for="liveUpdateDataSource" class="section_label">
-            <?php esc_html_e('Live Update: Data Source', 'wicket-gf'); ?>
+            <?php esc_html_e('Bind: Data Source', 'wicket-gf'); ?>
             <?php gform_tooltip('live_update_data_source_setting'); ?>
         </label>
         <select id="liveUpdateDataSource"
@@ -133,7 +140,7 @@ class GFDataBindHiddenField extends GF_Field
 
     <li class="live_update_organization_uuid_setting field_setting wicket-gf-org-setting" style="display:none;">
         <label for="liveUpdateOrganizationUuid" class="section_label">
-            <?php esc_html_e('Live Update: Organization UUID', 'wicket-gf'); ?>
+            <?php esc_html_e('Bind: Organization UUID', 'wicket-gf'); ?>
             <?php gform_tooltip('live_update_organization_uuid_setting'); ?>
         </label>
         <input type="text" id="liveUpdateOrganizationUuid" class="fieldwidth-3"
@@ -142,7 +149,7 @@ class GFDataBindHiddenField extends GF_Field
 
     <li class="live_update_schema_slug_setting field_setting">
         <label for="liveUpdateSchemaSlug" class="section_label">
-            <?php esc_html_e('Live Update: Schema/Data Slug', 'wicket-gf'); ?>
+            <?php esc_html_e('Bind: Schema/Data Slug', 'wicket-gf'); ?>
             <?php gform_tooltip('live_update_schema_slug_setting'); ?>
         </label>
         <select id="liveUpdateSchemaSlug" class="fieldwidth-3"
@@ -156,7 +163,7 @@ class GFDataBindHiddenField extends GF_Field
 
     <li class="live_update_value_key_setting field_setting">
         <label for="liveUpdateValueKey" class="section_label">
-            <?php esc_html_e('Live Update: Value Key', 'wicket-gf'); ?>
+            <?php esc_html_e('Bind: Value Key', 'wicket-gf'); ?>
             <?php gform_tooltip('live_update_value_key_setting'); ?>
         </label>
         <select id="liveUpdateValueKey" class="fieldwidth-3"
@@ -193,7 +200,8 @@ class GFDataBindHiddenField extends GF_Field
 
         var $summaryContainer = $context.find('#liveUpdateSummaryContainer');
         var $selectorsWrapper = $context.find('#wicketLiveUpdateSelectorsWrapper');
-        var $orgUuidFieldLi = $selectorsWrapper.find('.live_update_organization_uuid_setting'); // Org UUID LI within selectors
+        var $orgUuidFieldLi = $selectorsWrapper.find(
+        '.live_update_organization_uuid_setting'); // Org UUID LI within selectors
         var $orgSummaryContainerP = $summaryContainer.find('#summaryOrgUuidContainer');
 
         if (field.liveUpdateEnabled) {
@@ -203,9 +211,12 @@ class GFDataBindHiddenField extends GF_Field
             if (canShowSummary && !forceSwitchToSelectors) { // Check forceSwitchToSelectors
                 // Summary Mode
                 var dataSourceDisplay = field.liveUpdateDataSource;
-                if (field.liveUpdateDataSource === 'person_addinfo') dataSourceDisplay = '<?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>';
-                if (field.liveUpdateDataSource === 'person_profile') dataSourceDisplay = '<?php esc_html_e('Person Profile (Current User)', 'wicket-gf'); ?>'; // New display text
-                if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e('Organization', 'wicket-gf'); ?>';
+                if (field.liveUpdateDataSource === 'person_addinfo') dataSourceDisplay =
+                    '<?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>';
+                if (field.liveUpdateDataSource === 'person_profile') dataSourceDisplay =
+                    '<?php esc_html_e('Person Profile (Current User)', 'wicket-gf'); ?>'; // New display text
+                if (field.liveUpdateDataSource === 'organization') dataSourceDisplay =
+                    '<?php esc_html_e('Organization', 'wicket-gf'); ?>';
                 $summaryContainer.find('#summaryDataSourceText').text(dataSourceDisplay);
 
                 if (field.liveUpdateDataSource === 'organization' && field.liveUpdateOrganizationUuid) {
@@ -257,14 +268,18 @@ class GFDataBindHiddenField extends GF_Field
                     wicketHandleDataSourceChange(dataSourceToUseForLoading, $context, false);
                 } else {
                     // No data source to load from (e.g. after reset, or new field with no selection)
-                    $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>');
-                    $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>');
+                    $context.find('#liveUpdateSchemaSlug').html(
+                        '<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>'
+                        );
+                    $context.find('#liveUpdateValueKey').html(
+                        '<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
+                        );
                     // Ensure Org UUID field is hidden if no data source implies it shouldn't be shown
                     // (this is typically handled by the check on currentDataSourceInDropdown for $orgUuidFieldLi visibility)
                 }
             }
         } else {
-            // Live Update Disabled
+            // Data Bind Disabled
             $summaryContainer.hide();
             $selectorsWrapper.hide();
         }
@@ -305,7 +320,9 @@ class GFDataBindHiddenField extends GF_Field
             if (orgUuid && orgUuid.length > 30) { // Basic check for UUID-like string
                 wicketFetchSchemas(dataSource, orgUuid, $context);
             } else if (!orgUuid && !isInitialLoad) {
-                 $schemaSlugDropdown.html('<option value=\"\"><?php esc_html_e('Enter Organization UUID', 'wicket-gf'); ?></option>');
+                $schemaSlugDropdown.html(
+                    '<option value=\"\"><?php esc_html_e('Enter Organization UUID', 'wicket-gf'); ?></option>'
+                    );
             }
         } else {
             $orgUuidFieldLi.hide();
@@ -372,7 +389,8 @@ class GFDataBindHiddenField extends GF_Field
                     var currentField = GetSelectedField();
                     var savedSchemaSlug = currentField.liveUpdateSchemaSlug;
 
-                    if (savedSchemaSlug && $schemaSlugDropdown.find('option[value=\"' + savedSchemaSlug + '\"]').length > 0) {
+                    if (savedSchemaSlug && $schemaSlugDropdown.find('option[value=\"' + savedSchemaSlug +
+                            '\"]').length > 0) {
                         $schemaSlugDropdown.val(savedSchemaSlug);
                         // Trigger change to load value keys if a schema was auto-selected
                         wicketHandleSchemaSlugChange(savedSchemaSlug, $context);
@@ -409,7 +427,9 @@ class GFDataBindHiddenField extends GF_Field
 
         var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
         $valueKeyDropdown.html( // Set to loading or default
-            schemaSlug ? '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>' : '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
+            schemaSlug ?
+            '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>' :
+            '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
         );
 
         if (!schemaSlug) {
@@ -439,12 +459,13 @@ class GFDataBindHiddenField extends GF_Field
                     jQuery.each(response.data, function(value, text) {
                         $valueKeyDropdown.append(jQuery('<option></option>').attr('value', value).text(
                             text));
-                        });
+                    });
 
                     var currentField = GetSelectedField();
                     var savedValueKey = currentField.liveUpdateValueKey;
 
-                    if (savedValueKey && $valueKeyDropdown.find('option[value=\"' + savedValueKey + '\"]').length > 0) {
+                    if (savedValueKey && $valueKeyDropdown.find('option[value=\"' + savedValueKey + '\"]')
+                        .length > 0) {
                         $valueKeyDropdown.val(savedValueKey);
                     }
                 } else {
@@ -470,7 +491,8 @@ class GFDataBindHiddenField extends GF_Field
 
     jQuery(document).on('gform_load_field_settings', function(event, field, form) {
         if (field.type === 'wicket_data_hidden') {
-            var $fieldSettingsArea = getContext(jQuery('#liveUpdateEnabled')); // Use a known element within the settings panel for context
+            var $fieldSettingsArea = getContext(jQuery(
+            '#liveUpdateEnabled')); // Use a known element within the settings panel for context
 
             $fieldSettingsArea.find('#liveUpdateEnabled').prop('checked', field.liveUpdateEnabled || false);
 
@@ -496,8 +518,12 @@ class GFDataBindHiddenField extends GF_Field
         // Clear UI elements in selectors
         $context.find('#liveUpdateDataSource').val('');
         $context.find('#liveUpdateOrganizationUuid').val('');
-        $context.find('#liveUpdateSchemaSlug').html('<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>').val('');
-        $context.find('#liveUpdateValueKey').html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>').val('');
+        $context.find('#liveUpdateSchemaSlug').html(
+            '<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>'
+            ).val('');
+        $context.find('#liveUpdateValueKey').html(
+            '<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
+            ).val('');
 
         refreshWicketLiveUpdateView(buttonElement, true); // Pass true to force selector view
     }
@@ -669,13 +695,146 @@ class GFDataBindHiddenField extends GF_Field
                     }
                 }
             } elseif ($data_source === 'person_profile') {
-                // Add some basic profile options to test
-                $options = [
-                    'profile_given_name' => 'First Name',
-                    'profile_family_name' => 'Last Name',
-                    'profile_title' => 'Title',
-                    'profile_primary_email' => 'Primary Email',
-                ];
+                // Check if wicket helper function exists
+                if (!function_exists('wicket_current_person_uuid')) {
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found for person_profile', array('source' => 'wicket-gf'));
+                    wp_send_json_error('Wicket helper functions not available.');
+                    return;
+                }
+
+                $person_uuid = wicket_current_person_uuid();
+                if (empty($person_uuid)) {
+                    wp_send_json_error('Could not retrieve current person UUID.');
+                    return;
+                }
+
+                // Fetch person profile data with relationships
+                $person_data_response = wicket_get_person_by_id($person_uuid, 'organizations,phones,emails,addresses,web_addresses');
+                if (!$person_data_response || is_wp_error($person_data_response)) {
+                    wp_send_json_error('Failed to fetch person profile data.');
+                    return;
+                }
+
+                $logger = wc_get_logger();
+                $logger->debug('Person data response type: ' . gettype($person_data_response), array('source' => 'wicket-gf'));
+
+                if (is_object($person_data_response)) {
+                    $logger->debug('Person response class: ' . get_class($person_data_response), array('source' => 'wicket-gf'));
+                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), array('source' => 'wicket-gf'));
+                }
+
+                // Extract person attributes from API response
+                $person_data = null;
+                if (is_object($person_data_response)) {
+                    if (method_exists($person_data_response, 'toJsonAPI')) {
+                        try {
+                            $api_response = $person_data_response->toJsonAPI();
+                            $person_data = $api_response['data'] ?? null;
+                        } catch (Exception $e) {
+                            // Fallback to object properties
+                        }
+                    }
+
+                    if (!$person_data && property_exists($person_data_response, 'attributes')) {
+                        $person_data = ['attributes' => $person_data_response->attributes];
+                    }
+                } elseif (is_array($person_data_response) && isset($person_data_response['data'])) {
+                    $person_data = $person_data_response['data'];
+                }
+
+                // Add main profile data slug - always available
+                $options['profile_attributes'] = 'Profile Attributes';
+
+                // Check for relationships and add collection options
+                if ($person_data && isset($person_data['relationships'])) {
+                    $relationships = $person_data['relationships'];
+
+                    $relationship_mappings = [
+                        'organizations' => 'Organizations',
+                        'addresses' => 'Addresses',
+                        'emails' => 'Emails',
+                        'phones' => 'Phones',
+                        'web_addresses' => 'Web Addresses',
+                    ];
+
+                    foreach ($relationship_mappings as $rel_key => $label) {
+                        if (isset($relationships[$rel_key]['data']) && !empty($relationships[$rel_key]['data'])) {
+                            $options['profile_' . $rel_key] = $label;
+                        }
+                    }
+                }
+
+                // Check for primary address in included data and add primary address option
+                $included_items_array = null;
+                if (is_object($person_data_response)) {
+                    // Attempt 1: Use the included() method
+                    if (method_exists($person_data_response, 'included')) {
+                        try {
+                            $included_data = $person_data_response->included();
+                            if ($included_data instanceof Illuminate\Support\Collection) {
+                                $included_items_array = $included_data->all();
+                            } elseif (is_array($included_data)) {
+                                $included_items_array = $included_data;
+                            }
+                        } catch (Exception $e) {
+                            // Error calling included()
+                        }
+                    }
+
+                    // Attempt 2: Direct access to 'included' property (fallback)
+                    if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
+                        $included_data_prop = $person_data_response->included;
+                        if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                            $included_items_array = $included_data_prop->all();
+                        } elseif (is_array($included_data_prop)) {
+                            $included_items_array = $included_data_prop;
+                        }
+                    }
+
+                    // Attempt 3: Using toJsonAPI()['included'] (fallback)
+                    if (is_null($included_items_array) && method_exists($person_data_response, 'toJsonAPI')) {
+                        try {
+                            $response_as_array = $person_data_response->toJsonAPI();
+                            if (isset($response_as_array['included'])) {
+                                if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                                    $included_items_array = $response_as_array['included']->all();
+                                } elseif (is_array($response_as_array['included'])) {
+                                    $included_items_array = $response_as_array['included'];
+                                }
+                            }
+                        } catch (Exception $e) {
+                            // Error calling toJsonAPI()
+                        }
+                    }
+                } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
+                    $included_data_from_main_array = $person_data_response['included'];
+                    if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                        $included_items_array = $included_data_from_main_array->all();
+                    } elseif (is_array($included_data_from_main_array)) {
+                        $included_items_array = $included_data_from_main_array;
+                    }
+                }
+
+                // Check if there's a primary address available
+                if (is_array($included_items_array)) {
+                    foreach ($included_items_array as $item) {
+                        $item_arr = is_object($item) ? (array) $item : $item;
+
+                        if (isset($item_arr['type']) && $item_arr['type'] === 'addresses') {
+                            $address_attributes = $item_arr['attributes'] ?? null;
+                            if (is_array($address_attributes)) {
+                                $is_primary = isset($address_attributes['primary']) && $address_attributes['primary'] === true;
+                                $is_active = isset($address_attributes['active']) && $address_attributes['active'] === true;
+
+                                if ($is_primary && $is_active) {
+                                    $options['profile_primary_address'] = 'Primary Address';
+                                    break; // Found primary address, no need to continue
+                                }
+                            }
+                        }
+                    }
+                }
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
@@ -859,8 +1018,272 @@ class GFDataBindHiddenField extends GF_Field
                     }
                 }
             } elseif ($data_source === 'person_profile') {
-                // For person_profile, the schema_data_slug is the direct key.
-                $options['_self'] = 'Value';
+                // Handle different profile field types
+                if ($schema_data_slug === 'profile_attributes') {
+                    // Fetch person data to get available attributes dynamically
+                    $person_uuid = wicket_current_person_uuid();
+                    if (empty($person_uuid)) {
+                        wp_send_json_error('Could not retrieve current person UUID.');
+                        return;
+                    }
+
+                    $person_data_response = wicket_get_person_by_id($person_uuid, 'organizations,phones,emails,addresses,web_addresses');
+                    if (!$person_data_response || is_wp_error($person_data_response)) {
+                        wp_send_json_error('Failed to fetch person profile data.');
+                        return;
+                    }
+
+                    // Extract person attributes from API response
+                    $person_data = null;
+                    if (is_object($person_data_response)) {
+                        if (method_exists($person_data_response, 'toJsonAPI')) {
+                            try {
+                                $api_response = $person_data_response->toJsonAPI();
+                                $person_data = $api_response['data'] ?? null;
+                            } catch (Exception $e) {
+                                // Fallback to object properties
+                            }
+                        }
+
+                        if (!$person_data && property_exists($person_data_response, 'attributes')) {
+                            $person_data = ['attributes' => $person_data_response->attributes];
+                        }
+                    } elseif (is_array($person_data_response) && isset($person_data_response['data'])) {
+                        $person_data = $person_data_response['data'];
+                    }
+
+                    if ($person_data && isset($person_data['attributes'])) {
+                        $attributes = $person_data['attributes'];
+
+                        // Map actual API field names to user-friendly labels
+                        $field_mappings = [
+                            'honorific_prefix' => 'Salutation (Honorific Prefix)',
+                            'alternate_name' => 'Alternate Name',
+                            'maiden_name' => 'Maiden Name',
+                            'given_name' => 'First Name (Given Name)',
+                            'additional_name' => 'Middle Name (Additional Name)',
+                            'family_name' => 'Last Name (Family Name)',
+                            'suffix' => 'Suffix',
+                            'honorific_suffix' => 'Post-nominal (Honorific Suffix)',
+                            'nickname' => 'Nickname',
+                            'preferred_pronoun' => 'Pronouns (Preferred Pronoun)',
+                            'gender' => 'Gender',
+                            'birth_date' => 'Birth Date',
+                            'job_title' => 'Title (Job Title)',
+                            'job_function' => 'Job Function',
+                            'job_level' => 'Job Level',
+                            'person_type' => 'Person Type',
+                            'primary_email_address' => 'Primary Email Address',
+                            'full_name' => 'Full Name',
+                            'language' => 'Language',
+                            'membership_number' => 'Membership Number',
+                            'membership_began_on' => 'Membership Began On',
+                            'status' => 'Status',
+                            'identifying_number' => 'Identifying Number',
+                        ];
+
+                        // Add available profile fields based on what exists in the API
+                        foreach ($field_mappings as $api_field => $label) {
+                            if (array_key_exists($api_field, $attributes)) {
+                                $options[$api_field] = $label;
+                            }
+                        }
+
+                        // Add user fields if available
+                        if (isset($attributes['user']) && is_array($attributes['user'])) {
+                            $user_fields = [
+                                'email' => 'User Email',
+                                'username' => 'Username',
+                                'confirmed_at' => 'Email Confirmed At',
+                            ];
+
+                            foreach ($user_fields as $user_field => $label) {
+                                if (array_key_exists($user_field, $attributes['user'])) {
+                                    $options['user_' . $user_field] = $label;
+                                }
+                            }
+                        }
+                    }
+                } elseif ($schema_data_slug === 'profile_organizations') {
+                    $options = [
+                        'uuid' => 'Organization UUID',
+                        'alternate_name' => 'Alternate Name',
+                        'legal_name' => 'Legal Name',
+                        'type' => 'Organization Type',
+                        'status' => 'Status',
+                        'description' => 'Description',
+                        'slug' => 'Slug',
+                        'people_count' => 'People Count',
+                        'membership_began_on' => 'Membership Began On',
+                        'identifying_number' => 'Identifying Number',
+                        'is_primary_organization' => 'Is Primary Organization',
+                    ];
+                } elseif ($schema_data_slug === 'profile_addresses') {
+                    $options = [
+                        'uuid' => 'Address UUID',
+                        'type' => 'Address Type',
+                        'company_name' => 'Company Name',
+                        'city' => 'City',
+                        'zip_code' => 'Postal/Zip Code',
+                        'address1' => 'Address Line 1',
+                        'address2' => 'Address Line 2',
+                        'state_name' => 'Province/State Name',
+                        'country_code' => 'Country Code',
+                        'country_name' => 'Country Name',
+                        'formatted_address_label' => 'Formatted Address',
+                        'latitude' => 'Latitude',
+                        'longitude' => 'Longitude',
+                        'primary' => 'Is Primary',
+                        'mailing' => 'Is Mailing',
+                        'department' => 'Department',
+                        'division' => 'Division',
+                    ];
+                } elseif ($schema_data_slug === 'profile_emails') {
+                    $options = [
+                        'uuid' => 'Email UUID',
+                        'localpart' => 'Local Part',
+                        'domain' => 'Domain',
+                        'type' => 'Email Type',
+                        'address' => 'Email Address',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                        'unique' => 'Is Unique',
+                    ];
+                } elseif ($schema_data_slug === 'profile_phones') {
+                    $options = [
+                        'uuid' => 'Phone UUID',
+                        'type' => 'Phone Type',
+                        'number' => 'Phone Number',
+                        'extension' => 'Extension',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                    ];
+                } elseif ($schema_data_slug === 'profile_web_addresses') {
+                    $options = [
+                        'uuid' => 'Web Address UUID',
+                        'type' => 'Web Address Type',
+                        'uri' => 'URI/URL',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                    ];
+                } elseif ($schema_data_slug === 'profile_primary_address') {
+                    // Fetch person data to get available primary address attributes dynamically
+                    $person_uuid = wicket_current_person_uuid();
+                    if (empty($person_uuid)) {
+                        wp_send_json_error('Could not retrieve current person UUID.');
+                        return;
+                    }
+
+                    $person_data_response = wicket_get_person_by_id($person_uuid, 'addresses');
+                    if (!$person_data_response || is_wp_error($person_data_response)) {
+                        wp_send_json_error('Failed to fetch person profile data.');
+                        return;
+                    }
+
+                    // Extract included address data using same pattern as schemas
+                    $included_items_array = null;
+                    if (is_object($person_data_response)) {
+                        if (method_exists($person_data_response, 'included')) {
+                            try {
+                                $included_data = $person_data_response->included();
+                                if ($included_data instanceof Illuminate\Support\Collection) {
+                                    $included_items_array = $included_data->all();
+                                } elseif (is_array($included_data)) {
+                                    $included_items_array = $included_data;
+                                }
+                            } catch (Exception $e) {
+                                // Error calling included()
+                            }
+                        }
+
+                        if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
+                            $included_data_prop = $person_data_response->included;
+                            if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                                $included_items_array = $included_data_prop->all();
+                            } elseif (is_array($included_data_prop)) {
+                                $included_items_array = $included_data_prop;
+                            }
+                        }
+
+                        if (is_null($included_items_array) && method_exists($person_data_response, 'toJsonAPI')) {
+                            try {
+                                $response_as_array = $person_data_response->toJsonAPI();
+                                if (isset($response_as_array['included'])) {
+                                    if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                                        $included_items_array = $response_as_array['included']->all();
+                                    } elseif (is_array($response_as_array['included'])) {
+                                        $included_items_array = $response_as_array['included'];
+                                    }
+                                }
+                            } catch (Exception $e) {
+                                // Error calling toJsonAPI()
+                            }
+                        }
+                    } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
+                        $included_data_from_main_array = $person_data_response['included'];
+                        if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                            $included_items_array = $included_data_from_main_array->all();
+                        } elseif (is_array($included_data_from_main_array)) {
+                            $included_items_array = $included_data_from_main_array;
+                        }
+                    }
+
+                    // Find primary address attributes
+                    if (is_array($included_items_array)) {
+                        foreach ($included_items_array as $item) {
+                            $item_arr = is_object($item) ? (array) $item : $item;
+
+                            if (isset($item_arr['type']) && $item_arr['type'] === 'addresses') {
+                                $address_attributes = $item_arr['attributes'] ?? null;
+                                if (is_array($address_attributes)) {
+                                    $is_primary = isset($address_attributes['primary']) && $address_attributes['primary'] === true;
+                                    $is_active = isset($address_attributes['active']) && $address_attributes['active'] === true;
+
+                                    if ($is_primary && $is_active) {
+                                        // Add individual address field options based on what exists
+                                        $address_field_mappings = [
+                                            'type' => 'Address Type',
+                                            'company_name' => 'Company Name',
+                                            'address1' => 'Address Line 1',
+                                            'address2' => 'Address Line 2',
+                                            'city' => 'City',
+                                            'state_name' => 'State/Province',
+                                            'zip_code' => 'Postal/Zip Code',
+                                            'country_code' => 'Country Code',
+                                            'country_name' => 'Country Name',
+                                            'formatted_address_label' => 'Formatted Address',
+                                            'latitude' => 'Latitude',
+                                            'longitude' => 'Longitude',
+                                            'department' => 'Department',
+                                            'division' => 'Division',
+                                        ];
+
+                                        foreach ($address_field_mappings as $api_field => $label) {
+                                            if (array_key_exists($api_field, $address_attributes)) {
+                                                $options[$api_field] = $label;
+                                            }
+                                        }
+                                        break; // Found primary address, no need to continue
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // If no primary address fields found, provide fallback
+                    if (empty($options)) {
+                        $options['_self'] = 'Primary Address (Not Available)';
+                    }
+                } else {
+                    // For other profile fields, return the value itself
+                    $options['_self'] = 'Value';
+                }
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
@@ -972,3 +1395,4 @@ add_action('wp_ajax_gf_wicket_get_mdp_schemas', ['GFDataBindHiddenField', 'ajax_
 add_action('wp_ajax_gf_wicket_get_mdp_value_keys', ['GFDataBindHiddenField', 'ajax_get_mdp_value_keys']);
 
 GF_Fields::register(new GFDataBindHiddenField());
+?>
