@@ -129,7 +129,7 @@ const WicketGFLiveUpdate = {
      * Initialize the live update system
      */
     init() {
-        console.log('Wicket GF Live Update: Initializing GF-native version');
+        // console.log('Wicket GF Live Update: Initializing GF-native version');
 
         this.setupGFHooks();
         this.setupWicketEventListeners();
@@ -144,25 +144,25 @@ const WicketGFLiveUpdate = {
         if (typeof gform !== 'undefined' && gform.addAction) {
             // GF 2.5+ native hooks
             gform.addAction('gform/post_init', (formId) => {
-                console.log(`Wicket GF: Form ${formId} initialized via gform/post_init`);
+                // console.log(`Wicket GF: Form ${formId} initialized via gform/post_init`);
                 this.processForm(formId);
             });
 
             gform.addAction('gform/post_render', (formId, currentPage) => {
-                console.log(`Wicket GF: Form ${formId} rendered, page ${currentPage} via gform/post_render`);
+                // console.log(`Wicket GF: Form ${formId} rendered, page ${currentPage} via gform/post_render`);
                 this.processForm(formId);
             });
 
             gform.addAction('gform/page_loaded', (formId, currentPage) => {
-                console.log(`Wicket GF: Form ${formId} page ${currentPage} loaded via gform/page_loaded`);
+                // console.log(`Wicket GF: Form ${formId} page ${currentPage} loaded via gform/page_loaded`);
                 this.processForm(formId);
             });
         } else {
             // Fallback to jQuery events for older GF versions
-            console.log('Wicket GF: Using jQuery fallback events');
+            // console.log('Wicket GF: Using jQuery fallback events');
 
             $(document).on('gform_post_render', (event, formId, currentPage) => {
-                console.log(`Wicket GF: Form ${formId} rendered, page ${currentPage} via gform_post_render`);
+                // console.log(`Wicket GF: Form ${formId} rendered, page ${currentPage} via gform_post_render`);
                 this.processForm(formId);
             });
         }
@@ -179,7 +179,7 @@ const WicketGFLiveUpdate = {
             return;
         }
 
-        console.log(`Wicket GF: Found ${$wicketFields.length} wicket fields in form ${formId}`);
+        // console.log(`Wicket GF: Found ${$wicketFields.length} wicket fields in form ${formId}`);
 
         // Populate fields with current data if available
         this.populateFields($wicketFields);
@@ -193,7 +193,7 @@ const WicketGFLiveUpdate = {
         const originalDispatchEvent = window.dispatchEvent;
         window.dispatchEvent = function(event) {
             if (event.type && (event.type.includes('wicket') || event.type.includes('wwidget'))) {
-                console.log('Wicket GF: Event intercepted:', event.type);
+                // console.log('Wicket GF: Event intercepted:', event.type);
 
                 if (event.detail && (event.detail.dataFields || event.detail.attributes || event.detail.addresses)) {
                     WicketGFLiveUpdate.handleWicketEvent(event);
@@ -208,11 +208,11 @@ const WicketGFLiveUpdate = {
      * Handle wicket widget events
      */
     handleWicketEvent(event) {
-        console.log(`Wicket GF: Processing event ${event.type} with data:`, event.detail);
+        // console.log(`Wicket GF: Processing event ${event.type} with data:`, event.detail);
 
         // Ensure jQuery is available
         if (typeof jQuery === 'undefined') {
-            console.warn('Wicket GF: jQuery not available, skipping field updates');
+            // console.warn('Wicket GF: jQuery not available, skipping field updates');
             return;
         }
 
@@ -232,7 +232,7 @@ const WicketGFLiveUpdate = {
         const valueKey = $field.data('live-update-value-key');
         const fieldId = $field.attr('id');
 
-        console.log(`Wicket GF: Processing field ${fieldId} for ${dataSource}.${schemaSlug}.${valueKey}`);
+        // console.log(`Wicket GF: Processing field ${fieldId} for ${dataSource}.${schemaSlug}.${valueKey}`);
 
         const extractedValue = this.extractValue(payload, dataSource, schemaSlug, valueKey);
 
@@ -407,7 +407,7 @@ const WicketGFLiveUpdate = {
                 $field.trigger('change');
             }
 
-            console.log(`Wicket GF: Field ${$field.attr('id')} updated to '${newValue}' from ${source}`);
+            // console.log(`Wicket GF: Field ${$field.attr('id')} updated to '${newValue}' from ${source}`);
         }
     },
 
@@ -417,7 +417,7 @@ const WicketGFLiveUpdate = {
     populateFieldsOnInit() {
         // Check for global data and populate immediately
         if (window.wicketCurrentPersonData && typeof jQuery !== 'undefined') {
-            console.log('Wicket GF: Populating fields from wicketCurrentPersonData');
+            // console.log('Wicket GF: Populating fields from wicketCurrentPersonData');
             jQuery('.wicket-gf-live-update-target').each((index, element) => {
                 this.updateFieldFromPayload(jQuery(element), window.wicketCurrentPersonData, 'initial_load');
             });
@@ -429,7 +429,7 @@ const WicketGFLiveUpdate = {
      */
     populateFields($fields) {
         if (window.wicketCurrentPersonData) {
-            console.log('Wicket GF: Populating form fields from wicketCurrentPersonData');
+            // console.log('Wicket GF: Populating form fields from wicketCurrentPersonData');
             $fields.each((index, element) => {
                 this.updateFieldFromPayload(jQuery(element), window.wicketCurrentPersonData, 'form_init');
             });
@@ -438,20 +438,20 @@ const WicketGFLiveUpdate = {
 };
 
 // Initialize when DOM is ready
-jQuery(document).ready(function ($) {
+document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
-    console.log('Wicket GF Live Update: DOM ready, checking for Wicket SDK');
+    // console.log('Wicket GF Live Update: DOM ready, checking for Wicket SDK');
 
     // Initialize when Wicket is ready
     if (typeof Wicket !== 'undefined' && Wicket.ready) {
         Wicket.ready(() => {
-            console.log('Wicket GF Live Update: Wicket SDK ready, initializing');
+            // console.log('Wicket GF Live Update: Wicket SDK ready, initializing');
             WicketGFLiveUpdate.init();
         });
     } else {
         // Fallback if Wicket isn't available
-        console.log('Wicket GF Live Update: Wicket SDK not found, initializing anyway');
+        // console.log('Wicket GF Live Update: Wicket SDK not found, initializing anyway');
         WicketGFLiveUpdate.init();
     }
 });
