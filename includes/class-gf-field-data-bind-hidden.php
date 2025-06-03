@@ -52,6 +52,7 @@ class GFDataBindHiddenField extends GF_Field
                 'type'    => 'select', // Explicitly type as select
                 'options' => [ // Add options directly here for initial render
                     'person_addinfo' => esc_html__('Person Add. Info. (Current User)', 'wicket-gf'),
+                    'person_profile' => esc_html__('Person Profile (Current User)', 'wicket-gf'), // New option
                     'organization' => esc_html__('Organization', 'wicket-gf'),
                 ],
                 'tooltip' => '<h6>' . esc_html__('Data Source', 'wicket-gf') . '</h6>' .
@@ -120,6 +121,9 @@ class GFDataBindHiddenField extends GF_Field
             </option>
             <option value="person_addinfo">
                 <?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>
+            </option>
+            <option value="person_profile">
+                <?php esc_html_e('Person Profile (Current User)', 'wicket-gf'); ?>
             </option>
             <option value="organization">
                 <?php esc_html_e('Organization', 'wicket-gf'); ?>
@@ -200,6 +204,7 @@ class GFDataBindHiddenField extends GF_Field
                 // Summary Mode
                 var dataSourceDisplay = field.liveUpdateDataSource;
                 if (field.liveUpdateDataSource === 'person_addinfo') dataSourceDisplay = '<?php esc_html_e('Person Add. Info. (Current User)', 'wicket-gf'); ?>';
+                if (field.liveUpdateDataSource === 'person_profile') dataSourceDisplay = '<?php esc_html_e('Person Profile (Current User)', 'wicket-gf'); ?>'; // New display text
                 if (field.liveUpdateDataSource === 'organization') dataSourceDisplay = '<?php esc_html_e('Organization', 'wicket-gf'); ?>';
                 $summaryContainer.find('#summaryDataSourceText').text(dataSourceDisplay);
 
@@ -304,7 +309,7 @@ class GFDataBindHiddenField extends GF_Field
             }
         } else {
             $orgUuidFieldLi.hide();
-            if (dataSource === 'person_addinfo') {
+            if (dataSource === 'person_addinfo' || dataSource === 'person_profile') { // Added person_profile
                 wicketFetchSchemas(dataSource, null, $context);
             }
         }
@@ -561,11 +566,18 @@ class GFDataBindHiddenField extends GF_Field
 
         try {
             if ($data_source === 'person_addinfo') {
+                // Check if wicket helper function exists
+                if (!function_exists('wicket_current_person_uuid')) {
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found', array('source' => 'wicket-gf'));
+                    wp_send_json_error('Wicket helper functions not available.');
+                    return;
+                }
+
                 $person_uuid = wicket_current_person_uuid();
 
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
-
                     return;
                 }
 
@@ -656,6 +668,14 @@ class GFDataBindHiddenField extends GF_Field
                         }
                     }
                 }
+            } elseif ($data_source === 'person_profile') {
+                // Add some basic profile options to test
+                $options = [
+                    'profile_given_name' => 'First Name',
+                    'profile_family_name' => 'Last Name',
+                    'profile_title' => 'Title',
+                    'profile_primary_email' => 'Primary Email',
+                ];
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
@@ -745,10 +765,17 @@ class GFDataBindHiddenField extends GF_Field
 
         try {
             if ($data_source === 'person_addinfo') {
+                // Check if wicket helper function exists
+                if (!function_exists('wicket_current_person_uuid')) {
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found in value_keys', array('source' => 'wicket-gf'));
+                    wp_send_json_error('Wicket helper functions not available.');
+                    return;
+                }
+
                 $person_uuid = wicket_current_person_uuid();
                 if (empty($person_uuid)) {
                     wp_send_json_error('Could not retrieve current person UUID.');
-
                     return;
                 }
 
@@ -831,6 +858,9 @@ class GFDataBindHiddenField extends GF_Field
                         }
                     }
                 }
+            } elseif ($data_source === 'person_profile') {
+                // For person_profile, the schema_data_slug is the direct key.
+                $options['_self'] = 'Value';
             } elseif ($data_source === 'organization') {
                 if (empty($organization_uuid) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $organization_uuid)) {
                     wp_send_json_error('Invalid or missing Organization UUID.');
