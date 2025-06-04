@@ -173,7 +173,7 @@ const WicketGFLiveUpdate = {
      */
     processForm(formId) {
         const $form = $(`#gform_${formId}`);
-        const $wicketFields = $form.find('.wicket-gf-live-update-target');
+        const $wicketFields = $form.find('.wicket-gf-hidden-data-bind-target');
 
         if ($wicketFields.length === 0) {
             return;
@@ -217,7 +217,7 @@ const WicketGFLiveUpdate = {
         }
 
         // Process all wicket fields on all forms
-        jQuery('.wicket-gf-live-update-target').each((index, element) => {
+        jQuery('.wicket-gf-hidden-data-bind-target').each((index, element) => {
             const $field = jQuery(element);
             this.updateFieldFromPayload($field, event.detail, event.type);
         });
@@ -227,9 +227,9 @@ const WicketGFLiveUpdate = {
      * Update a single field from payload data
      */
     updateFieldFromPayload($field, payload, eventType) {
-        const dataSource = $field.data('live-update-data-source');
-        const schemaSlug = $field.data('live-update-schema-slug');
-        const valueKey = $field.data('live-update-value-key');
+        const dataSource = $field.data('hidden-data-bind-data-source');
+        const schemaSlug = $field.data('hidden-data-bind-schema-slug');
+        const valueKey = $field.data('hidden-data-bind-value-key');
         const fieldId = $field.attr('id');
 
         // console.log(`Wicket GF: Processing field ${fieldId} for ${dataSource}.${schemaSlug}.${valueKey}`);
@@ -418,7 +418,7 @@ const WicketGFLiveUpdate = {
         // Check for global data and populate immediately
         if (window.wicketCurrentPersonData && typeof jQuery !== 'undefined') {
             // console.log('Wicket GF: Populating fields from wicketCurrentPersonData');
-            jQuery('.wicket-gf-live-update-target').each((index, element) => {
+            jQuery('.wicket-gf-hidden-data-bind-target').each((index, element) => {
                 this.updateFieldFromPayload(jQuery(element), window.wicketCurrentPersonData, 'initial_load');
             });
         }

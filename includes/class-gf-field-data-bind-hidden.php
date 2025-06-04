@@ -42,44 +42,29 @@ class GFDataBindHiddenField extends GF_Field
             'css_class_setting',
             'conditional_logic_field_setting',
             'visibility_setting',
-            'live_update_enable_setting' => [
-                'label'   => esc_html__('Enable Data Bind', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Enable Data Bind', 'wicket-gf') . '</h6>' .
-                    esc_html__('Enable real-time updates from Wicket Widgets on the same page. The field will listen for Wicket Widget SAVE_SUCCESS events.', 'wicket-gf'),
-            ],
-            'live_update_data_source_setting' => [ // Changed from live_update_widget_source_setting
-                'label'   => esc_html__('Bind: Data Source', 'wicket-gf'), // Changed label
-                'type'    => 'select', // Explicitly type as select
-                'options' => [ // Add options directly here for initial render
-                    'person_addinfo' => esc_html__('Person Add. Info. (Current User)', 'wicket-gf'),
-                    'person_profile' => esc_html__('Person Profile (Current User)', 'wicket-gf'), // New option
-                    'organization' => esc_html__('Organization', 'wicket-gf'),
-                ],
-                'tooltip' => '<h6>' . esc_html__('Data Source', 'wicket-gf') . '</h6>' .
-                    esc_html__('Select if the data comes from the current Person or a specific Organization.', 'wicket-gf'),
-            ],
-            'live_update_organization_uuid_setting' => [ // New setting
-                'type'    => 'text',
-                'label'   => esc_html__('Bind: Organization UUID', 'wicket-gf'),
-                'tooltip' => '<h6>' . esc_html__('Organization UUID', 'wicket-gf') . '</h6>' .
-                    esc_html__('Enter the UUID of the Wicket Organization. Required if Data Source is Organization.', 'wicket-gf'),
-                'class'   => 'wicket-gf-dependent-setting wicket-gf-org-setting', // Add class for JS show/hide
-            ],
-            'live_update_schema_slug_setting' => [ // Changed from live_update_schema_key_setting
-                'type'    => 'select', // Change to select
-                'label'   => esc_html__('Bind: Schema/Data Slug', 'wicket-gf'), // Changed label
-                'tooltip' => '<h6>' . esc_html__('Schema/Data Slug', 'wicket-gf') . '</h6>' .
-                    esc_html__('Select the schema or data slug. This will be populated based on the Data Source.', 'wicket-gf'),
-                'class'   => 'wicket-gf-dependent-setting',
-            ],
-            'live_update_value_key_setting' => [
-                'type'    => 'select', // Change to select
-                'label'   => esc_html__('Bind: Value Key', 'wicket-gf'), // Changed label (removed Optional)
-                'tooltip' => '<h6>' . esc_html__('Value Key', 'wicket-gf') . '</h6>' .
-                    esc_html__('Select the specific value key from the chosen schema. This will be populated after selecting a Schema/Data Slug.', 'wicket-gf'),
-                'class'   => 'wicket-gf-dependent-setting',
-            ],
+            'live_update_enable_setting',
+            'live_update_summary_setting',
+            'live_update_data_source_setting',
+            'live_update_organization_uuid_setting',
+            'live_update_schema_slug_setting',
+            'live_update_value_key_setting',
         ];
+    }
+
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.liveUpdateEnabled = false;
+                field.liveUpdateDataSource = '';
+                field.liveUpdateOrganizationUuid = '';
+                field.liveUpdateSchemaSlug = '';
+                field.liveUpdateValueKey = '';
+            }",
+            $this->type,
+            $this->get_form_editor_field_title()
+        );
     }
 
     public static function render_wicket_live_update_settings($position, $form_id): void
@@ -90,7 +75,7 @@ class GFDataBindHiddenField extends GF_Field
     <input type="checkbox" id="liveUpdateEnabled"
         onclick="SetFieldProperty('liveUpdateEnabled', this.checked); refreshWicketLiveUpdateView(jQuery(this).closest('ul.gform-settings-panel__fields'));" />
     <label for="liveUpdateEnabled" class="inline">
-        <?php esc_html_e('Enable Data Bing', 'wicket-gf'); ?>
+        <?php esc_html_e('Enable Data Bind', 'wicket-gf'); ?>
         <?php gform_tooltip('live_update_enable_setting'); ?>
     </label>
 </li>
@@ -183,7 +168,17 @@ class GFDataBindHiddenField extends GF_Field
     {
         ?>
 <script type="text/javascript">
-    // Ensure this script is loaded after jQuery and gform_field_settings.js
+    // Use GF's native hooks and APIs for better integration
+
+    // Register field type with GF's field system
+    if (typeof gform !== 'undefined' && gform.addFilter) {
+        gform.addFilter('gform_form_editor_can_field_be_added', function(canAdd, fieldType) {
+            if (fieldType === 'wicket_data_hidden') {
+                return true;
+            }
+            return canAdd;
+        });
+    }
 
     function getContext(element) {
         var $context = jQuery(element).closest('ul.gform-settings-panel__fields');
@@ -355,16 +350,21 @@ class GFDataBindHiddenField extends GF_Field
     }
 
     function wicketFetchSchemas(dataSource, orgUuid = null, context = null) {
-        var $context = getContext(context || document.body); // Ensure context
-
+        var $context = getContext(context || document.body);
         var $schemaSlugDropdown = $context.find('#liveUpdateSchemaSlug');
-        $schemaSlugDropdown.html(
-            '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>'
-        );
         var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
-        $valueKeyDropdown.html(
-            '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
-        );
+
+        // Use GF's loading pattern
+        $schemaSlugDropdown.html('<option value=""><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>');
+        $valueKeyDropdown.html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>');
+
+        // Use native GF form reference if available
+        var formId = 0;
+        if (typeof form !== 'undefined' && form.id) {
+            formId = form.id;
+        } else if (typeof gf_form_editor !== 'undefined' && gf_form_editor.form && gf_form_editor.form.id) {
+            formId = gf_form_editor.form.id;
+        }
 
         jQuery.ajax({
             url: ajaxurl,
@@ -374,62 +374,51 @@ class GFDataBindHiddenField extends GF_Field
                 nonce: '<?php echo wp_create_nonce('gf_wicket_mdp_nonce'); ?>',
                 data_source: dataSource,
                 organization_uuid: orgUuid,
-                form_id: typeof form !== 'undefined' ? form.id : 0
+                form_id: formId
             },
             success: function(response) {
-                $schemaSlugDropdown.html(
-                    '<option value=\"\"><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>'
-                );
+                $schemaSlugDropdown.html('<option value=""><?php esc_html_e('Select Schema/Data Slug', 'wicket-gf'); ?></option>');
+
                 if (response.success && response.data) {
+                    // Use GF's choice loading pattern
                     jQuery.each(response.data, function(value, text) {
-                        $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', value)
-                            .text(text));
+                        $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', value).text(text));
                     });
 
+                    // Restore saved value using GF's field system
                     var currentField = GetSelectedField();
                     var savedSchemaSlug = currentField.liveUpdateSchemaSlug;
 
-                    if (savedSchemaSlug && $schemaSlugDropdown.find('option[value=\"' + savedSchemaSlug +
-                            '\"]').length > 0) {
+                    if (savedSchemaSlug && $schemaSlugDropdown.find('option[value="' + savedSchemaSlug + '"]').length > 0) {
                         $schemaSlugDropdown.val(savedSchemaSlug);
-                        // Trigger change to load value keys if a schema was auto-selected
                         wicketHandleSchemaSlugChange(savedSchemaSlug, $context);
                     } else {
-                        // If no saved schema or saved schema not in options, ensure value key is reset
                         wicketHandleSchemaSlugChange('', $context);
                     }
                 } else {
-                    var errorMessage =
-                        '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
-                        (response.data ||
-                            '<?php esc_html_e('Could not load schemas.', 'wicket-gf'); ?>'
-                        );
-                    $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(
-                        errorMessage));
-                    wicketHandleSchemaSlugChange('', $context); // Ensure value key is reset on error
+                    var errorMessage = '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
+                        (response.data || '<?php esc_html_e('Could not load schemas.', 'wicket-gf'); ?>');
+                    $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
+                    wicketHandleSchemaSlugChange('', $context);
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                var errorMessage =
-                    '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' +
-                    textStatus + ' - ' + errorThrown;
-                $schemaSlugDropdown.html(
-                    '<option value=\"\"><?php esc_html_e('Error loading schemas', 'wicket-gf'); ?></option>'
-                );
+                var errorMessage = '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' + textStatus + ' - ' + errorThrown;
+                $schemaSlugDropdown.html('<option value=""><?php esc_html_e('Error loading schemas', 'wicket-gf'); ?></option>');
                 $schemaSlugDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
-                wicketHandleSchemaSlugChange('', $context); // Ensure value key is reset on error
+                wicketHandleSchemaSlugChange('', $context);
             }
         });
     }
 
     function wicketHandleSchemaSlugChange(schemaSlug, context = null) {
-        var $context = getContext(context || document.body); // Ensure context
-
+        var $context = getContext(context || document.body);
         var $valueKeyDropdown = $context.find('#liveUpdateValueKey');
-        $valueKeyDropdown.html( // Set to loading or default
+
+        $valueKeyDropdown.html(
             schemaSlug ?
-            '<option value=\"\"><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>' :
-            '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
+            '<option value=""><?php esc_html_e('Loading...', 'wicket-gf'); ?></option>' :
+            '<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
         );
 
         if (!schemaSlug) {
@@ -440,6 +429,14 @@ class GFDataBindHiddenField extends GF_Field
         var dataSource = $context.find('#liveUpdateDataSource').val();
         var orgUuid = (dataSource === 'organization') ? $context.find('#liveUpdateOrganizationUuid').val() : null;
 
+        // Use GF's form ID reference
+        var formId = 0;
+        if (typeof form !== 'undefined' && form.id) {
+            formId = form.id;
+        } else if (typeof gf_form_editor !== 'undefined' && gf_form_editor.form && gf_form_editor.form.id) {
+            formId = gf_form_editor.form.id;
+        }
+
         jQuery.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -449,63 +446,125 @@ class GFDataBindHiddenField extends GF_Field
                 data_source: dataSource,
                 schema_data_slug: schemaSlug,
                 organization_uuid: orgUuid,
-                form_id: typeof form !== 'undefined' ? form.id : 0
+                form_id: formId
             },
             success: function(response) {
-                $valueKeyDropdown.html(
-                    '<option value=\"\"><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>'
-                );
+                $valueKeyDropdown.html('<option value=""><?php esc_html_e('Select Value Key', 'wicket-gf'); ?></option>');
+
                 if (response.success && response.data) {
+                    // Use GF's choice loading pattern
                     jQuery.each(response.data, function(value, text) {
-                        $valueKeyDropdown.append(jQuery('<option></option>').attr('value', value).text(
-                            text));
+                        $valueKeyDropdown.append(jQuery('<option></option>').attr('value', value).text(text));
                     });
 
+                    // Restore saved value using GF's field system
                     var currentField = GetSelectedField();
                     var savedValueKey = currentField.liveUpdateValueKey;
 
-                    if (savedValueKey && $valueKeyDropdown.find('option[value=\"' + savedValueKey + '\"]')
-                        .length > 0) {
+                    if (savedValueKey && $valueKeyDropdown.find('option[value="' + savedValueKey + '"]').length > 0) {
                         $valueKeyDropdown.val(savedValueKey);
                     }
                 } else {
-                    var errorMessage =
-                        '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
-                        (response.data ||
-                            '<?php esc_html_e('Could not load value keys.', 'wicket-gf'); ?>'
-                        );
+                    var errorMessage = '<?php esc_html_e('Error: ', 'wicket-gf'); ?>' +
+                        (response.data || '<?php esc_html_e('Could not load value keys.', 'wicket-gf'); ?>');
                     $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                var errorMessage =
-                    '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' +
-                    textStatus + ' - ' + errorThrown;
-                $valueKeyDropdown.html(
-                    '<option value=\"\"><?php esc_html_e('Error loading value keys', 'wicket-gf'); ?></option>'
-                );
+                var errorMessage = '<?php esc_html_e('AJAX Error: ', 'wicket-gf'); ?>' + textStatus + ' - ' + errorThrown;
+                $valueKeyDropdown.html('<option value=""><?php esc_html_e('Error loading value keys', 'wicket-gf'); ?></option>');
                 $valueKeyDropdown.append(jQuery('<option></option>').attr('value', '').text(errorMessage));
             }
         });
     }
 
+    // Use GF's native field settings event system
     jQuery(document).on('gform_load_field_settings', function(event, field, form) {
         if (field.type === 'wicket_data_hidden') {
-            var $fieldSettingsArea = getContext(jQuery(
-            '#liveUpdateEnabled')); // Use a known element within the settings panel for context
+            var $fieldSettingsArea = getContext(jQuery('#liveUpdateEnabled'));
 
             $fieldSettingsArea.find('#liveUpdateEnabled').prop('checked', field.liveUpdateEnabled || false);
-
-            // Set initial values for controls in the selectors wrapper
-            // These values will be used by refreshWicketLiveUpdateView if it goes into selector mode,
-            // or if it needs to decide if summary mode is possible.
             $fieldSettingsArea.find('#liveUpdateDataSource').val(field.liveUpdateDataSource || '');
             $fieldSettingsArea.find('#liveUpdateOrganizationUuid').val(field.liveUpdateOrganizationUuid || '');
-            // SchemaSlug and ValueKey are not directly set here; they are restored by their respective AJAX handlers if needed.
 
             refreshWicketLiveUpdateView($fieldSettingsArea.find('#liveUpdateEnabled').get(0));
         }
     });
+
+    // Use GF's field property change system
+    if (typeof gform !== 'undefined' && gform.addAction) {
+        gform.addAction('gform_post_set_field_property', function(field, property, value) {
+            if (field.type === 'wicket_data_hidden') {
+                // Handle property changes that affect our UI
+                if (['liveUpdateEnabled', 'liveUpdateDataSource', 'liveUpdateOrganizationUuid',
+                     'liveUpdateSchemaSlug', 'liveUpdateValueKey'].includes(property)) {
+
+                    var $context = getContext(jQuery('#liveUpdateEnabled'));
+                    setTimeout(function() {
+                        refreshWicketLiveUpdateView($context.find('#liveUpdateEnabled').get(0));
+                    }, 100); // Small delay to ensure property is set
+                }
+            }
+        });
+    }
+
+    // Add GF-native hooks for better integration
+    if (typeof gform !== 'undefined') {
+        // Use GF's field added hook to initialize our field
+        if (gform.addAction) {
+            gform.addAction('gform_field_added', function(form, field) {
+                if (field.type === 'wicket_data_hidden') {
+                    // Initialize field with proper defaults
+                    field.liveUpdateEnabled = false;
+                    field.liveUpdateDataSource = '';
+                    field.liveUpdateOrganizationUuid = '';
+                    field.liveUpdateSchemaSlug = '';
+                    field.liveUpdateValueKey = '';
+                }
+            });
+
+            // Hook into editor field settings to show/hide our panels
+            gform.addAction('gform_editor_field_settings', function(field) {
+                if (field && field.type === 'wicket_data_hidden') {
+                    // Ensure our custom settings are visible
+                    jQuery('.live_update_enable_setting').show();
+                    refreshWicketLiveUpdateView(jQuery('#liveUpdateEnabled').get(0));
+                }
+            });
+
+            // Hook into form editor field property validation
+            gform.addFilter('gform_is_valid_formula_form_editor', function(isValid, formula, field) {
+                if (field && field.type === 'wicket_data_hidden') {
+                    // Custom validation for our field if needed
+                    return isValid;
+                }
+                return isValid;
+            });
+        }
+
+        // Use GF's filter to customize field choices loading
+        if (gform.addFilter) {
+            gform.addFilter('gform_load_field_choices', function(choices, field) {
+                // This could be used for dynamic choice loading if needed
+                return choices;
+            });
+
+            // Hook into form saving to validate our field configuration
+            gform.addFilter('gform_pre_form_editor_save', function(form) {
+                // Validate wicket_data_hidden fields before saving
+                if (form && form.fields) {
+                    jQuery.each(form.fields, function(index, field) {
+                        if (field.type === 'wicket_data_hidden' && field.liveUpdateEnabled) {
+                            if (!field.liveUpdateDataSource) {
+                                // Could add validation here
+                            }
+                        }
+                    });
+                }
+                return form;
+            });
+        }
+    }
 
     function handleWicketResetLiveUpdateSettings(buttonElement) {
         var $context = getContext(buttonElement);
@@ -556,23 +615,23 @@ class GFDataBindHiddenField extends GF_Field
         $class_attribute = '';
 
         if (!empty($this->liveUpdateEnabled)) {
-            $class_attribute = " class='wicket-gf-live-update-target'";
-            $data_attributes .= ' data-live-update-enabled="true"';
+            $class_attribute = " class='wicket-gf-hidden-data-bind-target'";
+            $data_attributes .= ' data-hidden-data-bind-enabled="true"';
 
             if (!empty($this->liveUpdateDataSource)) { // Changed from liveUpdateWidgetSource
-                $data_attributes .= ' data-live-update-data-source="' . esc_attr($this->liveUpdateDataSource) . '"';
+                $data_attributes .= ' data-hidden-data-bind-data-source="' . esc_attr($this->liveUpdateDataSource) . '"';
             }
 
             if ($this->liveUpdateDataSource === 'organization' && !empty($this->liveUpdateOrganizationUuid)) { // New
-                $data_attributes .= ' data-live-update-organization-uuid="' . esc_attr($this->liveUpdateOrganizationUuid) . '"';
+                $data_attributes .= ' data-hidden-data-bind-organization-uuid="' . esc_attr($this->liveUpdateOrganizationUuid) . '"';
             }
 
             if (!empty($this->liveUpdateSchemaSlug)) { // Changed from liveUpdateSchemaKey
-                $data_attributes .= ' data-live-update-schema-slug="' . esc_attr($this->liveUpdateSchemaSlug) . '"';
+                $data_attributes .= ' data-hidden-data-bind-schema-slug="' . esc_attr($this->liveUpdateSchemaSlug) . '"';
             }
 
             if (isset($this->liveUpdateValueKey)) {
-                $data_attributes .= ' data-live-update-value-key="' . esc_attr($this->liveUpdateValueKey) . '"';
+                $data_attributes .= ' data-hidden-data-bind-value-key="' . esc_attr($this->liveUpdateValueKey) . '"';
             }
         }
 
