@@ -103,23 +103,6 @@ const WICKET_FIELD_MAPPINGS = {
 };
 
 /**
- * Get the correct field name for a given context and target key
- * @param {string} context - The data context (addresses, emails, phones, etc.)
- * @param {string} targetKey - The field name to look up
- * @returns {string} The correct field name to use
- */
-function getFieldName(context, targetKey) {
-    const contextMapping = WICKET_FIELD_MAPPINGS[context];
-    if (contextMapping && contextMapping[targetKey]) {
-        return contextMapping[targetKey];
-    }
-
-    // Try automatic camelCase conversion as fallback
-    const camelCaseKey = targetKey.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
-    return camelCaseKey;
-}
-
-/**
  * Wicket GF Live Update Controller
  * Uses Gravity Forms native hooks for better integration
  */
@@ -168,6 +151,23 @@ const WicketGFLiveUpdate = {
         this.setupGFHooks();
         this.setupWicketEventListeners();
         this.populateFieldsOnInit();
+    },
+
+    /**
+     * Get the correct field name for a given context and target key
+     * @param {string} context - The data context (addresses, emails, phones, etc.)
+     * @param {string} targetKey - The field name to look up
+     * @returns {string} The correct field name to use
+     */
+    getFieldName(context, targetKey) {
+        const contextMapping = WICKET_FIELD_MAPPINGS[context];
+        if (contextMapping && contextMapping[targetKey]) {
+            return contextMapping[targetKey];
+        }
+
+        // Try automatic camelCase conversion as fallback
+        const camelCaseKey = targetKey.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+        return camelCaseKey;
     },
 
     /**
@@ -402,7 +402,7 @@ const WicketGFLiveUpdate = {
         }
 
         // Use field mapping
-        const mappedField = getFieldName('attributes', valueKey);
+        const mappedField = this.getFieldName('attributes', valueKey);
         return attributes[mappedField] !== undefined ? attributes[mappedField] : attributes[valueKey];
     },
 
@@ -438,7 +438,7 @@ const WicketGFLiveUpdate = {
 
             // Use field mapping
             const mappingContext = this.getMappingContext(relationshipType);
-            const mappedField = getFieldName(mappingContext, valueKey);
+            const mappedField = this.getFieldName(mappingContext, valueKey);
 
             return itemData[mappedField] !== undefined ? itemData[mappedField] : itemData[valueKey];
         }
@@ -491,7 +491,7 @@ const WicketGFLiveUpdate = {
             }
 
             // Try mapped field name
-            const mappedField = getFieldName('addresses', valueKey);
+            const mappedField = this.getFieldName('addresses', valueKey);
             if (addressData[mappedField] !== undefined) {
                 this.log('Debug: Found mapped field', mappedField, addressData[mappedField]);
                 return addressData[mappedField];
