@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.35
+ * Version:           2.0.36
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -206,108 +206,110 @@ if (!class_exists('Wicket_Gf_Main')) {
             if (get_option('wicket_gf_pagination_sidebar_layout')) {
                 ob_start(); ?>
 
-                <script>
-                    window.addEventListener('load', function() {
-                        if (document.querySelector('body') !== null) {
+                <div class="wicket-gf-dynamic-hidden-html">
+                    <script>
+                        window.addEventListener('load', function() {
+                            if (document.querySelector('body') !== null) {
 
-                            // Check and see if the page is using the steps version of pagination,
-                            // and if so re-format it
-                            let paginationStepsCheck = document.querySelector('.gf_page_steps');
-                            if (paginationStepsCheck != null) {
-                                document.head.insertAdjacentHTML("beforeend", `
-                            <style>
-                                @media(min-width:768px) {
-                                    form[id^=gform_] {
-                                        display: flex;
-                                    }
-                                    .gf_page_steps {
-                                        display: flex;
-                                        flex-direction: column;
-                                        min-width: 250px;
-                                    }
-                                    .gform_body {
-                                        flex-grow: 1;
-                                    }
+                                // Check and see if the page is using the steps version of pagination,
+                                // and if so re-format it
+                                let paginationStepsCheck = document.querySelector('.gf_page_steps');
+                                if (paginationStepsCheck != null) {
+                                    document.head.insertAdjacentHTML("beforeend", `
+                                <style>
+                                    @media(min-width:768px) {
+                                        form[id^=gform_] {
+                                            display: flex;
+                                        }
+                                        .gf_page_steps {
+                                            display: flex;
+                                            flex-direction: column;
+                                            min-width: 250px;
+                                        }
+                                        .gform_body {
+                                            flex-grow: 1;
+                                        }
 
-                                    body.wicket-theme-v2 form[id^=gform_] {
-                                        gap: var(--space-200);
+                                        body.wicket-theme-v2 form[id^=gform_] {
+                                            gap: var(--space-200);
+                                        }
                                     }
-                                }
-                                @media(max-width:767px) {
+                                    @media(max-width:767px) {
+                                        .gf_page_steps .gf_step {
+                                            margin-top: 0px !important;
+                                            margin-bottom: 0px !important;
+                                            margin-right: 5px !important;
+                                        }
+                                    }
                                     .gf_page_steps .gf_step {
-                                        margin-top: 0px !important;
-                                        margin-bottom: 0px !important;
-                                        margin-right: 5px !important;
+                                        border-radius: var(--interactive-corner-radius-lg, 999px);
                                     }
+                                    .gf_page_steps .gf_step:not(.gf_step_active) {
+                                        padding-left: var(--space-100, 5px);
+                                        padding-right: var(--space-100, 5px);
+                                    }
+                                    .gf_page_steps .gf_step_active {
+                                        background: var(--highlight-light, #efefef);
+                                        padding: var(--space-100, 5px);
+                                        margin-left: -5px !important;
+                                    }
+                                    body.wicket-theme-v2 .gf_page_steps .gf_step_active {
+                                        margin-left: 0px !important;
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step .gf_step_label {
+                                        padding-left: var(--space-100, 16px);
+                                        font-size: var(--body-md-font-size, 14px);
+                                        line-height: var(--body-md-line-height, 16px);
+                                        font-weight: bold;
+                                        color: var(--text-content, inherit);
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step .gf_step_number {
+                                        font-weight: bold;
+                                        color: var(--text-content, #585e6a);
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step_active .gf_step_number {
+                                        background: var(--interactive, #cfd3d9);
+                                        border-color: var(--interactive, #cfd3d9);
+                                        color: var(--text-content-reversed, #607382);
+                                        border-width: var(--border-interactive-md, 2px);
+                                    }
+                                    body.wicket-theme-v2 .gf_page_steps .gf_step_completed {
+                                        position: relative;
+                                    }
+                                    body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number {
+                                        background: var(--highlight-dark, var(--gf-local-bg-color, #000) );
+                                        position: relative;
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:before {
+                                        background: var(--highlight-light, #607382);
+                                        border-color: var(--highlight-dark, #607382);
+                                        border-width: var(--border-interactive-md, 2px);
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                        color: var(--highlight-dark, #ffffff);
+                                        background-color: var(--highlight-light, #607382);
+                                    }
+                                    body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                        left: 0px;
+                                        top: 0px;
+                                        border-color: var(--highlight-dark);
+                                        border-radius: 20px;
+                                    }
+                                    /* Orbital theme compatibility fix */
+                                    body.wicket-theme-v2 .gform-theme--orbital .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                        left: -2px;
+                                        top: -2px;
+                                    }
+                                    .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
+                                        border-width: var(--border-interactive-md, 2px);
+                                        border-color: var(--border-interactive, #cfd3d9);
+                                    }
+                                </style>`);
                                 }
-                                .gf_page_steps .gf_step {
-                                    border-radius: var(--interactive-corner-radius-lg, 999px);
-                                }
-                                .gf_page_steps .gf_step:not(.gf_step_active) {
-                                    padding-left: var(--space-100, 5px);
-                                    padding-right: var(--space-100, 5px);
-                                }
-                                .gf_page_steps .gf_step_active {
-                                    background: var(--highlight-light, #efefef);
-                                    padding: var(--space-100, 5px);
-                                    margin-left: -5px !important;
-                                }
-                                body.wicket-theme-v2 .gf_page_steps .gf_step_active {
-                                    margin-left: 0px !important;
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step .gf_step_label {
-                                    padding-left: var(--space-100, 16px);
-                                    font-size: var(--body-md-font-size, 14px);
-                                    line-height: var(--body-md-line-height, 16px);
-                                    font-weight: bold;
-                                    color: var(--text-content, inherit);
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step .gf_step_number {
-                                    font-weight: bold;
-                                    color: var(--text-content, #585e6a);
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step_active .gf_step_number {
-                                    background: var(--interactive, #cfd3d9);
-                                    border-color: var(--interactive, #cfd3d9);
-                                    color: var(--text-content-reversed, #607382);
-                                    border-width: var(--border-interactive-md, 2px);
-                                }
-                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed {
-                                    position: relative;
-                                }
-                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number {
-                                    background: var(--highlight-dark, var(--gf-local-bg-color, #000) );
-                                    position: relative;
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:before {
-                                    background: var(--highlight-light, #607382);
-                                    border-color: var(--highlight-dark, #607382);
-                                    border-width: var(--border-interactive-md, 2px);
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:after {
-                                    color: var(--highlight-dark, #ffffff);
-                                    background-color: var(--highlight-light, #607382);
-                                }
-                                body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number:after {
-                                    left: 0px;
-                                    top: 0px;
-                                    border-color: var(--highlight-dark);
-                                    border-radius: 20px;
-                                }
-                                /* Orbital theme compatibility fix */
-                                body.wicket-theme-v2 .gform-theme--orbital .gf_page_steps .gf_step_completed .gf_step_number:after {
-                                    left: -2px;
-                                    top: -2px;
-                                }
-                                .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
-                                    border-width: var(--border-interactive-md, 2px);
-                                    border-color: var(--border-interactive, #cfd3d9);
-                                }
-                            </style>`);
                             }
-                        }
-                    });
-                </script>
+                        });
+                    </script>
+                </div>
 
             <?php $output = ob_get_clean();
 
@@ -333,11 +335,13 @@ if (!class_exists('Wicket_Gf_Main')) {
                             'label'   => 'Dynamic Styles - Do Not Edit',
                             'type'    => 'html',
                             'content' => '
-                                <style>
-                                    .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
-                                        display: none;
-                                    }
-                                </style>
+                                <div class="wicket-gf-dynamic-hidden-html">
+                                    <style>
+                                        .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
+                                            display: none;
+                                        }
+                                    </style>
+                                </div>
                                 ',
                         ];
                         $field = GF_Fields::create($props);

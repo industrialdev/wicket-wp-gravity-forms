@@ -26,6 +26,11 @@ div.form_saved_message_emailform form input[type="email"] {
   width: 100%;
 }
 
+/* Removes empty space when we generate dynamic empty html blocks */
+.gfield.gfield--type-html:has(.wicket-gf-dynamic-hidden-html) {
+  display: contents;
+}
+
 @media(max-width:767px) {
   .wicket-gf-shortcode {
     padding-left: 10px;
