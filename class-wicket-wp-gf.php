@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.36
+ * Version:           2.0.40
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -40,12 +40,29 @@ if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', g
     add_action('admin_notices', 'wicket_gf_admin_notice');
 }
 
-
 /**
  * The main Wicket Gravity Forms class.
  */
 class Wicket_Gf_Main
 {
+    /**
+     * Plugin instance.
+     * @var Wicket_Gf_Main|null
+     */
+    protected static $instance = null;
+
+    /**
+     * URL to this plugin's directory.
+     * @var string
+     */
+    public $plugin_url = '';
+
+    /**
+     * Path to this plugin's directory.
+     * @var string
+     */
+    public $plugin_path = '';
+
     private static bool $live_update_script_enqueued = false;
 
     /**
@@ -55,10 +72,34 @@ class Wicket_Gf_Main
     private static $wicket_client;
 
     /**
-     * Constructor.
+     * Constructor. Intentionally left empty and public.
      */
-    public function __construct()
+    public function __construct() {}
+
+    /**
+     * Access this plugin’s working instance.
+     * @return Wicket_Gf_Main
+     */
+    public static function get_instance()
     {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Used for regular plugin work.
+     * @wp-hook plugins_loaded
+     * @return void
+     */
+    public function plugin_setup()
+    {
+        $this->plugin_url = plugins_url('/', __FILE__);
+        $this->plugin_path = plugin_dir_path(__FILE__);
+        $this->load_language('wicket-gf');
+
         add_action('plugins_loaded', [$this, 'conditionally_include_pa_object']);
 
         // Hook for shortcode
@@ -78,9 +119,6 @@ class Wicket_Gf_Main
 
         // Register Rest Routes
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-
-        // Grab user info *after the necessary WP info loads
-        //add_action( 'plugins_loaded', array( $this, 'store_data_after_plugins_loaded' ) );
 
         require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
 
@@ -109,9 +147,19 @@ class Wicket_Gf_Main
 
         // Conditionally enqueue live update script for Wicket Hidden Data Bind fields
         add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_live_update_script'], 10, 2);
+    }
 
-        // Add action for the debug script
-        add_action('wp_footer', [$this, 'output_wicket_event_debugger_script']);
+    /**
+     * Loads translation file.
+     * @param string $domain
+     */
+    public function load_language($domain)
+    {
+        load_plugin_textdomain(
+            $domain,
+            false,
+            dirname(plugin_basename(__FILE__)) . '/languages'
+        );
     }
 
     public static function gf_mapping_addon_load()
@@ -173,7 +221,7 @@ class Wicket_Gf_Main
 
     public static function gf_editor_global_custom_scripts()
     {
-?>
+        ?>
         <!-- Alpine and other editor scripts in a webpacked script -->
         <script src="<?php echo plugin_dir_url(__FILE__) . 'js/gf_editor/dist/main.js'; ?>" defer></script>
         <?php
@@ -1459,7 +1507,7 @@ class Wicket_Gf_Main
     {
         // Check if WP_ENV is defined and is 'development' or 'staging'
         if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
-        ?>
+            ?>
             <script type="text/javascript" id="wicket-gf-event-debugger">
                 document.addEventListener("DOMContentLoaded", function() {
                     function wicketLogWidgetEvent(eventName, e) {
@@ -1514,7 +1562,11 @@ class Wicket_Gf_Main
         }
     }
 }
-new Wicket_Gf_Main();
+
+add_action(
+    'plugins_loaded',
+    [Wicket_Gf_Main::get_instance(), 'plugin_setup']
+);
 
 /*
  * The generally-available Wicket Gravity Forms functions
