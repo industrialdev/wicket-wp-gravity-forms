@@ -127,9 +127,6 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
         // Call get_special_values to ensure filter values have been converted to usable values
         $filter_special_values = $this->get_special_values($args);
 
-        // wicket_gf_write_log("ARGS received");
-        // wicket_gf_write_log($args);
-
         // Example of args we might receive:
         // Array(
         //     [populate] => choices
@@ -352,16 +349,9 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
             ]));
 
             try {
-                // wicket_gf_write_log("wicket-gf: People Query:");
-                // wicket_gf_write_log($people_query);
-                // wicket_gf_write_log("wicket-gf: People Query Filters:");
-                // wicket_gf_write_log($filters);
                 $get_people = $this->client->get('/people', ['query' => $people_query]);
                 $get_people = new Wicket\ResponseHelper($get_people);
             } catch (Exception $e) {
-                wicket_gf_write_log('wicket-gf: Error was encountered in query()');
-                wicket_gf_write_log($e);
-
                 return [];
             }
 
@@ -394,9 +384,6 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                 $get_orgs = $this->client->get('/organizations', ['query' => $org_query]);
                 $get_orgs = new Wicket\ResponseHelper($get_orgs);
             } catch (Exception $e) {
-                wicket_gf_write_log('wicket-gf: Error was encountered in query()');
-                wicket_gf_write_log($e);
-
                 return [];
             }
 

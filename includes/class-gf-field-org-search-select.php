@@ -474,8 +474,6 @@ if (class_exists('GF_Field')) {
             $orgss_active_membership_alert_button_2_style = '';
             $orgss_active_membership_alert_button_2_new_tab = false;
 
-            //wicket_gf_write_log($form, true);
-
             foreach ($form['fields'] as $field) {
                 if (gettype($field) == 'object') {
                     if (get_class($field) == 'GFWicketFieldOrgSearchSelect') {

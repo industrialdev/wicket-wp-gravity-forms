@@ -235,8 +235,6 @@ class GFWicketFieldWidgetAi extends GF_Field
         $wwidget_ai_org_uuid = '';
         $wwidget_ai_use_slugs = false;
 
-        //wicket_gf_write_log($form, true);
-
         foreach ($form['fields'] as $field) {
             if (gettype($field) == 'object') {
                 if (get_class($field) == 'GFWicketFieldWidgetAi') {
@@ -325,9 +323,6 @@ class GFWicketFieldWidgetAi extends GF_Field
     public function validate($value, $form)
     {
         $value_array = json_decode($value, true);
-        // wicket_gf_write_log('Start validation for field ID: ' . $this->id);
-        // wicket_gf_write_log('Value array:');
-        // wicket_gf_write_log($value_array);
 
         $notFound = $value_array['notFound'] ?? [];
         $validation = $value_array['validation'] ?? [];
@@ -358,21 +353,14 @@ class GFWicketFieldWidgetAi extends GF_Field
             }
         }
 
-        // wicket_gf_write_log('Field schemas from form:');
-        // wicket_gf_write_log($field_schemas);
-        // wicket_gf_write_log('Use slugs: ' . ($use_slugs ? 'true' : 'false'));
-
         // Check for required schemas that are empty
         $missing_required = [];
 
         foreach ($field_schemas as $schema) {
             // Check if schema is configured to show as required (index 3 is "true")
-            // wicket_gf_write_log('Checking schema: ');
-            // wicket_gf_write_log($schema);
 
             if (isset($schema[3]) && $schema[3] === 'true') {
                 $schema_id = $schema[0]; // The schema ID/slug is at index 0
-                // wicket_gf_write_log('Schema is required: ' . $schema_id);
 
                 // Check if this required schema has data
                 $schema_has_data = false;
@@ -381,9 +369,6 @@ class GFWicketFieldWidgetAi extends GF_Field
                 if (isset($value_array['dataFields']) && is_array($value_array['dataFields'])) {
                     foreach ($value_array['dataFields'] as $dataField) {
                         if (isset($dataField['schema_slug']) && $dataField['schema_slug'] === $schema_id) {
-                            // wicket_gf_write_log('Found data field for schema_id: ' . $schema_id);
-                            // wicket_gf_write_log('Data value:');
-                            // wicket_gf_write_log($dataField['value']);
 
                             // Use the 'valid' flag provided by the component to determine if the field has valid data
                             // This respects the component's own validation rules, including fields with intentionally empty values
@@ -395,17 +380,12 @@ class GFWicketFieldWidgetAi extends GF_Field
                 }
 
                 if (!$schema_has_data) {
-                    // wicket_gf_write_log('No data found for schema_id: ' . $schema_id);
                     // Use friendly name if available (index 2), otherwise use the ID/slug
                     $display_name = !empty($schema[2]) ? $schema[2] : $schema_id;
                     $missing_required[] = $display_name;
-                    // wicket_gf_write_log('Added to missing required: ' . $display_name);
                 }
             }
         }
-
-        // wicket_gf_write_log('Missing required fields:');
-        // wicket_gf_write_log($missing_required);
 
         // If we have missing required fields, set validation error
         if (count($missing_required) > 0) {
@@ -420,7 +400,6 @@ class GFWicketFieldWidgetAi extends GF_Field
                     implode(', ', $missing_required)
                 );
             }
-            // wicket_gf_write_log('Validation failed with message: ' . $this->validation_message);
         }
     }
 
