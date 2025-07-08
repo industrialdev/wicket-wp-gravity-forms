@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
- * Version:           2.0.40
+ * Version:           2.0.41
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -15,6 +15,7 @@
  * Text Domain:       wicket-gf
  * Requires at least: 6.6
  * Requires PHP: 8.1
+ * Requires Plugins: wicket-wp-base-plugin, gravity-forms
  * Requires Plugins: gravityforms
  */
 if (!defined('ABSPATH')) {
@@ -96,20 +97,70 @@ class Wicket_Gf_Main
      */
     public function plugin_setup()
     {
+
         $this->plugin_url = plugins_url('/', __FILE__);
         $this->plugin_path = plugin_dir_path(__FILE__);
         $this->load_language('wicket-gf');
 
-        add_action('plugins_loaded', [$this, 'conditionally_include_pa_object']);
+        $this->project_includes();
+
+        add_action('plugins_loaded', [$this, 'project_includes_after_base'], 11);
 
         // Hook for shortcode
         add_shortcode('wicket_gravityform', [$this, 'shortcode']);
 
+        // Add a custom field group for Wicket fields
+        add_filter('gform_add_field_buttons', function ($field_groups) {
+            $field_groups[] = [
+                'name'   => 'wicket_fields',
+                'label'  => __('Wicket', 'wicket-gf'),
+                'fields' => [
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_org_search_select',
+                        'value'     => __('Org Search', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_user_mdp_tags',
+                        'value'     => __('MDP Tags', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_widget_profile',
+                        'value'     => __('Profile Widget', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_data_hidden',
+                        'value'     => __('Data Bind', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_widget_profile_org',
+                        'value'     => __('Profile Org W.', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_widget_ai',
+                        'value'     => __('Add Info W.', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_widget_prefs',
+                        'value'     => __('Preferences', 'wicket-gf'),
+                    ],
+                ],
+            ];
+
+            return $field_groups;
+        });
+
         // Bootstrap the GF Addon for field mapping
         add_action('gform_loaded', [$this, 'gf_mapping_addon_load'], 5);
 
-        // Custom GF fields
-        add_action('gform_loaded', [$this, 'gf_load_custom_fields'], 5);
+        // Register Custom GF fields
+        add_action('gform_loaded', [$this, 'register_custom_fields'], 5);
 
         // Enqueue scripts and styles
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts_styles']);
@@ -119,8 +170,6 @@ class Wicket_Gf_Main
 
         // Register Rest Routes
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-
-        require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
 
         // Add Options Page for plugin
         add_action('admin_menu', ['Wicket_Gf_Admin', 'register_options_page'], 20);
@@ -136,17 +185,22 @@ class Wicket_Gf_Main
 
         // Modifying GF Entry screens
         add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
-        add_action('gform_print_entry_header', [$this, 'custom_entry_header', 10, 2]);
+        add_action('gform_print_entry_header', [$this, 'custom_entry_header'], 10, 2);
         add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
-
-        // Gravity Wiz helper snippets we want available in our plugin
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
+        add_filter('gform_entry_detail_meta_boxes', ['Wicket_Gf_Admin', 'register_meta_box'], 10, 3);
 
         // Register scripts for conditional logic
         $this->register_conditional_logic_scripts();
 
+        // Conditionally enqueue live update script
+        add_action('gform_pre_render', function ($form, $is_ajax) {
+            $this->conditionally_enqueue_live_update_script($form, $is_ajax);
+        }, 10, 2);
+
         // Conditionally enqueue live update script for Wicket Hidden Data Bind fields
         add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_live_update_script'], 10, 2);
+
+        add_action('admin_footer', [$this, 'output_wicket_event_debugger_script']);
     }
 
     /**
@@ -174,49 +228,6 @@ class Wicket_Gf_Main
 
         // handle displaying content for our custom menu when selected
         add_action('gform_form_settings_page_wicketmap', ['GFWicketMappingAddOn', 'addon_custom_ui'], 20);
-    }
-
-    public static function gf_load_custom_fields()
-    {
-        // Load global editor scripts
-        add_action('gform_editor_js', ['Wicket_Gf_Main', 'gf_editor_global_custom_scripts']);
-
-        // Load global custom fields applied to all field types
-        add_action('gform_field_standard_settings', ['Wicket_Gf_Main', 'gf_editor_global_custom_fields'], 10, 2);
-
-        // Custom field: org search/select
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-org-search-select.php';
-        add_action('gform_field_standard_settings', ['GFWicketFieldOrgSearchSelect', 'custom_settings'], 10, 2);
-        add_action('gform_editor_js', ['GFWicketFieldOrgSearchSelect', 'editor_script']);
-
-        // Custom field: user mdp tags
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
-
-        // Custom field: individual profile widget
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
-
-        // Custom field: Wicket Hidden Data Bind
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-data-bind-hidden.php';
-        add_action('gform_field_standard_settings', ['GFDataBindHiddenField', 'render_wicket_live_update_settings'], 10, 2);
-        add_action('gform_editor_js', ['GFDataBindHiddenField', 'editor_script']); // Hook for the JS
-
-        // Custom field: org profile widget
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
-        add_action('gform_field_standard_settings', ['GFWicketFieldWidgetProfileOrg', 'custom_settings'], 10, 2);
-        add_action('gform_editor_js', ['GFWicketFieldWidgetProfileOrg', 'editor_script']);
-
-        // Custom field: additional info widget
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-ai.php';
-        add_action('gform_field_standard_settings', ['GFWicketFieldWidgetAi', 'custom_settings'], 10, 2);
-        add_action('gform_editor_js', ['GFWicketFieldWidgetAi', 'editor_script']);
-
-        // Custom field: person preferences widget
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
-        add_action('gform_field_standard_settings', ['GFWicketFieldWidgetPrefs', 'custom_settings'], 10, 2);
-        add_action('gform_editor_js', ['GFWicketFieldWidgetPrefs', 'editor_script']);
-
-        // Apply pre-form-render actions based on our settings above as needed
-        add_filter('gform_pre_render', ['Wicket_Gf_Main', 'gf_custom_pre_render'], 50, 1);
     }
 
     public static function gf_editor_global_custom_scripts()
@@ -403,19 +414,6 @@ class Wicket_Gf_Main
         return $form;
     }
 
-    public function conditionally_include_pa_object()
-    {
-        // Only initialize this plugin if Wicket Helper plugin is active
-        if (function_exists('wicket_api_client')) {
-
-            // Only initialize this plugin if Populate Anything plugin is active
-            if (class_exists('GP_Populate_Anything') && class_exists('GPPA_Object_Type')) {
-                require_once plugin_dir_path(__FILE__) . 'includes/class-object-type-wicket.php';
-                gp_populate_anything()->register_object_type('wicket', 'GPPA_Object_Type_Wicket');
-            }
-        }
-    }
-
     // TODO: Use a more specific hook so this doesn't run on every page,
     // maybe add a hook to the base plugin
     // public function store_data_after_plugins_loaded() {
@@ -589,18 +587,6 @@ class Wicket_Gf_Main
                     'path_to_field'  => '',
                 ],
             ],
-        ];
-
-        $child_fields[] = [
-            'name'           => $property_name,
-            'label_en'       => $label_en,
-            'label_fr'       => $label_fr,
-            'type'           => $property_data['type'] ?? '',
-            'default'        => $property_data['default'] ?? '',
-            'maximum'        => $property_data['maximum'] ?? '',
-            'minimum'        => $property_data['minimum'] ?? '',
-            'enum'           => $property_data['enum'] ?? [],
-            'path_to_field'  => 'attributes/schema/properties',
         ];
 
         // --------------------------------
@@ -1503,6 +1489,57 @@ class Wicket_Gf_Main
         }
     }
 
+    /**
+     * Includes required files.
+     *
+     * @return void
+     */
+    private function project_includes()
+    {
+        require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
+    }
+
+    /**
+     * Register custom fields with Gravity Forms.
+     *
+     * @return void
+     */
+    public function register_custom_fields()
+    {
+        // Include the custom field classes now that Gravity Forms is loaded
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-org-search-select.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-data-bind-hidden.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-ai.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
+
+        // Now, register the custom fields
+        GF_Fields::register(new GFWicketFieldOrgSearchSelect());
+        GF_Fields::register(new GFWicketFieldUserMdpTags());
+        GF_Fields::register(new GFWicketFieldWidgetProfile());
+        GF_Fields::register(new GFDataBindHiddenField());
+        GF_Fields::register(new GFWicketFieldWidgetProfileOrg());
+        GF_Fields::register(new GFWicketFieldWidgetAi());
+        GF_Fields::register(new GFWicketFieldWidgetPrefs());
+    }
+
+    /**
+     * Conditionally include files after the Wicket Base Plugin has loaded.
+     *
+     * @return void
+     */
+    public function project_includes_after_base()
+    {
+        // Only initialize this plugin if Populate Anything plugin is active and the wicket_api_client() function exists
+        if (class_exists('GP_Populate_Anything') && class_exists('GPPA_Object_Type') && function_exists('wicket_api_client')) {
+            require_once plugin_dir_path(__FILE__) . 'includes/class-object-type-wicket.php';
+            gp_populate_anything()->register_object_type('wicket', 'GPPA_Object_Type_Wicket');
+        }
+    }
+
     public function output_wicket_event_debugger_script(): void
     {
         // Check if WP_ENV is defined and is 'development' or 'staging'
@@ -1565,34 +1602,9 @@ class Wicket_Gf_Main
 
 add_action(
     'plugins_loaded',
-    [Wicket_Gf_Main::get_instance(), 'plugin_setup']
+    [Wicket_Gf_Main::get_instance(), 'plugin_setup'],
+    11
 );
 
-/*
- * The generally-available Wicket Gravity Forms functions
- */
-
-if (!function_exists('wicket_gf_get_form_id_by_slug')) {
-    function wicket_gf_get_form_id_by_slug($slug)
-    {
-        $current_mappings = get_option('wicket_gf_slug_mapping');
-        if (empty($current_mappings)) {
-            return false;
-        } else {
-            $current_mappings = json_decode($current_mappings, true);
-
-            if (isset($current_mappings[$slug])) {
-                return $current_mappings[$slug];
-            } else {
-                return false;
-            }
-        }
-    }
-}
-
-if (!function_exists('wicket_get_gf_mapping_addon')) {
-    function wicket_get_gf_mapping_addon()
-    {
-        return GFWicketMappingAddOn::get_instance();
-    }
-}
+// General Helpers
+require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';

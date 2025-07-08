@@ -18,7 +18,7 @@ class GFDataBindHiddenField extends GF_Field
     public function get_form_editor_button(): array
     {
         return [
-            'group' => 'advanced_fields',
+            'group' => 'wicket_fields',
             'text'  => $this->get_form_editor_field_title(),
         ];
     }
@@ -1519,5 +1519,3 @@ class GFDataBindHiddenField extends GF_Field
 // Register AJAX handlers
 add_action('wp_ajax_gf_wicket_get_mdp_schemas', ['GFDataBindHiddenField', 'ajax_get_mdp_schemas']);
 add_action('wp_ajax_gf_wicket_get_mdp_value_keys', ['GFDataBindHiddenField', 'ajax_get_mdp_value_keys']);
-
-GF_Fields::register(new GFDataBindHiddenField());

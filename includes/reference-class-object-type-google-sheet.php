@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @copyright Copyright (c) 2021-2022, Gravity Wiz, LLC
  * @author Gravity Wiz <support@gravitywiz.com>
@@ -419,11 +420,11 @@ class GP_Google_Sheets_GPPA_Object_Type_Google_Sheet extends GPPA_Object_Type
         switch ($search['operator']) {
             case 'is':
                 // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
-                return  $var_value == $search_value;
+                return $var_value == $search_value;
 
             case 'isnot':
                 // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
-                return  $var_value != $search_value;
+                return $var_value != $search_value;
 
             case 'is_in':
                 // phpcs:ignore WordPress.PHP.StrictInArray.FoundNonStrictFalse
@@ -434,19 +435,19 @@ class GP_Google_Sheets_GPPA_Object_Type_Google_Sheet extends GPPA_Object_Type
                 return !in_array($var_value, $search_value, false);
 
             case 'contains':
-                return  strpos($var_value, $search_value) !== false;
+                return strpos($var_value, $search_value) !== false;
 
             case '>':
-                return  $var_value > $search_value;
+                return $var_value > $search_value;
 
             case '>=':
-                return  $var_value >= $search_value;
+                return $var_value >= $search_value;
 
             case '<':
-                return  $var_value < $search_value;
+                return $var_value < $search_value;
 
             case '<=':
-                return  $var_value <= $search_value;
+                return $var_value <= $search_value;
 
                 // Invalid operator provided, just return false.
             default:

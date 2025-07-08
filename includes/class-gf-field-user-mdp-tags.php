@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The custom Gravity Forms field for hidden user tags.
  */
@@ -50,7 +51,7 @@ class GFWicketFieldUserMdpTags extends GF_Field
     public function get_form_editor_button()
     {
         return [
-            'group' => 'advanced_fields',
+            'group' => 'wicket_fields',
             'text'  => $this->get_form_editor_field_title(),
         ];
     }
@@ -126,6 +127,3 @@ class GFWicketFieldUserMdpTags extends GF_Field
         return '';
     }
 }
-
-// Register the field with Gravity Forms
-GF_Fields::register(new GFWicketFieldUserMdpTags());

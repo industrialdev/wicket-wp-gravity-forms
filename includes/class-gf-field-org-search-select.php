@@ -411,7 +411,7 @@ if (class_exists('GF_Field')) {
         public function get_form_editor_button()
         {
             return [
-                'group' => 'advanced_fields',
+                'group' => 'wicket_fields',
                 'text'  => $this->get_form_editor_field_title(),
             ];
         }
@@ -707,5 +707,3 @@ if (class_exists('GF_Field')) {
         // }
 
     }
-    GF_Fields::register(new GFWicketFieldOrgSearchSelect());
-}

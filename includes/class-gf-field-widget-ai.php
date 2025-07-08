@@ -15,11 +15,11 @@ class GFWicketFieldWidgetAi extends GF_Field
         return esc_attr__('Wicket Widget: Additional Info', 'wicket-gf');
     }
 
-    // Move the field to 'advanced fields'
+    // Move the field to 'wicket fields'
     public function get_form_editor_button()
     {
         return [
-            'group' => 'advanced_fields',
+            'group' => 'wicket_fields',
             'text'  => $this->get_form_editor_field_title(),
         ];
     }
@@ -417,4 +417,3 @@ class GFWicketFieldWidgetAi extends GF_Field
     // }
 
 }
-GF_Fields::register(new GFWicketFieldWidgetAi());
