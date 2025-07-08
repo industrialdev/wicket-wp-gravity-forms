@@ -1,0 +1,44 @@
+/* Wicket Gravity Forms Admin Styles */
+
+/* Custom field settings panels */
+.wicket_widget_additional_info_setting,
+.wicket_widget_org_profile_setting,
+.wicket_widget_person_prefs_setting,
+.wicket_orgss_setting,
+.live_update_enable_setting,
+.live_update_summary_setting,
+.live_update_data_source_setting,
+.live_update_organization_uuid_setting,
+.live_update_schema_slug_setting,
+.live_update_value_key_setting {
+    display: none;
+}
+
+/* When field is selected, show relevant settings */
+.gform_editor .field_setting.wicket_widget_additional_info_setting.active,
+.gform_editor .field_setting.wicket_widget_org_profile_setting.active,
+.gform_editor .field_setting.wicket_widget_person_prefs_setting.active,
+.gform_editor .field_setting.wicket_orgss_setting.active,
+.gform_editor .field_setting.live_update_enable_setting.active,
+.gform_editor .field_setting.live_update_summary_setting.active,
+.gform_editor .field_setting.live_update_data_source_setting.active,
+.gform_editor .field_setting.live_update_organization_uuid_setting.active,
+.gform_editor .field_setting.live_update_schema_slug_setting.active,
+.gform_editor .field_setting.live_update_value_key_setting.active {
+    display: block !important;
+}
+
+/* Ensure our custom settings are properly styled */
+.wicket_global_custom_settings_hide_label {
+    display: block !important;
+}
+
+/* Wicket field group styling */
+.gfield-field-action[data-type^="wicket_"] {
+    background-color: #e8f4f8;
+    border-color: #0073aa;
+}
+
+.gfield-field-action[data-type^="wicket_"]:hover {
+    background-color: #d1ecf4;
+}

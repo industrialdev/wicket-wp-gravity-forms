@@ -31,11 +31,9 @@ class GFDataBindHiddenField extends GF_Field
     public function get_input_type(): string
     {
         return 'text';
-    }
-
-    public function get_form_editor_field_settings(): array
+    }    public function get_form_editor_field_settings(): array
     {
-        return [
+        $settings = [
             'label_setting',
             'admin_label_setting',
             'description_setting',
@@ -47,8 +45,18 @@ class GFDataBindHiddenField extends GF_Field
             'live_update_data_source_setting',
             'live_update_organization_uuid_setting',
             'live_update_schema_slug_setting',
-            'live_update_value_key_setting',
-        ];
+            'live_update_value_key_setting',        ];
+
+        // Use wc_get_logger for debugging
+        wc_get_logger()->debug('[WICKET-GF] GFDataBindHiddenField::get_form_editor_field_settings() called with settings: ' . print_r($settings, true), ['source' => 'wicket-gf']);
+
+        // Also check if our field is registered
+        $all_fields = GF_Fields::get_all();
+        $field_types = array_map(function($field) { return $field->type; }, $all_fields);
+        wc_get_logger()->debug('[WICKET-GF] All registered field types: ' . implode(', ', $field_types), ['source' => 'wicket-gf']);
+        wc_get_logger()->debug('[WICKET-GF] Our field type (wicket_data_hidden) registered: ' . (in_array('wicket_data_hidden', $field_types) ? 'YES' : 'NO'), ['source' => 'wicket-gf']);
+
+        return $settings;
     }
 
     public function get_form_editor_inline_script_on_page_render(): string
@@ -653,8 +661,8 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    // $logger = wc_get_logger();
-                    // $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -727,8 +735,8 @@ class GFDataBindHiddenField extends GF_Field
                 }
 
                 if (is_array($included_items_array)) {
-                    // $logger = wc_get_logger();
-                    // $logger->debug('Processing included items for person_addinfo schemas', ['source' => 'wicket-gf', 'count' => count($included_items_array)]);
+                    $logger = wc_get_logger();
+                    $logger->debug('Processing included items for person_addinfo schemas', ['source' => 'wicket-gf', 'count' => count($included_items_array)]);
 
                     foreach ($included_items_array as $item) {
                         $item_arr = is_object($item) ? (array) $item : $item;
@@ -809,13 +817,13 @@ class GFDataBindHiddenField extends GF_Field
                         }
                     }
 
-                    // $logger->debug('Final options for person_addinfo', ['source' => 'wicket-gf', 'options' => $options]);
+                    $logger->debug('Final options for person_addinfo', ['source' => 'wicket-gf', 'options' => $options]);
                 }
             } elseif ($data_source === 'person_profile') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    // $logger = wc_get_logger();
-                    // $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -836,13 +844,13 @@ class GFDataBindHiddenField extends GF_Field
                     return;
                 }
 
-                // $logger = wc_get_logger();
-                // $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
+                $logger = wc_get_logger();
+                $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
 
-                // if (is_object($person_data_response)) {
-                //     $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
-                //     $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
-                // }
+                if (is_object($person_data_response)) {
+                    $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
+                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
+                }
 
                 // Extract person attributes from API response
                 $person_data = null;
@@ -1046,8 +1054,8 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    // $logger = wc_get_logger();
-                    // $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
+                    $logger = wc_get_logger();
+                    $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;

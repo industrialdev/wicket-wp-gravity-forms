@@ -1,12 +1,4 @@
 <?php
-
-/**
- * The custom Gravity Forms field for hidden user tags.
- */
-if (!class_exists('GF_Field')) {
-    die();
-}
-
 /**
  * Class GFWicketFieldUserMdpTags.
  *
