@@ -28,114 +28,58 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             'error_message_setting',
             'css_class_setting',
             'conditional_logic_field_setting',
-            'wicket_widget_additional_info_setting',
+            'wwidget_ai_type_setting',
+            'wwidget_ai_org_uuid_setting',
+            'wwidget_ai_schemas_setting',
+            'wwidget_ai_use_slugs_setting',
         ];
+    }
+
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.wwidget_ai_schemas = [[]];
+                field.wwidget_ai_type = 'people';
+                field.wwidget_ai_org_uuid = '';
+                field.wwidget_ai_use_slugs = false;
+            }",
+            $this->type,
+            $this->get_form_editor_field_title()
+        );
     }
 
     public static function custom_settings($position, $form_id)
     {
-        //create settings on position 25 (right after Field Label)
         if ($position == 25) { ?>
-            <?php ob_start(); ?>
-
-            <li class="wicket_widget_additional_info_setting field_setting"
-                style="display:none;"
-                x-data="wwidgetAiData"
-                x-on:gf-wwidget-ai-field-settings.window="loadFieldSettings">
+            <li class="wwidget_ai_type_setting_setting field_setting">
                 <label>Additional Info Type:</label>
-                <select @change="updateAiType($el.value)" x-model="wwidget_ai_type">
+                <select id="wwidget_ai_type_selector" onchange="window.WicketGF.AdditionalInfo.updateAiType(this.value)">
                     <option value="people">People</option>
                     <option value="organizations">Organizations</option>
                 </select>
-                <div x-show=" wwidget_ai_type == 'organizations' ">
+            </li>
+            <li class="wwidget_ai_org_uuid_setting_setting field_setting">
+                <div id="wwidget_ai_org_uuid_wrapper">
                     <label>Org UUID:</label>
-                    <input @keyup="SetFieldProperty('wwidget_ai_org_uuid', $el.value)" x-bind:value="wwidget_ai_org_uuid" type="text" placeholder="1234-5678-9100" />
+                    <input id="wwidget_ai_org_uuid_input" onkeyup="SetFieldProperty('wwidget_ai_org_uuid', this.value)" type="text" placeholder="1234-5678-9100" />
                     <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
                 </div>
+            </li>
+            <li class="wwidget_ai_schemas_setting_setting field_setting">
                 <label>Additional Info Schemas:</label>
-                <template x-for="(schema, index) in schemaArray" :key="index">
-                    <div class="schema-grouping">
-                        <div class="inputs-wrapper">
-                            <input @keyup="updateSchemaArray(index, 'schema-id', $el.value)" type="text" placeholder="Schema ID" x-bind:value="typeof schema[0] === 'undefined' ? '' : schema[0]" />
-                            <input @keyup="updateSchemaArray(index, 'override-id', $el.value)" type="text" placeholder="Schema override ID (optional)" x-bind:value="typeof schema[1] === 'undefined' ? '' : schema[1]" />
-                            <input @keyup="updateSchemaArray(index, 'friendly-name', $el.value)" type="text" placeholder="Friendly name (optional)" x-bind:value="typeof schema[2] === 'undefined' ? '' : schema[2]" />
-                            <select @change="updateSchemaArray(index, 'show-as-required', $el.value)" x-bind:value="typeof schema[3] === 'undefined' ? '' : schema[3]">
-                                <option value="false">Don't show as required</option>
-                                <option value="true">Show as required</option>
-                            </select>
-                        </div>
-                        <div class="buttons-wrapper">
-                            <button @click="addNewSchemaGrouping">+</button>
-                            <button @click="removeSchemaGrouping(index)">-</button>
-                        </div>
-                    </div>
-                </template>
+                <div id="wwidget_ai_schema_container">
 
+                </div>
+                <button id="wwidget_ai_add_schema_button">+</button>
+            </li>
+            <li class="wwidget_ai_use_slugs_setting_setting field_setting">
                 <input
-                    @change="SetFieldProperty('wwidget_ai_use_slugs', $el.checked)" x-bind:value="wwidget_ai_use_slugs"
+                    onchange="SetFieldProperty('wwidget_ai_use_slugs', this.checked)" 
                     type="checkbox" id="wwidget_ai_use_slugs" class="wwidget_ai_use_slugs">
                 <label for="wwidget_ai_use_slugs" class="inline">Use schema slugs instead of IDs</label>
-
-                <style>
-                    .wicket_widget_additional_info_setting {
-                        margin-bottom: 10px;
-                    }
-
-                    .wicket_widget_additional_info_setting>label {
-                        display: block;
-                        margin-bottom: 0.7rem;
-                    }
-
-                    .wicket_widget_additional_info_setting>select {
-                        margin-bottom: 0.7rem;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping {
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        padding: 10px;
-                        background: #f4f4f4;
-                        border-radius: 10px;
-                        margin-bottom: 8px;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping .inputs-wrapper {
-                        display: flex;
-                        flex-direction: column;
-                        width: 100%;
-                        margin-right: 5px;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping .inputs-wrapper input {
-                        margin-bottom: 5px;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping .buttons-wrapper {
-                        display: flex;
-                        flex-direction: column;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping button {
-                        border: 2px solid #c5c5c5;
-                        background: #fff;
-                        border-radius: 999px;
-                        padding: 5px 8px;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping button:hover {
-                        cursor: pointer;
-                    }
-
-                    .wicket_widget_additional_info_setting .schema-grouping button:first-of-type {
-                        margin-bottom: 5px;
-                    }
-                </style>
-
             </li>
-
-            <?php echo ob_get_clean(); ?>
-
         <?php
         }
     }
@@ -143,75 +87,136 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     public static function editor_script()
     {
         ?>
-        <script>
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('wwidgetAiData', () => ({
-                    schemaArray: [],
-                    wwidget_ai_type: 'people',
-                    wwidget_ai_org_uuid: '',
-                    wwidget_ai_use_slugs: false,
-
-                    loadFieldSettings(event) {
-                        let fieldData = event.detail;
-                        let fieldDataSchemas = fieldData.ai_schemas;
-                        let fieldDataType = fieldData.type;
-                        let fieldDataOrgUuid = fieldData.org_uuid;
-                        let fieldDataUseSlugs = fieldData.use_slugs;
-
-                        if (typeof fieldDataSchemas !== 'object') {
-                            fieldDataSchemas = [
-                                []
-                            ];
-                        } else if (fieldDataSchemas.length <= 0) {
-                            fieldDataSchemas.push(['']);
-                        }
-
-                        this.schemaArray = fieldDataSchemas;
-
-                        this.wwidget_ai_type = fieldDataType;
-                        this.wwidget_ai_org_uuid = fieldDataOrgUuid;
-                        this.wwidget_ai_use_slugs = fieldDataUseSlugs;
-                    },
-                    updateAiType(type) {
-                        this.wwidget_ai_type = type;
-                        SetFieldProperty('wwidget_ai_type', type);
-                    },
-                    addNewSchemaGrouping() {
-                        this.schemaArray.push(['']);
-                    },
-                    removeSchemaGrouping(index) {
-                        this.schemaArray.splice(index, 1);
-                    },
-                    updateSchemaArray(index, type, value) {
-                        if (type == 'schema-id') {
-                            this.schemaArray[index][0] = value;
-                        } else if (type == 'override-id') {
-                            this.schemaArray[index][1] = value;
-                        } else if (type == 'friendly-name') {
-                            this.schemaArray[index][2] = value;
-                        } else if (type == 'show-as-required') {
-                            this.schemaArray[index][3] = value;
-                        }
-
-                        SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
-                    },
-
-                }))
+        gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
+                if ( fieldType === 'wicket_widget_additional_info' ) {
+                    return true;
+                }
+                return canAdd;
             });
+        }
 
-            // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
-            jQuery(document).on('gform_load_field_settings', (event, field, form) => {
-                let customEvent = new CustomEvent("gf-wwidget-ai-field-settings", {
-                    detail: {
-                        ai_schemas: rgar(field, 'wwidget_ai_schemas'),
-                        type: rgar(field, 'wwidget_ai_type'),
-                        org_uuid: rgar(field, 'wwidget_ai_org_uuid'),
-                        use_slugs: rgar(field, 'wwidget_ai_use_slugs'),
-                    }
+        gform.addFilter( 'gform_form_editor_field_settings', function( settings, field ) {
+            if ( field.type === 'wicket_widget_additional_info' ) {
+                settings.push( 'wicket_widget_additional_info_setting' );
+            }
+            return settings;
+        });
+
+        gform.addAction( 'gform_editor_js_set_field_properties', function( field ) {
+            if ( field.type === 'wicket_widget_additional_info' ) {
+                field.label = 'Wicket Widget: Additional Info';
+                field.wwidget_ai_schemas = [[]];
+                field.wwidget_ai_type = 'people';
+                field.wwidget_ai_org_uuid = '';
+                field.wwidget_ai_use_slugs = false;
+            }
+        });
+
+        window.WicketGF = window.WicketGF || {};
+        window.WicketGF.AdditionalInfo = {
+            schemaArray: [],
+            init: function() {
+                const self = this;
+                gform.addAction( 'gform_load_field_settings', function( field ) {
+            // Ensure field.inputs is an array, even if it comes as undefined or null
+            if (typeof field.inputs === 'undefined' || field.inputs === null) {
+                field.inputs = [];
+            } else if (!Array.isArray(field.inputs)) {
+                // If it's not an array but exists, try to convert it. This might be too aggressive.
+                try {
+                    field.inputs = Array.from(field.inputs);
+                } catch (e) {
+                    console.error('Wicket GF: Could not convert field.inputs to array', field.inputs, e);
+                    field.inputs = []; // Fallback to empty array
+                }
+            }
+
+            // Migration for old fields: if new properties don't exist, initialize them.
+            if (typeof field.wwidget_ai_type === 'undefined') {
+                field.wwidget_ai_type = 'people';
+            }
+            if (typeof field.wwidget_ai_org_uuid === 'undefined') {
+                field.wwidget_ai_org_uuid = '';
+            }
+            if (typeof field.wwidget_ai_schemas === 'undefined' || !Array.isArray(field.wwidget_ai_schemas)) {
+                field.wwidget_ai_schemas = [[]];
+            }
+            if (typeof field.wwidget_ai_use_slugs === 'undefined') {
+                field.wwidget_ai_use_slugs = false;
+            }
+            self.loadFieldSettings( field );
+        });
+                document.getElementById('wwidget_ai_add_schema_button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.addNewSchemaGrouping();
                 });
-                window.dispatchEvent(customEvent);
-            });
-        </script>
+            },
+            loadFieldSettings: function(field) {
+                let fieldDataSchemas = field.wwidget_ai_schemas || [[]];
+                this.schemaArray = fieldDataSchemas;
+                document.getElementById('wwidget_ai_type_selector').value = field.wwidget_ai_type || 'people';
+                document.getElementById('wwidget_ai_org_uuid_input').value = field.wwidget_ai_org_uuid || '';
+                document.getElementById('wwidget_ai_use_slugs').checked = field.wwidget_ai_use_slugs || false;
+                this.renderSchemas();
+                this.updateAiType(field.wwidget_ai_type || 'people');
+            },
+            updateAiType: function(type) {
+                SetFieldProperty('wwidget_ai_type', type);
+                document.getElementById('wwidget_ai_org_uuid_wrapper').style.display = type === 'organizations' ? 'block' : 'none';
+            },
+            addNewSchemaGrouping: function() {
+                this.schemaArray.push([]);
+                this.renderSchemas();
+            },
+            removeSchemaGrouping: function(index) {
+                this.schemaArray.splice(index, 1);
+                this.renderSchemas();
+                SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
+            },
+            updateSchemaArray: function(index, type, value) {
+                if (!this.schemaArray[index]) {
+                    this.schemaArray[index] = [];
+                }
+                if (type == 'schema-id') {
+                    this.schemaArray[index][0] = value;
+                } else if (type == 'override-id') {
+                    this.schemaArray[index][1] = value;
+                } else if (type == 'friendly-name') {
+                    this.schemaArray[index][2] = value;
+                } else if (type == 'show-as-required') {
+                    this.schemaArray[index][3] = value;
+                }
+
+                SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
+            },
+            renderSchemas: function() {
+                const container = document.getElementById('wwidget_ai_schema_container');
+                container.innerHTML = '';
+                this.schemaArray.forEach((schema, index) => {
+                    const div = document.createElement('div');
+                    div.classList.add('schema-grouping');
+                    div.innerHTML = `
+                        <div class="inputs-wrapper">
+                            <input onkeyup="window.WicketGF.AdditionalInfo.updateSchemaArray(${index}, 'schema-id', this.value)" type="text" placeholder="Schema ID" value="${schema[0] || ''}" />
+                            <input onkeyup="window.WicketGF.AdditionalInfo.updateSchemaArray(${index}, 'override-id', this.value)" type="text" placeholder="Schema override ID (optional)" value="${schema[1] || ''}" />
+                            <input onkeyup="window.WicketGF.AdditionalInfo.updateSchemaArray(${index}, 'friendly-name', this.value)" type="text" placeholder="Friendly name (optional)" value="${schema[2] || ''}" />
+                            <select onchange="window.WicketGF.AdditionalInfo.updateSchemaArray(${index}, 'show-as-required', this.value)">
+                                <option value="false" ${ (schema[3] === 'false' || !schema[3]) ? 'selected' : ''}>Don't show as required</option>
+                                <option value="true" ${schema[3] === 'true' ? 'selected' : ''}>Show as required</option>
+                            </select>
+                        </div>
+                        <div class="buttons-wrapper">
+                            <button onclick="window.WicketGF.AdditionalInfo.addNewSchemaGrouping(event)">+</button>
+                            <button onclick="window.WicketGF.AdditionalInfo.removeSchemaGrouping(${index})">-</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        }
+        window.WicketGF.AdditionalInfo.init();
+    });
+</script>
 
 <?php
     }

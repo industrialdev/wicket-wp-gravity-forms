@@ -38,13 +38,10 @@ class GFWicketFieldWidgetPrefs extends GF_Field
         if ($position == 25) { ?>
 <?php ob_start(); ?>
 
-<li class="wicket_widget_person_prefs_setting field_setting" style="display:none;margin-bottom: 10px;"
-    x-data="wwidgetPersonPrefsData" x-show="field.type == 'wicket_widget_prefs'"
-    x-on:gf-wwidget-person-prefs-field-settings.window="loadFieldSettings">
-    <input @change="SetFieldProperty('wwidget_prefs_hide_comm', $el.checked)" x-bind:value="wwidget_prefs_hide_comm"
+<li class="wicket_widget_person_prefs_setting_setting field_setting" style="display:none;margin-bottom: 10px;">
+    <input onchange="SetFieldProperty('wwidget_prefs_hide_comm', this.checked)" 
         type="checkbox" id="wwidget_prefs_hide_comm" class="wwidget_prefs_hide_comm">
     <label for="wwidget_prefs_hide_comm" class="inline">Disable communication preferences?</label>
-    </div>
 
     <?php echo ob_get_clean(); ?>
 
@@ -55,36 +52,46 @@ class GFWicketFieldWidgetPrefs extends GF_Field
     public static function editor_script()
     {
         ?>
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('wwidgetPersonPrefsData', () => ({
-                wwidget_prefs_hide_comm: false,
+    gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
+        if ( fieldType === 'wicket_widget_prefs' ) {
+            return true;
+        }
+        return canAdd;
+    });
 
-                loadFieldSettings(event) {
-                    let fieldData = event.detail;
+    gform.addFilter( 'gform_form_editor_field_settings', function( settings, field ) {
+        if ( field.type === 'wicket_widget_prefs' ) {
+            settings.push( 'wicket_widget_person_prefs_setting' );
+        }
+        return settings;
+    });
 
-                    if (Object.hasOwn(fieldData, 'wwidget_prefs_hide_comm')) {
-                        // Handle checkboxes slightly differently
-                        this.wwidget_prefs_hide_comm = fieldData.wwidget_prefs_hide_comm ? true :
-                            false;
-                    }
-                },
-            }))
-        });
+    gform.addAction( 'gform_editor_js_set_field_properties', function( field ) {
+        if ( field.type === 'wicket_widget_prefs' ) {
+            field.label = 'Wicket Widget: Person Preferences';
+            field.wwidget_prefs_hide_comm = false;
+        }
+    });
 
-        // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
-        jQuery(document).on('gform_load_field_settings', (event, field, form) => {
-            let detailPayload = {
-                wwidget_prefs_hide_comm: rgar(field, 'wwidget_prefs_hide_comm'),
-            };
-            let customEvent = new CustomEvent("gf-wwidget-person-prefs-field-settings", {
-                detail: detailPayload
+    window.WicketGF = window.WicketGF || {};
+    window.WicketGF.Prefs = {
+        init: function() {
+            const self = this;
+            gform.addAction( 'gform_load_field_settings', function( field ) {
+                if ( field.type === 'wicket_widget_prefs' ) {
+                    self.loadFieldSettings( field );
+                }
             });
-            window.dispatchEvent(customEvent);
-        });
-    </script>
+        },
+        loadFieldSettings: function(field) {
+            document.getElementById('wwidget_prefs_hide_comm').checked = field.wwidget_prefs_hide_comm || false;
+        }
+    }
+    window.WicketGF.Prefs.init();
+});
+</script>
 
-    <?php
+<?php
     }
 
     // Render the field

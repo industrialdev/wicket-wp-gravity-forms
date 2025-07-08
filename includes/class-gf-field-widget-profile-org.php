@@ -38,10 +38,10 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         if ($position == 25) { ?>
 <?php ob_start(); ?>
 
-<li class="wicket_widget_org_profile_setting field_setting" style="display:none;">
-    <div x-data="wwidgetOrgProfileData" x-on:gf-wwidget-org-profile-field-settings.window="loadFieldSettings">
+<li class="wicket_widget_org_profile_setting_setting field_setting" style="display:none;">
+    <div>
         <label>Org UUID:</label>
-        <input @keyup="SetFieldProperty('wwidget_org_profile_uuid', $el.value)" x-bind:value="orgUuid" type="text"
+        <input id="wwidget_org_profile_uuid_input" onkeyup="SetFieldProperty('wwidget_org_profile_uuid', this.value)" type="text"
             placeholder="1234-5678-9100" />
         <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get
                 populated with the org UUID, you can simply enter that field ID here instead.</em></p>
@@ -58,25 +58,43 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     {
         ?>
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('wwidgetOrgProfileData', () => ({
-            orgUuid: '',
-
-            loadFieldSettings(event) {
-                let fieldData = event.detail;
-
-                this.orgUuid = fieldData;
-            },
-        }))
+    gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
+        if ( fieldType === 'wicket_widget_profile_org' ) {
+            return true;
+        }
+        return canAdd;
     });
 
-    // Catching GF event via jQuery (which it uses) and re-dispatching needed values for easier use
-    jQuery(document).on('gform_load_field_settings', (event, field, form) => {
-        let customEvent = new CustomEvent("gf-wwidget-org-profile-field-settings", {
-            detail: rgar(field, 'wwidget_org_profile_uuid')
-        });
-        window.dispatchEvent(customEvent);
+    gform.addFilter( 'gform_form_editor_field_settings', function( settings, field ) {
+        if ( field.type === 'wicket_widget_profile_org' ) {
+            settings.push( 'wicket_widget_org_profile_setting' );
+        }
+        return settings;
     });
+
+    gform.addAction( 'gform_editor_js_set_field_properties', function( field ) {
+        if ( field.type === 'wicket_widget_profile_org' ) {
+            field.label = 'Wicket Widget: Org Profile';
+            field.wwidget_org_profile_uuid = '';
+        }
+    });
+
+    window.WicketGF = window.WicketGF || {};
+    window.WicketGF.OrgProfile = {
+        init: function() {
+            const self = this;
+            gform.addAction( 'gform_load_field_settings', function( field ) {
+                if ( field.type === 'wicket_widget_profile_org' ) {
+                    self.loadFieldSettings( field );
+                }
+            });
+        },
+        loadFieldSettings: function(field) {
+            document.getElementById('wwidget_org_profile_uuid_input').value = field.wwidget_org_profile_uuid || '';
+        }
+    }
+    window.WicketGF.OrgProfile.init();
+});
 </script>
 
 <?php
