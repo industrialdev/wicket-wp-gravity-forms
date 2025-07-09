@@ -119,7 +119,7 @@ class Wicket_Gf_Main
                     [
                         'class'     => 'button',
                         'data-type' => 'wicket_org_search_select',
-                        'value'     => __('Org Search', 'wicket-gf'),
+                        'value'     => __('Org. Search', 'wicket-gf'),
                     ],
                     [
                         'class'     => 'button',
@@ -139,12 +139,12 @@ class Wicket_Gf_Main
                     [
                         'class'     => 'button',
                         'data-type' => 'wicket_widget_profile_org',
-                        'value'     => __('Org Profile W.', 'wicket-gf'),
+                        'value'     => __('Org. Profile W.', 'wicket-gf'),
                     ],
                     [
                         'class'     => 'button',
                         'data-type' => 'wicket_widget_ai',
-                        'value'     => __('Add Info W.', 'wicket-gf'),
+                        'value'     => __('Add. Info. W.', 'wicket-gf'),
                     ],
                     [
                         'class'     => 'button',
