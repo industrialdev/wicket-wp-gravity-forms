@@ -5,7 +5,7 @@
  *
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
- * Description:       Adds Wicket powers to Gravity Forms and related helpful tools.
+ * Description:       Adds Wicket functionality to Gravity Forms.
  * Version:           2.0.41
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
@@ -99,8 +99,6 @@ class Wicket_Gf_Main
      */
     public function plugin_setup()
     {
-        wc_get_logger()->debug('Wicket Gravity Forms plugin setup started.', ['source' => 'wicket-gf']);
-
         $this->plugin_url = plugins_url('/', __FILE__);
         $this->plugin_path = plugin_dir_path(__FILE__);
         $this->load_language('wicket-gf');
@@ -157,7 +155,20 @@ class Wicket_Gf_Main
             ];
 
             return $field_groups;
-        });        // Bootstrap the GF Addon for field mapping
+        });
+
+        // Register Custom GF fields
+        if (class_exists('GF_Fields')) {
+            // Gravity Forms is already loaded, register fields immediately
+            $this->register_custom_fields();
+        } else {
+            // Gravity Forms not loaded yet, hook into the event
+            add_action('gform_loaded', [$this, 'register_custom_fields'], 5);
+        }
+        add_action('gform_field_standard_settings', [$this, 'register_field_settings'], 25, 2);
+        add_action('gform_tooltips', [$this, 'register_tooltips']);
+
+        // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
             // Gravity Forms is already loaded, call immediately
             $this->gf_mapping_addon_load();
@@ -165,21 +176,6 @@ class Wicket_Gf_Main
             // Gravity Forms not loaded yet, hook into the event
             add_action('gform_loaded', [$this, 'gf_mapping_addon_load'], 5);
         }
-
-        // Register Custom GF fields
-        if (class_exists('GF_Fields')) {
-            // Gravity Forms is already loaded, register fields immediately
-            wc_get_logger()->debug('GF_Fields exists, calling register_custom_fields immediately', ['source' => 'wicket-gf']);
-            $this->register_custom_fields();
-        } else {
-            // Gravity Forms not loaded yet, hook into the event
-            wc_get_logger()->debug('GF_Fields not available, hooking into gform_loaded', ['source' => 'wicket-gf']);
-            add_action('gform_loaded', [$this, 'register_custom_fields'], 5);
-        }
-
-        // Debug: Check if Gravity Forms classes exist
-        wc_get_logger()->debug('GF_Fields class exists: ' . (class_exists('GF_Fields') ? 'YES' : 'NO'), ['source' => 'wicket-gf']);
-        wc_get_logger()->debug('GF_Field class exists: ' . (class_exists('GF_Field') ? 'YES' : 'NO'), ['source' => 'wicket-gf']);
 
         // Enqueue scripts and styles
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts_styles']);
@@ -204,23 +200,17 @@ class Wicket_Gf_Main
 
         // Modifying GF Entry screens
         add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
-        add_action('gform_print_entry_header', [$this, 'custom_entry_header'], 10, 2);
         add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
         add_filter('gform_entry_detail_meta_boxes', ['Wicket_Gf_Admin', 'register_meta_box'], 10, 3);
 
         // Register scripts for conditional logic
         $this->register_conditional_logic_scripts();
 
-        // Add custom field settings hooks
-        add_action('gform_field_standard_settings', [$this, 'register_field_settings'], 25, 2);
-        add_action('gform_tooltips', [$this, 'register_tooltips']);
-
         // Conditionally enqueue live update script for Wicket Hidden Data Bind fields
         add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_live_update_script'], 10, 2);
 
+        // Admin footer script for debugging
         add_action('admin_footer', [$this, 'output_wicket_event_debugger_script']);
-
-
     }
 
     /**
@@ -285,12 +275,6 @@ class Wicket_Gf_Main
      */
     public function register_custom_fields()
     {
-        // Simple test log
-        wc_get_logger()->debug('register_custom_fields() method called!', ['source' => 'wicket-gf']);
-
-        $logger = wc_get_logger();
-        $logger->debug('register_custom_fields() called', ['source' => 'wicket-gf']);
-
         // Include the custom field classes now that Gravity Forms is loaded
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-org-search-select.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
@@ -300,9 +284,7 @@ class Wicket_Gf_Main
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-additional-info.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
 
-        $logger->debug('Field classes included, now registering...', ['source' => 'wicket-gf']);
-
-        // Now, register the custom fields
+        // Register the custom fields
         GF_Fields::register(new GFWicketFieldOrgSearchSelect());
         GF_Fields::register(new GFWicketFieldUserMdpTags());
         GF_Fields::register(new GFWicketFieldWidgetProfile());
@@ -310,13 +292,6 @@ class Wicket_Gf_Main
         GF_Fields::register(new GFWicketFieldWidgetProfileOrg());
         GF_Fields::register(new GFWicketFieldWidgetAdditionalInfo());
         GF_Fields::register(new GFWicketFieldWidgetPrefs());
-
-        $logger->debug('All custom fields registered successfully', ['source' => 'wicket-gf']);
-
-        // Log all registered field types for verification
-        $all_fields = GF_Fields::get_all();
-        $field_types = array_map(function ($field) { return $field->type; }, $all_fields);
-        $logger->debug('All field types after registration: ' . print_r($field_types, true), ['source' => 'wicket-gf']);
     }
 
     /**
@@ -388,21 +363,15 @@ class Wicket_Gf_Main
         }
     }
 
+    /**
+     * Enqueue all the scripts and styles
+     */
     public function enqueue_scripts_styles($screen)
     {
-        // Enqueue scripts on all GF admin pages
-        if ($screen == 'toplevel_page_gf_edit_forms') {
+        // Check if we are on a Gravity Forms admin page
+        if (method_exists('GFForms', 'is_gravity_page') && GFForms::is_gravity_page()) {
             // Always enqueue core admin styles and scripts for custom field functionality
             wp_enqueue_style('wicket-gf-admin-style', plugins_url('css/wicket_gf_admin_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-
-            // Enqueue our main editor script (without Alpine.js)
-            wp_enqueue_script(
-                'wicket-gf-editor-main',
-                plugins_url('js/wicket_gf_editor.js', __FILE__),
-                ['jquery', 'gform_gravityforms_admin_vendors'],
-                WICKET_WP_GF_VERSION,
-                true
-            );
 
             // Enqueue mapping-specific scripts when on the mapping subview
             if (isset($_GET['subview']) && isset($_GET['fid'])) {
@@ -466,11 +435,6 @@ class Wicket_Gf_Main
         if (class_exists('GFWicketFieldWidgetPrefs')) {
             GFWicketFieldWidgetPrefs::custom_settings($position, $form_id);
         }
-
-        // Load JavaScript on the last position to ensure all fields are rendered
-        if ($position == 550) {
-            $this->output_field_editor_scripts();
-        }
     }
 
     /**
@@ -480,7 +444,7 @@ class Wicket_Gf_Main
      */
     private function output_field_editor_scripts()
     {
-        // Call each field's editor script (only fields that have them)
+        // Call each field's editor scripts
         if (class_exists('GFWicketFieldOrgSearchSelect')) {
             GFWicketFieldOrgSearchSelect::editor_script();
         }
@@ -658,11 +622,6 @@ class Wicket_Gf_Main
         }
     }
 
-    public function custom_entry_header($form, $entry)
-    {
-        // Custom entry header logic if needed
-    }
-
     public static function resync_wicket_member_fields()
     {
         // Implementation for resyncing member fields
@@ -683,4 +642,3 @@ add_action(
 
 // General Helpers
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
-?>
