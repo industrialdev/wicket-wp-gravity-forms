@@ -347,12 +347,10 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     /**
      * Define the field input for the form editor and front end.
      */
-        public function get_field_input($form, $value = '', $entry = null)
+    public function get_field_input($form, $value = '', $entry = null)
     {
         if ($this->is_form_editor()) {
-            return '<p>Org Search/Select UI will show here on the frontend.</p><p><strong>Note:</strong> This
-         element does <strong><em>not</em></strong> display correctly in the GF Preview mode and will appear broken; it\'s recommended
-         to create a test page with this form on it to properly test the Org Search/Select functionality.</p>';
+            return '<p>Org Search/Select widget will show here on the frontend</p>';
         }
 
         $id = (int) $this->id;
@@ -476,7 +474,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             }
         }
 
-                if (component_exists('org-search-select')) {
+        if (component_exists('org-search-select')) {
             $component_output = get_component('org-search-select', [
                 'classes'                                       => [],
                 'search_mode'                                   => $search_mode,
@@ -526,81 +524,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Custom field rendering to add JavaScript fix for gform_hidden class issue
-     */
-    public function get_field_content($value, $force_frontend_label, $form)
-    {
-        $form_id = absint($form['id']);
-        $is_entry_detail = $this->is_entry_detail();
-        $is_form_editor = $this->is_form_editor();
-
-        $html_input_type = 'hidden';
-
-        $logic = $this->get_conditional_logic_event('keyup');
-        $is_form_editor = $this->is_form_editor();
-
-        $tabindex = $this->get_tabindex();
-
-        $id = (int) $this->id;
-        $field_id = $is_entry_detail || $is_form_editor || $form_id == 0 ? "input_$id" : 'input_' . $form_id . '_' . $id;
-
-        $size = $this->size;
-        $class_suffix = $is_entry_detail ? '_admin' : '';
-        $class = $size . $class_suffix;
-        $class = esc_attr($class);
-
-        $tabindex_str = GFCommon::get_tabindex();
-
-        $disabled_text = $is_form_editor ? 'disabled="disabled"' : '';
-
-        // Get the current user's org UUID
-        $current_org_uuid = '';
-        if (function_exists('wicket_current_person_org_uuid')) {
-            $current_org_uuid = wicket_current_person_org_uuid();
-        }
-
-        // Get label settings
-        $singular_term = !empty($this->singular_term) ? $this->singular_term : 'Organization';
-        $plural_term = !empty($this->plural_term) ? $this->plural_term : 'Organizations';
-        $relationship_type = !empty($this->relationship_type) ? $this->relationship_type : 'employee';
-
-        $component_settings = [
-            'type' => 'org-search-select',
-            'singular-term' => $singular_term,
-            'plural-term' => $plural_term,
-            'relationship-type' => $relationship_type,
-        ];
-
-        if (!empty($current_org_uuid)) {
-            $component_settings['org-uuid'] = $current_org_uuid;
-        }
-
-        $component_attributes = '';
-        foreach ($component_settings as $key => $setting_value) {
-            $component_attributes .= sprintf(' %s="%s"', $key, esc_attr($setting_value));
-        }
-
-        $content = "
-        <div class='ginput_container ginput_container_wicket_orgss'>
-            <div class='component-org-search-select' {$component_attributes}>
-                <input
-                    type='{$html_input_type}'
-                    name='input_{$id}'
-                    id='{$field_id}'
-                    value='" . esc_attr($value) . "'
-                    class='gf_org_search_select_input {$class}'
-                    {$tabindex_str}
-                    {$logic}
-                    {$disabled_text}
-                />
-            </div>
-        </div>";
-
-        return $content;
-    }
-
-    /**
-     * Add protection class to prevent incorrect hiding by conditional logic conflicts
+     * Add protection class to prevent incorrect hiding by conditional logic conflicts.
      */
     public function get_field_css_class()
     {
@@ -708,14 +632,6 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     public function get_form_editor_field_description()
     {
         return esc_attr__('Allows users to search for and select organizations or groups.', 'wicket-gf');
-    }
-
-    /**
-     * Define the field's behavior for entry submission.
-     */
-    public function get_input_type()
-    {
-        return 'hidden';
     }
 
     /**

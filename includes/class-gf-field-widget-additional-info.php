@@ -483,10 +483,10 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
         if (!empty($missing_required)) {
             $this->failed_validation = true;
-                $this->validation_message = sprintf(
+            $this->validation_message = sprintf(
                 'The following required information is missing: %s',
-                    implode(', ', $missing_required)
-                );
+                implode(', ', $missing_required)
+            );
         }
     }
 
