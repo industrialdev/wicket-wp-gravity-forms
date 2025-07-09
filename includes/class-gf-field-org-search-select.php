@@ -11,7 +11,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
 <li class="wicket_orgss_setting field_setting" style="display:none;">
     <label>Search Mode</label>
-    <select name="orgss_search_mode" id="orgss_search_mode_select" onchange="window.WicketGF.OrgSearch.updateSearchMode(this.value)">
+    <select name="orgss_search_mode" id="orgss_search_mode_select">
         <option value="org" selected>Organizations</option>
         <option value="groups">Groups (Beta, In Development)</option>
     </select>
@@ -91,7 +91,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         <br />
 
         <input
-            onchange="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', this.checked);window.WicketGF.OrgSearch.toggleActiveMembershipAlert(this.checked);"
+            onchange="SetFieldProperty('orgss_disable_selecting_orgs_with_active_membership', this.checked);"
              type="checkbox"
             id="orgss_disable_selecting_orgs_with_active_membership"
             class="orgss_disable_selecting_orgs_with_active_membership">
@@ -99,7 +99,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             with active membership?</label>
         <br />
 
-        <div id="orgss_active_membership_alert_wrapper" style="margin-left:10px;margin-bottom: 10px;">
+        <div id="orgss_active_membership_alert_wrapper" style="margin-left:10px;margin-bottom: 10px;display: none;">
             <label style="margin-top: 1em;display: block;">Active Membership Alert Title</label>
             <input onkeyup="SetFieldProperty('orgss_active_membership_alert_title', this.value)"
                  type="text"
@@ -210,7 +210,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     {
         ?>
 <script>
-    window.WicketGF = window.WicketGF || {};
+        window.WicketGF = window.WicketGF || {};
     window.WicketGF.OrgSearch = window.WicketGF.OrgSearch || {};
 
     // Initialize the OrgSearch object with the functions that can be called from HTML
@@ -221,6 +221,25 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     window.WicketGF.OrgSearch.toggleActiveMembershipAlert = function(show) {
         document.getElementById('orgss_active_membership_alert_wrapper').style.display = show ? 'block' : 'none';
+    };
+
+    // Attach event listeners to the HTML elements
+    window.WicketGF.OrgSearch.attachEventListeners = function() {
+        // Attach event listener to the search mode dropdown
+        const searchModeSelect = document.getElementById('orgss_search_mode_select');
+        if (searchModeSelect) {
+            searchModeSelect.addEventListener('change', function() {
+                window.WicketGF.OrgSearch.updateSearchMode(this.value);
+            });
+        }
+
+        // Attach event listener to the active membership checkbox
+        const activeMembershipCheckbox = document.getElementById('orgss_disable_selecting_orgs_with_active_membership');
+        if (activeMembershipCheckbox) {
+            activeMembershipCheckbox.addEventListener('change', function() {
+                window.WicketGF.OrgSearch.toggleActiveMembershipAlert(this.checked);
+            });
+        }
     };
 
     // Now extend the object with the rest of the functionality
@@ -369,6 +388,32 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 grantOrgEditorOnPurchaseCheckbox.checked = field.orgss_grant_org_editor_on_purchase || false;
             }
 
+            // Load the checkbox states that control UI visibility
+            const disableSelectingOrgsCheckbox = document.getElementById('orgss_disable_selecting_orgs_with_active_membership');
+            if (disableSelectingOrgsCheckbox) {
+                disableSelectingOrgsCheckbox.checked = field.orgss_disable_selecting_orgs_with_active_membership || false;
+            }
+
+            const disableOrgCreationCheckbox = document.getElementById('orgss_disable_org_creation');
+            if (disableOrgCreationCheckbox) {
+                disableOrgCreationCheckbox.checked = field.orgss_disable_org_creation || false;
+            }
+
+            const hideRemoveButtonsCheckbox = document.getElementById('orgss_hide_remove_buttons');
+            if (hideRemoveButtonsCheckbox) {
+                hideRemoveButtonsCheckbox.checked = field.orgss_hide_remove_buttons || false;
+            }
+
+            const hideSelectButtonsCheckbox = document.getElementById('orgss_hide_select_buttons');
+            if (hideSelectButtonsCheckbox) {
+                hideSelectButtonsCheckbox.checked = field.orgss_hide_select_buttons || false;
+            }
+
+            const displayRemovalAlertCheckbox = document.getElementById('orgss_display_removal_alert_message');
+            if (displayRemovalAlertCheckbox) {
+                displayRemovalAlertCheckbox.checked = field.orgss_display_removal_alert_message || false;
+            }
+
             // Call the update functions
             window.WicketGF.OrgSearch.updateSearchMode(field.orgss_search_mode || 'org');
             window.WicketGF.OrgSearch.toggleActiveMembershipAlert(field.orgss_disable_selecting_orgs_with_active_membership || false);
@@ -377,6 +422,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     // Initialize the field settings handler
     window.WicketGF.OrgSearch.init();
+
+    // Attach event listeners after the script has loaded
+    window.WicketGF.OrgSearch.attachEventListeners();
 </script>
 
 <?php

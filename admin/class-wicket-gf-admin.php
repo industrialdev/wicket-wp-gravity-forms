@@ -48,9 +48,6 @@ class Wicket_Gf_Admin
     public static function options_page()
     { ?>
         <div>
-            <?php // TODO: Move this to conditional admin enqueues if not already present in admin
-            ?>
-            <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
             <script src="https://cdn.tailwindcss.com"></script>
             <script>
                 tailwind.config = {
@@ -103,45 +100,87 @@ class Wicket_Gf_Admin
         }
 
         // --- DEBUGGING START ---
-        // echo "<pre>PHP \$current_mappings (before passing to Alpine):\n";
+        // echo "<pre>PHP \$current_mappings (before passing to vanilla JS):\n";
         // print_r($current_mappings);
         // echo "</pre>";
         // --- DEBUGGING END ---
         ?>
 
-            <div
-                x-data='mappingUi(<?php echo json_encode($current_mappings); ?>)'>
+            <div id="mapping-ui">
                 <form id="wicket-gf-settings-form" method="post" action="options.php" class="wgf-mt-4">
                     <?php settings_fields('wicket_gf_options_group'); ?>
 
-                    <template x-for="(id, slug, index) in mappings" :key="slug">
-                        <div class="wicket-gf-mapping-row wgf-flex wgf-mb-1">
-                            <input class="wicket-gf-mapping-row-key wgf-w-50 wgf-mr-2" type="text" :value="slug"
-                                x-on:input="updateSlug($event, slug)"
-                                placeholder="<?php _e('Slug', 'wicket-gf'); ?>" />
-                            <input class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" type="text" :value="id"
-                                x-on:input="updateId($event, slug)"
-                                placeholder="<?php _e('Form ID', 'wicket-gf'); ?>" />
-                            <button type="button" class="button wgf-mr-1" x-on:click="addRow()">+</button>
-                            <button class="button warning" x-on:click="removeRow(slug)"
-                                :disabled="Object.keys(mappings).length <= 1">-</button>
-                        </div>
-                    </template>
+                    <div id="mapping-rows"></div>
 
                     <input hidden type="text" id="wicket_gf_slug_mapping" name="wicket_gf_slug_mapping"
                         value="<?php echo esc_attr(json_encode($current_mappings)); ?>" />
 
                     <script>
-                        function mappingUi(initialMappings) {
-                            // --- DEBUGGING START ---
-                            // console.log('Alpine: Initial Mappings:', initialMappings);
-                            // --- DEBUGGING END ---
-                            return {
-                                mappings: initialMappings,
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Initialize mapping UI
+                            window.MappingUI = {
+                                mappings: <?php echo json_encode($current_mappings); ?>,
                                 isValid: true,
-                                validationMessage: '',
 
-                                updateSlug(event, oldSlug) {
+                                init: function() {
+                                    this.renderRows();
+                                    this.updateHiddenFormField();
+                                    this.validateMappings();
+                                },
+
+                                renderRows: function() {
+                                    const container = document.getElementById('mapping-rows');
+                                    container.innerHTML = '';
+
+                                    for (const slug in this.mappings) {
+                                        const id = this.mappings[slug];
+                                        const row = this.createRow(slug, id);
+                                        container.appendChild(row);
+                                    }
+                                },
+
+                                createRow: function(slug, id) {
+                                    const row = document.createElement('div');
+                                    row.className = 'wicket-gf-mapping-row wgf-flex wgf-mb-1';
+
+                                    row.innerHTML = `
+                                        <input class="wicket-gf-mapping-row-key wgf-w-50 wgf-mr-2" type="text"
+                                               value="${slug}" placeholder="<?php _e('Slug', 'wicket-gf'); ?>" />
+                                        <input class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" type="text"
+                                               value="${id}" placeholder="<?php _e('Form ID', 'wicket-gf'); ?>" />
+                                        <button type="button" class="button wgf-mr-1 add-row-btn">+</button>
+                                        <button type="button" class="button warning remove-row-btn"
+                                                ${Object.keys(this.mappings).length <= 1 ? 'disabled' : ''}>-</button>
+                                    `;
+
+                                    // Add event listeners
+                                    const slugInput = row.querySelector('.wicket-gf-mapping-row-key');
+                                    const idInput = row.querySelector('.wicket-gf-mapping-row-val');
+                                    const addBtn = row.querySelector('.add-row-btn');
+                                    const removeBtn = row.querySelector('.remove-row-btn');
+
+                                    const self = this;
+
+                                    slugInput.addEventListener('input', function(e) {
+                                        self.updateSlug(e, slug);
+                                    });
+
+                                    idInput.addEventListener('input', function(e) {
+                                        self.updateId(e, slug);
+                                    });
+
+                                    addBtn.addEventListener('click', function() {
+                                        self.addRow();
+                                    });
+
+                                    removeBtn.addEventListener('click', function() {
+                                        self.removeRow(slug);
+                                    });
+
+                                    return row;
+                                },
+
+                                updateSlug: function(event, oldSlug) {
                                     let newSlug = event.target.value;
                                     // Basic sanitization - remove special chars, replace spaces with dashes, lowercase
                                     newSlug = newSlug.replace(/[^-,^a-zA-Z0-9 ]/g, '');
@@ -152,24 +191,22 @@ class Wicket_Gf_Admin
 
                                     // Check if the new slug already exists
                                     if (this.mappings.hasOwnProperty(newSlug)) {
-                                        alert(
-                                            '<?php _e('Slug already exists. Please choose a unique slug.', 'wicket-gf'); ?>');
+                                        alert('<?php _e('Slug already exists. Please choose a unique slug.', 'wicket-gf'); ?>');
                                         event.target.value = oldSlug; // Revert input field
                                         return;
                                     }
 
-                                    const newMappings = {
-                                        ...this.mappings
-                                    };
+                                    const newMappings = { ...this.mappings };
                                     const id = newMappings[oldSlug];
                                     delete newMappings[oldSlug];
                                     newMappings[newSlug] = id;
                                     this.mappings = newMappings;
                                     this.updateHiddenFormField();
                                     this.validateMappings();
+                                    this.renderRows(); // Re-render to update event handlers
                                 },
 
-                                updateId(event, slug) {
+                                updateId: function(event, slug) {
                                     const newId = event.target.value;
                                     if (this.mappings[slug] !== newId) {
                                         this.mappings[slug] = newId;
@@ -178,7 +215,7 @@ class Wicket_Gf_Admin
                                     }
                                 },
 
-                                addRow() {
+                                addRow: function() {
                                     let newSlugBase = 'new-slug';
                                     let newSlug = newSlugBase;
                                     let counter = 1;
@@ -188,31 +225,28 @@ class Wicket_Gf_Admin
                                         counter++;
                                     }
                                     // Add new entry immutably
-                                    this.mappings = {
-                                        ...this.mappings,
-                                        [newSlug]: ''
-                                    };
+                                    this.mappings = { ...this.mappings, [newSlug]: '' };
                                     this.updateHiddenFormField(); // Update hidden field immediately
                                     this.validateMappings();
+                                    this.renderRows(); // Re-render to show new row
                                 },
 
-                                removeRow(slugToRemove) {
+                                removeRow: function(slugToRemove) {
                                     if (Object.keys(this.mappings).length > 1) {
-                                        const newMappings = {
-                                            ...this.mappings
-                                        };
+                                        const newMappings = { ...this.mappings };
                                         delete newMappings[slugToRemove];
                                         this.mappings = newMappings;
                                         this.updateHiddenFormField();
                                         this.validateMappings();
+                                        this.renderRows(); // Re-render to remove row
                                     }
                                 },
 
-                                updateHiddenFormField() {
+                                updateHiddenFormField: function() {
                                     // --- DEBUGGING START ---
-                                    // console.log('Alpine: Updating hidden field with mappings:', JSON.parse(JSON.stringify(this.mappings))); // Clone for logging
+                                    // console.log('Vanilla JS: Updating hidden field with mappings:', JSON.parse(JSON.stringify(this.mappings))); // Clone for logging
                                     // --- DEBUGGING END ---
-                                    let hiddenField = document.querySelector('#wicket_gf_slug_mapping');
+                                    const hiddenField = document.querySelector('#wicket_gf_slug_mapping');
                                     if (hiddenField) { // Check if field exists
                                         hiddenField.value = JSON.stringify(this.mappings);
                                     } else {
@@ -220,14 +254,13 @@ class Wicket_Gf_Admin
                                     }
                                 },
 
-                                validateMappings() {
+                                validateMappings: function() {
                                     this.isValid = true; // Assume valid initially
                                     // this.validationMessage = ''; // Message is static now
                                     for (const slug in this.mappings) {
                                         const id = this.mappings[slug];
                                         const slugIsEmpty = (slug === '' || slug === null);
-                                        const idIsEmpty = (id === '' || id === null || id ===
-                                            '0'); // Treat '0' as empty for validation
+                                        const idIsEmpty = (id === '' || id === null || id === '0'); // Treat '0' as empty for validation
 
                                         if (!slugIsEmpty && idIsEmpty) {
                                             this.isValid = false;
@@ -242,27 +275,25 @@ class Wicket_Gf_Admin
                                     }
 
                                     // Disable/enable the submit button
-                                    let submitButton = document.querySelector('#wicket-gf-settings-form input[type="submit"]');
+                                    const submitButton = document.querySelector('#wicket-gf-settings-form input[type="submit"]');
                                     if (submitButton) {
                                         submitButton.disabled = !this.isValid;
                                     }
-                                },
 
-                                init() {
-                                    // Ensure the hidden field is populated on initial load
-                                    this.$nextTick(() => {
-                                        this.updateHiddenFormField();
-                                        this.validateMappings(); // Validate on load
-                                    });
+                                    // Show/hide validation message
+                                    const validationMessage = document.getElementById('validation-message');
+                                    if (validationMessage) {
+                                        validationMessage.style.display = this.isValid ? 'none' : 'block';
+                                    }
                                 }
-                            }
-                        }
-                        document.addEventListener('alpine:init', () => {
-                            Alpine.data('mappingUi', mappingUi);
+                            };
+
+                            // Initialize the mapping UI
+                            window.MappingUI.init();
                         });
                     </script>
 
-                    <p class="wgf-text-red-600 wgf-mb-2" x-show="!isValid">
+                    <p id="validation-message" class="wgf-text-red-600 wgf-mb-2" style="display: none;">
                         <?php _e('Please ensure no rows have empty fields.', 'wicket-gf'); ?>
                     </p>
 
