@@ -1,4 +1,5 @@
 <?php
+
 class GFWicketFieldWidgetProfile extends GF_Field
 {
     public $type = 'wicket_widget_profile_individual';

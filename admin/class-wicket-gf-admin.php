@@ -17,9 +17,7 @@ class Wicket_Gf_Admin
     /**
      * Constructor of class.
      */
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     // Settings link on plugin page
     public static function add_settings_link($links)

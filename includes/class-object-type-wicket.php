@@ -1,4 +1,5 @@
 <?php
+
 class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 {
     private static $max_results = 50;

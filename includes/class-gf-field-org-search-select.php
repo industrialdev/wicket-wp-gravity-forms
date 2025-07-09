@@ -5,7 +5,7 @@ if (!class_exists('GF_Field')) {
 }
 
 /**
- * Class GFWicketFieldOrgSearchSelect
+ * Class GFWicketFieldOrgSearchSelect.
  *
  * The Wicket Organization Search custom field
  */
@@ -206,9 +206,8 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         // to avoid conflicts with the gform_editor_js hook
     }
 
-
     /**
-     * Return the field title, for the form editor
+     * Return the field title, for the form editor.
      */
     public function get_form_editor_field_title()
     {
@@ -216,7 +215,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Assign the field button to the Advanced Fields group
+     * Assign the field button to the Advanced Fields group.
      */
     public function get_form_editor_button()
     {
@@ -227,7 +226,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define the fields settings which should be available on the field in the form editor
+     * Define the fields settings which should be available on the field in the form editor.
      */
     public function get_form_editor_field_settings()
     {
@@ -244,7 +243,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define if conditional logic is supported
+     * Define if conditional logic is supported.
      */
     public function is_conditional_logic_supported()
     {
@@ -252,7 +251,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define if this field supports being used as a conditional logic rule
+     * Define if this field supports being used as a conditional logic rule.
      */
     public function is_value_submission_array()
     {
@@ -260,7 +259,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define the field input for the form editor and front end
+     * Define the field input for the form editor and front end.
      */
     public function get_field_input($form, $value = '', $entry = null)
     {
@@ -499,7 +498,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Sanitize field value
+     * Sanitize field value.
      */
     public function sanitize_settings()
     {
@@ -533,7 +532,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define which field properties should be available in the field object in JavaScript
+     * Define which field properties should be available in the field object in JavaScript.
      */
     public function get_form_editor_field_description()
     {
@@ -541,7 +540,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define the field's behavior for entry submission
+     * Define the field's behavior for entry submission.
      */
     public function get_input_type()
     {
@@ -549,7 +548,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define validation for the field
+     * Define validation for the field.
      */
     public function validate($value, $form)
     {
@@ -561,7 +560,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Handle field choices for compatibility with GF
+     * Handle field choices for compatibility with GF.
      */
     public function get_choices()
     {
@@ -569,12 +568,12 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     }
 
     /**
-     * Define field size
+     * Define field size.
      */
     public function get_field_size_settings()
     {
         return [
-            'size' => 'medium'
+            'size' => 'medium',
         ];
     }
 }

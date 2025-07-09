@@ -45,7 +45,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         );
     }
 
-        public static function custom_settings($position, $form_id)
+    public static function custom_settings($position, $form_id)
     {
         if ($position == 25) { ?>
             <?php ob_start(); ?>

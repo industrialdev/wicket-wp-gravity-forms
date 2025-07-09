@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.41
+ * Version:           2.0.50
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -75,9 +75,7 @@ class Wicket_Gf_Main
     /**
      * Constructor. Intentionally left empty and public.
      */
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Access this plugin’s working instance.
@@ -241,7 +239,7 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Register tooltips for custom field settings
+     * Register tooltips for custom field settings.
      *
      * @param array $tooltips
      * @return array
@@ -364,7 +362,7 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Enqueue all the scripts and styles
+     * Enqueue all the scripts and styles.
      */
     public function enqueue_scripts_styles($screen)
     {
@@ -404,7 +402,7 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Register custom field settings for all Wicket fields
+     * Register custom field settings for all Wicket fields.
      *
      * @param int $position
      * @param int $form_id
@@ -438,7 +436,7 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Output field-specific editor scripts
+     * Output field-specific editor scripts.
      *
      * @return void
      */
@@ -628,10 +626,6 @@ class Wicket_Gf_Main
         update_option('wicket_gf_member_fields', []);
         wp_send_json_success();
     }
-
-
-
-
 }
 
 add_action(

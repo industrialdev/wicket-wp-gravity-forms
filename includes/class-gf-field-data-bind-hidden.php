@@ -27,7 +27,9 @@ class GFDataBindHiddenField extends GF_Field
     public function get_input_type(): string
     {
         return 'text';
-    }    public function get_form_editor_field_settings(): array
+    }
+
+    public function get_form_editor_field_settings(): array
     {
         return [
             'label_setting',
