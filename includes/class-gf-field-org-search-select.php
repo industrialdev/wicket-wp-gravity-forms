@@ -166,7 +166,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         return;
                     }
 
-                    // Set up the conditional display for Organizations vs Groups mode
+                                        // Set up the conditional display for Organizations vs Groups mode
                     var orgssSearchModeSelect = $('#orgss_search_mode_select');
                     var orgSettings = $('#orgss-org-settings');
                     var groupsSettings = $('#orgss-groups-settings');
@@ -182,10 +182,58 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         }
                     }
 
+                    $('#orgss_search_org_type_input').val(field.orgss_search_org_type || '');
+                    $('#orgss_relationship_type_upon_org_creation_input').val(field.orgss_relationship_type_upon_org_creation || 'employee');
+                    $('#orgss_relationship_mode_input').val(field.orgss_relationship_mode || 'person_to_organization');
+                    $('#orgss_new_org_type_override_input').val(field.orgss_new_org_type_override || '');
+                    $('#orgss_org_term_singular_input').val(field.orgss_org_term_singular || 'Organization');
+                    $('#orgss_org_term_plural_input').val(field.orgss_org_term_plural || 'Organizations');
+                    $('#orgss_no_results_message_input').val(field.orgss_no_results_message || '');
+                    $('#orgss_checkbox_id_new_org_input').val(field.orgss_checkbox_id_new_org || '');
+
+
+                    // Handle checkboxes
+                    $('#orgss_disable_org_creation').prop('checked', field.orgss_disable_org_creation || false);
+                    $('#orgss_hide_remove_buttons').prop('checked', field.orgss_hide_remove_buttons || false);
+                    $('#orgss_hide_select_buttons').prop('checked', field.orgss_hide_select_buttons || false);
+                    $('#orgss_display_removal_alert_message').prop('checked', field.orgss_display_removal_alert_message || false);
+                    $('#orgss_disable_selecting_orgs_with_active_membership').prop('checked', field.orgss_disable_selecting_orgs_with_active_membership || false);
+                    $('#orgss_grant_roster_man_on_purchase').prop('checked', field.orgss_grant_roster_man_on_purchase || false);
+                    $('#orgss_grant_org_editor_on_select').prop('checked', field.orgss_grant_org_editor_on_select || false);
+                    $('#orgss_grant_org_editor_on_purchase').prop('checked', field.orgss_grant_org_editor_on_purchase || false);
+
+                    // Handle active membership alert fields
+                    $('#orgss_active_membership_alert_title_input').val(field.orgss_active_membership_alert_title || '');
+                    $('#orgss_active_membership_alert_body_input').val(field.orgss_active_membership_alert_body || '');
+                    $('#orgss_active_membership_alert_button_1_text_input').val(field.orgss_active_membership_alert_button_1_text || '');
+                    $('#orgss_active_membership_alert_button_1_url_input').val(field.orgss_active_membership_alert_button_1_url || '');
+                    $('#orgss_active_membership_alert_button_1_style_select').val(field.orgss_active_membership_alert_button_1_style || 'primary');
+                    $('#orgss_active_membership_alert_button_1_new_tab').prop('checked', field.orgss_active_membership_alert_button_1_new_tab || false);
+                    $('#orgss_active_membership_alert_button_2_text_input').val(field.orgss_active_membership_alert_button_2_text || '');
+                    $('#orgss_active_membership_alert_button_2_url_input').val(field.orgss_active_membership_alert_button_2_url || '');
+                    $('#orgss_active_membership_alert_button_2_style_select').val(field.orgss_active_membership_alert_button_2_style || 'primary');
+                    $('#orgss_active_membership_alert_button_2_new_tab').prop('checked', field.orgss_active_membership_alert_button_2_new_tab || false);
+
                     // Set initial state based on field's current value
                     var currentMode = field.orgss_search_mode || 'org';
                     orgssSearchModeSelect.val(currentMode);
                     updateModeDisplay(currentMode);
+
+                    // Show/hide active membership alert fields based on checkbox
+                    function updateActiveMembershipDisplay() {
+                        var isChecked = $('#orgss_disable_selecting_orgs_with_active_membership').is(':checked');
+                        if (isChecked) {
+                            $('#orgss_active_membership_alert_wrapper').show();
+                        } else {
+                            $('#orgss_active_membership_alert_wrapper').hide();
+                        }
+                    }
+
+                    // Set initial state and handle checkbox changes
+                    updateActiveMembershipDisplay();
+                    $('#orgss_disable_selecting_orgs_with_active_membership').off('change.wicket-orgss-alert').on('change.wicket-orgss-alert', function() {
+                        updateActiveMembershipDisplay();
+                    });
 
                     // Handle dropdown change
                     orgssSearchModeSelect.off('change.wicket-orgss').on('change.wicket-orgss', function() {
@@ -242,6 +290,44 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         ];
     }
 
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.orgss_search_mode = 'org';
+                field.orgss_search_org_type = '';
+                field.orgss_relationship_type_upon_org_creation = 'employee';
+                field.orgss_relationship_mode = 'person_to_organization';
+                field.orgss_new_org_type_override = '';
+                field.orgss_org_term_singular = 'Organization';
+                field.orgss_org_term_plural = 'Organizations';
+                field.orgss_no_results_message = '';
+                field.orgss_checkbox_id_new_org = '';
+                field.orgss_disable_org_creation = false;
+                field.orgss_hide_remove_buttons = false;
+                field.orgss_hide_select_buttons = false;
+                field.orgss_display_removal_alert_message = false;
+                field.orgss_disable_selecting_orgs_with_active_membership = false;
+                field.orgss_grant_roster_man_on_purchase = false;
+                field.orgss_grant_org_editor_on_select = false;
+                field.orgss_grant_org_editor_on_purchase = false;
+                field.orgss_active_membership_alert_title = '';
+                field.orgss_active_membership_alert_body = '';
+                field.orgss_active_membership_alert_button_1_text = '';
+                field.orgss_active_membership_alert_button_1_url = '';
+                field.orgss_active_membership_alert_button_1_style = 'primary';
+                field.orgss_active_membership_alert_button_1_new_tab = false;
+                field.orgss_active_membership_alert_button_2_text = '';
+                field.orgss_active_membership_alert_button_2_url = '';
+                field.orgss_active_membership_alert_button_2_style = 'primary';
+                field.orgss_active_membership_alert_button_2_new_tab = false;
+            }",
+            $this->type,
+            $this->get_form_editor_field_title()
+        );
+    }
+
     /**
      * Define if conditional logic is supported.
      */
@@ -261,7 +347,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     /**
      * Define the field input for the form editor and front end.
      */
-    public function get_field_input($form, $value = '', $entry = null)
+        public function get_field_input($form, $value = '', $entry = null)
     {
         if ($this->is_form_editor()) {
             return '<p>Org Search/Select UI will show here on the frontend.</p><p><strong>Note:</strong> This
@@ -390,7 +476,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             }
         }
 
-        if (component_exists('org-search-select')) {
+                if (component_exists('org-search-select')) {
             $component_output = get_component('org-search-select', [
                 'classes'                                       => [],
                 'search_mode'                                   => $search_mode,
@@ -437,6 +523,91 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
+    }
+
+    /**
+     * Custom field rendering to add JavaScript fix for gform_hidden class issue
+     */
+    public function get_field_content($value, $force_frontend_label, $form)
+    {
+        $form_id = absint($form['id']);
+        $is_entry_detail = $this->is_entry_detail();
+        $is_form_editor = $this->is_form_editor();
+
+        $html_input_type = 'hidden';
+
+        $logic = $this->get_conditional_logic_event('keyup');
+        $is_form_editor = $this->is_form_editor();
+
+        $tabindex = $this->get_tabindex();
+
+        $id = (int) $this->id;
+        $field_id = $is_entry_detail || $is_form_editor || $form_id == 0 ? "input_$id" : 'input_' . $form_id . '_' . $id;
+
+        $size = $this->size;
+        $class_suffix = $is_entry_detail ? '_admin' : '';
+        $class = $size . $class_suffix;
+        $class = esc_attr($class);
+
+        $tabindex_str = GFCommon::get_tabindex();
+
+        $disabled_text = $is_form_editor ? 'disabled="disabled"' : '';
+
+        // Get the current user's org UUID
+        $current_org_uuid = '';
+        if (function_exists('wicket_current_person_org_uuid')) {
+            $current_org_uuid = wicket_current_person_org_uuid();
+        }
+
+        // Get label settings
+        $singular_term = !empty($this->singular_term) ? $this->singular_term : 'Organization';
+        $plural_term = !empty($this->plural_term) ? $this->plural_term : 'Organizations';
+        $relationship_type = !empty($this->relationship_type) ? $this->relationship_type : 'employee';
+
+        $component_settings = [
+            'type' => 'org-search-select',
+            'singular-term' => $singular_term,
+            'plural-term' => $plural_term,
+            'relationship-type' => $relationship_type,
+        ];
+
+        if (!empty($current_org_uuid)) {
+            $component_settings['org-uuid'] = $current_org_uuid;
+        }
+
+        $component_attributes = '';
+        foreach ($component_settings as $key => $setting_value) {
+            $component_attributes .= sprintf(' %s="%s"', $key, esc_attr($setting_value));
+        }
+
+        $content = "
+        <div class='ginput_container ginput_container_wicket_orgss'>
+            <div class='component-org-search-select' {$component_attributes}>
+                <input
+                    type='{$html_input_type}'
+                    name='input_{$id}'
+                    id='{$field_id}'
+                    value='" . esc_attr($value) . "'
+                    class='gf_org_search_select_input {$class}'
+                    {$tabindex_str}
+                    {$logic}
+                    {$disabled_text}
+                />
+            </div>
+        </div>";
+
+        return $content;
+    }
+
+    /**
+     * Add protection class to prevent incorrect hiding by conditional logic conflicts
+     */
+    public function get_field_css_class()
+    {
+        $css_class = parent::get_field_css_class();
+        $css_class .= ' wicket-field-protected';
+
+        return $css_class;
     }
 
     public function get_value_submission($field_values, $get_from_post_global_var = true)

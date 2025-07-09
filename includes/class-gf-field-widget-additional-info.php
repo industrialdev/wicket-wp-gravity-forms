@@ -35,10 +35,10 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         return sprintf(
             "function SetDefaultValues_%s(field) {
                 field.label = '%s';
-                field.ai_schemas = [[]];
-                field.ai_type = 'people';
-                field.org_uuid = '';
-                field.use_slugs = false;
+                field.wwidget_ai_schemas = [[]];
+                field.wwidget_ai_type = 'people';
+                field.wwidget_ai_org_uuid = '';
+                field.wwidget_ai_use_slugs = false;
             }",
             $this->type,
             $this->get_form_editor_field_title()
@@ -52,14 +52,14 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
             <li class="wicket_widget_ai_setting field_setting" style="display:none;">
                 <label>Additional Info Type:</label>
-                <select id="ai_type_selector" onchange="SetFieldProperty('ai_type', this.value)">
+                <select id="ai_type_selector" onchange="SetFieldProperty('wwidget_ai_type', this.value)">
                     <option value="people">People</option>
                     <option value="organizations">Organizations</option>
                 </select>
 
                 <div id="ai_org_uuid_wrapper" style="display: none;">
                     <label>Org UUID:</label>
-                    <input id="ai_org_uuid_input" onkeyup="SetFieldProperty('org_uuid', this.value)" type="text" placeholder="1234-5678-9100" />
+                    <input id="ai_org_uuid_input" onkeyup="SetFieldProperty('wwidget_ai_org_uuid', this.value)" type="text" placeholder="1234-5678-9100" />
                     <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
                 </div>
 
@@ -68,7 +68,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 <button id="ai_add_schema_button" style="margin-top: 10px; padding: 5px 10px;">Add Schema</button>
 
                 <div style="margin-top: 10px;">
-                    <input onchange="SetFieldProperty('use_slugs', this.checked)" type="checkbox" id="ai_use_slugs" class="ai_use_slugs">
+                    <input onchange="SetFieldProperty('wwidget_ai_use_slugs', this.checked)" type="checkbox" id="ai_use_slugs" class="ai_use_slugs">
                     <label for="ai_use_slugs" class="inline">Use schema slugs instead of IDs</label>
                 </div>
             </li>
@@ -86,30 +86,30 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                     }
 
                     // Initialize the Additional Info widget functionality
-                    window.WicketGF = window.WicketGF || {};
-                    window.WicketGF.AdditionalInfo = {
-                        schemaArray: [],
+        window.WicketGF = window.WicketGF || {};
+        window.WicketGF.AdditionalInfo = {
+            schemaArray: [],
 
-                        loadFieldSettings: function(field) {
+            loadFieldSettings: function(field) {
                             // Ensure we have a valid schema array
-                            let fieldDataSchemas = field.ai_schemas || [[]];
+                let fieldDataSchemas = field.wwidget_ai_schemas || [[]];
                             // Make sure we have at least one empty schema if none exist
                             if (!fieldDataSchemas.length) {
                                 fieldDataSchemas = [[]];
                             }
-                            this.schemaArray = fieldDataSchemas;
+                this.schemaArray = fieldDataSchemas;
 
                             // Set values for form elements
-                            $('#ai_type_selector').val(field.ai_type || 'people');
-                            $('#ai_org_uuid_input').val(field.org_uuid || '');
-                            $('#ai_use_slugs').prop('checked', field.use_slugs || false);
+                            $('#ai_type_selector').val(field.wwidget_ai_type || 'people');
+                            $('#ai_org_uuid_input').val(field.wwidget_ai_org_uuid || '');
+                            $('#ai_use_slugs').prop('checked', field.wwidget_ai_use_slugs || false);
 
                             // Always render schemas after loading field settings
-                            this.renderSchemas();
-                            this.updateAiType(field.ai_type || 'people');
-                        },
+                this.renderSchemas();
+                this.updateAiType(field.wwidget_ai_type || 'people');
+            },
 
-                        updateAiType: function(type) {
+            updateAiType: function(type) {
                             var orgUuidWrapper = $('#ai_org_uuid_wrapper');
                             if (type === 'organizations') {
                                 orgUuidWrapper.show();
@@ -118,35 +118,35 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                             }
                         },
 
-                        addNewSchemaGrouping: function() {
-                            this.schemaArray.push([]);
-                            this.renderSchemas();
-                        },
+            addNewSchemaGrouping: function() {
+                this.schemaArray.push([]);
+                this.renderSchemas();
+            },
 
-                        removeSchemaGrouping: function(index) {
-                            this.schemaArray.splice(index, 1);
-                            this.renderSchemas();
-                            SetFieldProperty('ai_schemas', this.schemaArray);
-                        },
+            removeSchemaGrouping: function(index) {
+                this.schemaArray.splice(index, 1);
+                this.renderSchemas();
+                SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
+            },
 
-                        updateSchemaArray: function(index, type, value) {
-                            if (!this.schemaArray[index]) {
-                                this.schemaArray[index] = [];
-                            }
-                            if (type == 'schema-id') {
-                                this.schemaArray[index][0] = value;
-                            } else if (type == 'override-id') {
-                                this.schemaArray[index][1] = value;
-                            } else if (type == 'friendly-name') {
-                                this.schemaArray[index][2] = value;
-                            } else if (type == 'show-as-required') {
-                                this.schemaArray[index][3] = value;
-                            }
+            updateSchemaArray: function(index, type, value) {
+                if (!this.schemaArray[index]) {
+                    this.schemaArray[index] = [];
+                }
+                if (type == 'schema-id') {
+                    this.schemaArray[index][0] = value;
+                } else if (type == 'override-id') {
+                    this.schemaArray[index][1] = value;
+                } else if (type == 'friendly-name') {
+                    this.schemaArray[index][2] = value;
+                } else if (type == 'show-as-required') {
+                    this.schemaArray[index][3] = value;
+                }
 
-                            SetFieldProperty('ai_schemas', this.schemaArray);
-                        },
+                SetFieldProperty('wwidget_ai_schemas', this.schemaArray);
+            },
 
-                        renderSchemas: function() {
+            renderSchemas: function() {
                             var container = $('#ai_schema_container');
                             if (!container.length) {
                                 console.error('Schema container not found');
@@ -302,10 +302,10 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                         window.WicketGF.AdditionalInfo.addNewSchemaGrouping();
                     });
                 });
-            });
-            </script>
+    });
+</script>
 
-        <?php
+<?php
         }
     }
 
@@ -334,17 +334,17 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             if (gettype($field) == 'object') {
                 if (get_class($field) == 'GFWicketFieldWidgetAdditionalInfo') {
                     if ($field->id == $id) {
-                        if (isset($field->ai_schemas)) {
-                            $ai_widget_schemas = $field->ai_schemas;
+                        if (isset($field->wwidget_ai_schemas)) {
+                            $ai_widget_schemas = $field->wwidget_ai_schemas;
                         }
-                        if (isset($field->ai_type)) {
-                            $ai_type = $field->ai_type;
+                        if (isset($field->wwidget_ai_type)) {
+                            $ai_type = $field->wwidget_ai_type;
                         }
-                        if (isset($field->org_uuid)) {
-                            $org_uuid = $field->org_uuid;
+                        if (isset($field->wwidget_ai_org_uuid)) {
+                            $org_uuid = $field->wwidget_ai_org_uuid;
                         }
-                        if (isset($field->use_slugs)) {
-                            $use_slugs = $field->use_slugs;
+                        if (isset($field->wwidget_ai_use_slugs)) {
+                            $use_slugs = $field->wwidget_ai_use_slugs;
                         }
                     }
                 }
@@ -438,11 +438,11 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         // Find this field's data in the form
         foreach ($form['fields'] as $field) {
             if (gettype($field) == 'object' && get_class($field) == 'GFWicketFieldWidgetAdditionalInfo' && $field->id == $id) {
-                if (isset($field->ai_schemas)) {
-                    $field_schemas = $field->ai_schemas;
+                if (isset($field->wwidget_ai_schemas)) {
+                    $field_schemas = $field->wwidget_ai_schemas;
                 }
-                if (isset($field->use_slugs)) {
-                    $use_slugs = $field->use_slugs;
+                if (isset($field->wwidget_ai_use_slugs)) {
+                    $use_slugs = $field->wwidget_ai_use_slugs;
                 }
                 break;
             }
@@ -483,10 +483,10 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
         if (!empty($missing_required)) {
             $this->failed_validation = true;
-            $this->validation_message = sprintf(
+                $this->validation_message = sprintf(
                 'The following required information is missing: %s',
-                implode(', ', $missing_required)
-            );
+                    implode(', ', $missing_required)
+                );
         }
     }
 

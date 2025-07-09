@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.51
+ * Version:           2.0.58
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -21,8 +21,6 @@
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
-
-define('WICKET_WP_GF_VERSION', '2.0.26');
 
 if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', get_option('active_plugins')), true)) {
     /**
@@ -40,6 +38,8 @@ if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', g
 
     add_action('admin_notices', 'wicket_gf_admin_notice');
 }
+
+define('WICKET_WP_GF_VERSION', get_plugin_data(plugin_dir_path(__FILE__))['Version']);
 
 /**
  * The main Wicket Gravity Forms class.
@@ -209,6 +209,9 @@ class Wicket_Gf_Main
 
         // Admin footer script for debugging
         add_action('admin_footer', [$this, 'output_wicket_event_debugger_script']);
+
+        // Add form pre-render hook for pagination sidebar layout and other dynamic features
+        add_filter('gform_pre_render', [$this, 'gf_custom_pre_render'], 50, 1);
     }
 
     /**
@@ -222,6 +225,162 @@ class Wicket_Gf_Main
             false,
             dirname(plugin_basename(__FILE__)) . '/languages'
         );
+    }
+
+    /**
+     * Handle form pre-render for pagination sidebar layout and other dynamic features.
+     * @param array $form
+     * @return array
+     */
+    public function gf_custom_pre_render($form)
+    {
+        // Add sidebar layout styles if toggled in Wicket GF options
+        if (get_option('wicket_gf_pagination_sidebar_layout')) {
+            ob_start(); ?>
+
+            <script>
+                window.addEventListener('load', function() {
+                    if (document.querySelector('body') !== null) {
+
+                        // Check and see if the page is using the steps version of pagination,
+                        // and if so re-format it
+                        let paginationStepsCheck = document.querySelector('.gf_page_steps');
+                        if (paginationStepsCheck != null) {
+                            document.head.insertAdjacentHTML("beforeend", `
+                        <style>
+                            @media(min-width:768px) {
+                                form[id^=gform_] {
+                                    display: flex;
+                                }
+                                .gf_page_steps {
+                                    display: flex;
+                                    flex-direction: column;
+                                    min-width: 250px;
+                                }
+                                .gform_body {
+                                    flex-grow: 1;
+                                }
+
+                                body.wicket-theme-v2 form[id^=gform_] {
+                                    gap: var(--space-200);
+                                }
+                            }
+                            @media(max-width:767px) {
+                                .gf_page_steps .gf_step {
+                                    margin-top: 0px !important;
+                                    margin-bottom: 0px !important;
+                                    margin-right: 5px !important;
+                                }
+                            }
+                            .gf_page_steps .gf_step {
+                                border-radius: var(--interactive-corner-radius-lg, 999px);
+                            }
+                            .gf_page_steps .gf_step:not(.gf_step_active) {
+                                padding-left: var(--space-100, 5px);
+                                padding-right: var(--space-100, 5px);
+                            }
+                            .gf_page_steps .gf_step_active {
+                                background: var(--highlight-light, #efefef);
+                                padding: var(--space-100, 5px);
+                                margin-left: -5px !important;
+                            }
+                            body.wicket-theme-v2 .gf_page_steps .gf_step_active {
+                                margin-left: 0px !important;
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step .gf_step_label {
+                                padding-left: var(--space-100, 16px);
+                                font-size: var(--body-md-font-size, 14px);
+                                line-height: var(--body-md-line-height, 16px);
+                                font-weight: bold;
+                                color: var(--text-content, inherit);
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step .gf_step_number {
+                                font-weight: bold;
+                                color: var(--text-content, #585e6a);
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step_active .gf_step_number {
+                                background: var(--interactive, #cfd3d9);
+                                border-color: var(--interactive, #cfd3d9);
+                                color: var(--text-content-reversed, #607382);
+                                border-width: var(--border-interactive-md, 2px);
+                            }
+                            body.wicket-theme-v2 .gf_page_steps .gf_step_completed {
+                                position: relative;
+                            }
+                            body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number {
+                                background: var(--highlight-dark, var(--gf-local-bg-color, #000) );
+                                position: relative;
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:before {
+                                background: var(--highlight-light, #607382);
+                                border-color: var(--highlight-dark, #607382);
+                                border-width: var(--border-interactive-md, 2px);
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                color: var(--highlight-dark, #ffffff);
+                                background-color: var(--highlight-light, #607382);
+                            }
+                            body.wicket-theme-v2 .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                left: 0px;
+                                top: 0px;
+                                border-color: var(--highlight-dark);
+                                border-radius: 20px;
+                            }
+                            /* Orbital theme compatibility fix */
+                            body.wicket-theme-v2 .gform-theme--orbital .gf_page_steps .gf_step_completed .gf_step_number:after {
+                                left: -2px;
+                                top: -2px;
+                            }
+                            .gform_wrapper .gf_page_steps .gf_step_pending .gf_step_number {
+                                border-width: var(--border-interactive-md, 2px);
+                                border-color: var(--border-interactive, #cfd3d9);
+                            }
+                        </style>`);
+                        }
+                    }
+                });
+            </script>
+
+        <?php $output = ob_get_clean();
+
+            // Dynamically create and add this HTML form field on render
+            $props = [
+                'id'      => 3000,
+                'label'   => 'Dynamic Styles - Do Not Edit',
+                'type'    => 'html',
+                'content' => $output,
+            ];
+            $field = GF_Fields::create($props);
+            array_push($form['fields'], $field);
+        }
+
+        // Loop fields and hide label if toggled with our custom checkbox
+        $hide_label_i = 1;
+        foreach ($form['fields'] as $field) {
+            if (isset($field['hide_label'])) {
+                if ($field['hide_label']) {
+                    // Dynamically create and add this HTML form field on render
+                    $props = [
+                        'id'      => (3000 + $hide_label_i),
+                        'label'   => 'Dynamic Styles - Do Not Edit',
+                        'type'    => 'html',
+                        'content' => '
+                            <style>
+                                .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
+                                    display: none;
+                                }
+                            </style>
+                            ',
+                    ];
+                    $field = GF_Fields::create($props);
+                    array_push($form['fields'], $field);
+                }
+            }
+            $hide_label_i++;
+        }
+
+        // Return the form untouched
+        return $form;
     }
 
     public static function gf_mapping_addon_load()

@@ -3,6 +3,7 @@
  *
  * Handles live updates for GFWicketDataHiddenField fields from Wicket Widgets on the same page.
  * Uses Gravity Forms native hooks for better integration and reliability.
+ * Updated to be less aggressive with conditional logic triggering to prevent conflicts.
  */
 
 /**
@@ -115,6 +116,11 @@ const WicketGFLiveUpdate = {
     enableLogging: false,
 
     /**
+     * Track which forms have been processed to avoid duplicate triggers
+     */
+    processedForms: new Set(),
+
+    /**
      * Centralized logging method
      * @param {string} message - Log message
      * @param {*} data - Optional data to log
@@ -146,11 +152,50 @@ const WicketGFLiveUpdate = {
      * Initialize the live update system
      */
     init() {
-        this.log('Live Update: Initializing GF-native version');
+        this.log('Live Update: Initializing GF-native version with reduced conditional logic triggering');
+        this.log('Current page URL:', window.location.href);
+        this.log('Available Wicket fields on page:', jQuery('.wicket-gf-hidden-data-bind-target').length);
 
         this.setupGFHooks();
         this.setupWicketEventListeners();
+        this.setupConditionalLogicProtection();
         this.populateFieldsOnInit();
+
+        // Add manual testing capability for debugging
+        if (this.enableLogging) {
+            window.wicketGFTest = {
+                testUpdate: (testData) => {
+                    this.log('Manual test update triggered with data:', testData);
+                    const testEvent = new CustomEvent('wicket_current_person_data_updated', {
+                        detail: testData || {
+                            attributes: {
+                                state_name: 'Test State Value'
+                            },
+                            addresses: [{
+                                attributes: {
+                                    state_name: 'Test Address State'
+                                }
+                            }]
+                        }
+                    });
+                    document.dispatchEvent(testEvent);
+                },
+                listFields: () => {
+                    const fields = jQuery('.wicket-gf-hidden-data-bind-target');
+                    fields.each((i, el) => {
+                        const $el = jQuery(el);
+                        this.log(`Field ${i}:`, {
+                            id: $el.attr('id'),
+                            dataSource: $el.data('hidden-data-bind-data-source'),
+                            schemaSlug: $el.data('hidden-data-bind-schema-slug'),
+                            valueKey: $el.data('hidden-data-bind-value-key'),
+                            currentValue: $el.val()
+                        });
+                    });
+                }
+            };
+            this.log('Manual testing functions available: window.wicketGFTest.testUpdate() and window.wicketGFTest.listFields()');
+        }
     },
 
     /**
@@ -182,7 +227,7 @@ const WicketGFLiveUpdate = {
 
         // Use GF's native hooks if available, fallback to jQuery events
         if (typeof gform !== 'undefined' && gform.addAction) {
-            // GF 2.5+ native hooks
+            // GF 2.5+ native hooks - be more selective about when we process
             gform.addAction('gform/post_init', (formId) => {
                 this.log(`Form ${formId} initialized via gform/post_init`);
                 this.processForm(formId);
@@ -190,7 +235,10 @@ const WicketGFLiveUpdate = {
 
             gform.addAction('gform/post_render', (formId, currentPage) => {
                 this.log(`Form ${formId} rendered, page ${currentPage} via gform/post_render`);
-                this.processForm(formId);
+                // Only process if we haven't already processed this form
+                if (!this.processedForms.has(formId)) {
+                    this.processForm(formId);
+                }
             });
 
             gform.addAction('gform/page_loaded', (formId, currentPage) => {
@@ -203,7 +251,9 @@ const WicketGFLiveUpdate = {
 
             jQuery(document).on('gform_post_render', (event, formId, currentPage) => {
                 this.log(`Form ${formId} rendered, page ${currentPage} via gform_post_render`);
-                this.processForm(formId);
+                if (!this.processedForms.has(formId)) {
+                    this.processForm(formId);
+                }
             });
         }
 
@@ -237,7 +287,7 @@ const WicketGFLiveUpdate = {
     },
 
     /**
-     * Process a specific form for wicket fields
+     * Process a specific form
      */
     processForm(formId) {
         if (typeof jQuery === 'undefined') {
@@ -247,33 +297,69 @@ const WicketGFLiveUpdate = {
         const $form = jQuery(`#gform_${formId}`);
         const $wicketFields = $form.find('.wicket-gf-hidden-data-bind-target');
 
-        if ($wicketFields.length === 0) {
-            return;
+        this.log(`Processing form ${formId}, found ${$wicketFields.length} wicket fields`);
+
+        if ($wicketFields.length > 0) {
+            this.populateFields($wicketFields);
+            this.processedForms.add(formId);
         }
-
-        this.log(`Found ${$wicketFields.length} wicket fields in form ${formId}`);
-
-        // Populate fields with current data if available
-        this.populateFields($wicketFields);
     },
 
     /**
-     * Setup Wicket widget event listeners using simplified approach
+     * Setup Wicket widget event listeners
      */
     setupWicketEventListeners() {
-        // Simplified event interception - catch all wicket events
-        const originalDispatchEvent = window.dispatchEvent;
-        window.dispatchEvent = function(event) {
-            if (event.type && (event.type.includes('wicket') || event.type.includes('wwidget'))) {
-                WicketGFLiveUpdate.log('Event intercepted:', event.type);
+        // Listen for all Wicket widget events
+        const eventTypes = [
+            // Load events
+            'wwidget-component-common-loaded',
+            'wwidget-component-profile-ind-loaded',
+            'wwidget-component-profile-org-loaded',
+            'wwidget-component-additional-info-loaded',
+            'wwidget-component-prefs-person-loaded',
 
-                if (event.detail && (event.detail.dataFields || event.detail.attributes || event.detail.addresses)) {
-                    WicketGFLiveUpdate.handleWicketEvent(event);
+            // Save events (these are the missing ones!)
+            'wwidget-component-profile-ind-save-success',
+            'wwidget-component-profile-org-save-success',
+            'wwidget-component-additional-info-save-success',
+            'wwidget-component-prefs-person-save-success',
+
+            // Delete events
+            'wwidget-component-profile-ind-delete-success',
+            'wwidget-component-profile-org-delete-success',
+            'wwidget-component-additional-info-delete-success',
+            'wwidget-component-prefs-person-delete-success',
+
+            // Legacy/other event patterns
+            'wicket_current_person_data_updated',
+            'wicket_current_org_data_updated',
+            'wicket_org_selected'
+        ];
+
+        eventTypes.forEach(eventType => {
+            window.addEventListener(eventType, (event) => {
+                this.log(`Received Wicket event: ${eventType}`);
+                this.handleWicketEvent(event);
+            });
+        });
+
+        this.log('Wicket event listeners registered for:', eventTypes.join(', '));
+
+        // Add a catch-all listener for debugging to see what events are actually firing
+        if (this.enableLogging) {
+            document.addEventListener('wicket_current_person_data_updated', (event) => {
+                this.log('CATCH-ALL: Detected wicket_current_person_data_updated event', event.detail);
+            });
+
+            // Listen for any custom events to help debug
+            const originalDispatchEvent = document.dispatchEvent;
+            document.dispatchEvent = function(event) {
+                if (WicketGFLiveUpdate.enableLogging && event.type.includes('wicket')) {
+                    WicketGFLiveUpdate.log('Custom event detected:', event.type, event.detail);
                 }
-            }
-
-            return originalDispatchEvent.call(this, event);
-        };
+                return originalDispatchEvent.call(this, event);
+            };
+        }
     },
 
     /**
@@ -292,6 +378,10 @@ const WicketGFLiveUpdate = {
         const $allFields = jQuery('.wicket-gf-hidden-data-bind-target');
         this.log(`Found ${$allFields.length} total wicket fields to process`);
 
+        if ($allFields.length === 0) {
+            this.log(`No wicket fields found on page`);
+        }
+
         $allFields.each((index, element) => {
             const $field = jQuery(element);
 
@@ -300,6 +390,8 @@ const WicketGFLiveUpdate = {
             const isHiddenInput = $field.attr('type') === 'hidden';
             const isDisabled = $field.prop('disabled');
             const isConditionallyHidden = !isHiddenInput && $field.is(':hidden');
+
+            this.log(`Processing field ${$field.attr('id')} - type: ${$field.attr('type')}, hidden input: ${isHiddenInput}, disabled: ${isDisabled}, conditionally hidden: ${isConditionallyHidden}`);
 
             if (isDisabled || isConditionallyHidden) {
                 this.log(`Skipping field ${$field.attr('id')} - disabled: ${isDisabled}, conditionally hidden: ${isConditionallyHidden}`);
@@ -311,28 +403,41 @@ const WicketGFLiveUpdate = {
     },
 
     /**
-     * Update a single field from payload data
+     * Update field from payload data
      */
     updateFieldFromPayload($field, payload, eventType) {
-        const dataSource = $field.data('hidden-data-bind-data-source');
-        const schemaSlug = $field.data('hidden-data-bind-schema-slug');
-        const valueKey = $field.data('hidden-data-bind-value-key');
-        const fieldId = $field.attr('id');
-
-        // Skip fields without proper configuration
-        if (!dataSource || !schemaSlug || !valueKey) {
-            this.log(`Skipping field ${fieldId} - missing configuration (dataSource: ${dataSource}, schemaSlug: ${schemaSlug}, valueKey: ${valueKey})`);
+        if (!$field.length || !payload) {
             return;
         }
 
-        this.log(`Processing field ${fieldId} for ${dataSource}.${schemaSlug}.${valueKey}`);
+        const fieldId = $field.attr('id');
+        if (!fieldId) {
+            return;
+        }
 
-        const extractedValue = this.extractValue(payload, dataSource, schemaSlug, valueKey);
+        // Get field configuration from data attributes (using the correct hyphenated format)
+        const dataSource = $field.data('hidden-data-bind-data-source') || 'attributes';
+        const schemaSlug = $field.data('hidden-data-bind-schema-slug') || '';
+        const valueKey = $field.data('hidden-data-bind-value-key') || '';
 
-        if (typeof extractedValue !== 'undefined') {
-            this.updateFieldValue($field, extractedValue, eventType);
+        this.log(`Updating field ${fieldId} with source: ${dataSource}, schema: ${schemaSlug}, key: ${valueKey}`);
+        this.log(`Field data attributes:`, {
+            'data-hidden-data-bind-data-source': $field.data('hidden-data-bind-data-source'),
+            'data-hidden-data-bind-schema-slug': $field.data('hidden-data-bind-schema-slug'),
+            'data-hidden-data-bind-value-key': $field.data('hidden-data-bind-value-key'),
+            'data-hidden-data-bind-enabled': $field.data('hidden-data-bind-enabled')
+        });
+        this.log(`Event payload:`, payload);
+
+        // Extract value from payload
+        const value = this.extractValue(payload, dataSource, schemaSlug, valueKey);
+
+        this.log(`Extracted value for field ${fieldId}:`, value);
+
+        if (value !== null && value !== undefined) {
+            this.updateFieldValue($field, value, eventType);
         } else {
-            this.log(`No value extracted for field ${fieldId}`);
+            this.log(`No value found for field ${fieldId} - dataSource: ${dataSource}, schemaSlug: ${schemaSlug}, valueKey: ${valueKey}`);
         }
     },
 
@@ -340,29 +445,44 @@ const WicketGFLiveUpdate = {
      * Simplified value extraction with clear separation by data source
      */
     extractValue(payload, dataSource, schemaSlug, valueKey) {
+        this.log(`extractValue called with:`, { dataSource, schemaSlug, valueKey });
+
         // Add null/undefined checks for all parameters
         if (!payload || !dataSource || !schemaSlug || !valueKey) {
+            this.log(`extractValue: Missing required parameters`, { payload: !!payload, dataSource, schemaSlug, valueKey });
             return undefined;
         }
 
+        let result;
         switch (dataSource) {
             case 'person_addinfo':
-                return this.extractFromDataFields(payload, schemaSlug, valueKey);
+                this.log(`extractValue: Using person_addinfo path`);
+                result = this.extractFromDataFields(payload, schemaSlug, valueKey);
+                break;
 
             case 'person_profile':
+                this.log(`extractValue: Using person_profile path`);
                 if (schemaSlug === 'profile_attributes') {
-                    return this.extractFromAttributes(payload, valueKey);
-                }
-                if (schemaSlug.startsWith('profile_')) {
-                    return this.extractFromRelationship(payload, schemaSlug, valueKey);
+                    this.log(`extractValue: Using attributes extraction`);
+                    result = this.extractFromAttributes(payload, valueKey);
+                } else if (schemaSlug.startsWith('profile_')) {
+                    this.log(`extractValue: Using relationship extraction`);
+                    result = this.extractFromRelationship(payload, schemaSlug, valueKey);
                 }
                 break;
 
             case 'organization':
-                return this.extractFromOrganization(payload, schemaSlug, valueKey);
+                this.log(`extractValue: Using organization path`);
+                result = this.extractFromOrganization(payload, schemaSlug, valueKey);
+                break;
+
+            default:
+                this.log(`extractValue: Unknown dataSource: ${dataSource}`);
+                break;
         }
 
-        return undefined;
+        this.log(`extractValue result:`, result);
+        return result;
     },
 
     /**
@@ -537,33 +657,27 @@ const WicketGFLiveUpdate = {
     },
 
     /**
-     * Update field value using GF-compatible method
+     * Update field value and trigger minimal conditional logic
      */
     updateFieldValue($field, value, source) {
-        const currentValue = $field.val();
-        const newValue = String(value || '');
+        const oldValue = $field.val();
+        const fieldId = $field.attr('id');
 
-        if (currentValue !== newValue) {
-            $field.val(newValue);
+        // Update the field value
+        $field.val(value);
+        this.log(`Updated field ${fieldId} from "${oldValue}" to "${value}" (source: ${source})`);
 
-            // Trigger GF's input change event if available
-            if (typeof gform !== 'undefined' && gform.doAction) {
-                gform.doAction('gform_input_change', $field[0], newValue, currentValue);
-            } else {
-                $field.trigger('change');
-            }
-
-            this.log(`Field ${$field.attr('id')} updated to '${newValue}' from ${source}`);
-
-            // Trigger form-wide updates after field update
-            this.triggerFormUpdate($field);
+        // Only trigger conditional logic if the value actually changed
+        if (oldValue !== value) {
+            this.triggerMinimalFormUpdate($field);
         }
     },
 
     /**
-     * Trigger Gravity Forms conditional logic and validation after field updates
+     * Trigger minimal form update using GF native patterns
+     * This is much less aggressive than the previous implementation
      */
-    triggerFormUpdate($field) {
+    triggerMinimalFormUpdate($field) {
         const $form = $field.closest('form');
 
         if ($form.length === 0) {
@@ -576,62 +690,129 @@ const WicketGFLiveUpdate = {
             return;
         }
 
-        this.log(`Triggering form update for form ${formId} after field ${$field.attr('id')} update`);
+        this.log(`Triggering minimal form update for form ${formId} after field ${$field.attr('id')} update`);
 
-        // Use GF's native API to trigger conditional logic
+        // Use GF's native API to trigger a single, targeted conditional logic evaluation
         if (typeof gform !== 'undefined') {
-            // Trigger conditional logic evaluation immediately
-            if (gform.doAction) {
-                gform.doAction('gform_post_conditional_logic', formId, [], true);
-            }
-
-            // Also trigger input change for the specific field
+            // Use the standard GF input change event - this is what GF expects
             if (gform.doAction) {
                 gform.doAction('gform_input_change', $field[0], $field.val(), '');
             }
 
-            // Trigger form validation and re-render
+            // Trigger a simple field change event
             setTimeout(() => {
-                $form.trigger('change');
                 $field.trigger('change');
 
-                // Apply conditional logic rules with force flag
+                // Apply conditional logic rules only once, without force flag to prevent conflicts
                 if (window.gf_apply_rules) {
-                    window.gf_apply_rules(formId, [], true);
+                    window.gf_apply_rules(formId, [], false); // false = don't force, let GF decide
                 }
 
-                // Also try the newer conditional logic function if available
-                if (window.gf_conditional_logic) {
-                    window.gf_conditional_logic();
-                }
-
-                // Force re-evaluation of all conditional fields
-                $form.find('[data-conditional-logic]').each(function() {
-                    const $conditionalField = jQuery(this);
-                    $conditionalField.trigger('gform_conditional_logic');
-                });
-
-                this.log(`Completed conditional logic triggers for form ${formId}`);
-            }, 50);
+                this.log(`Completed minimal conditional logic triggers for form ${formId}`);
+            }, 10); // Very short delay
         } else {
-            // Fallback for older GF versions
+            // Fallback for older GF versions - just trigger change
             setTimeout(() => {
-                $form.trigger('change');
                 $field.trigger('change');
-
-                // Try legacy conditional logic function
-                if (window.gf_apply_rules) {
-                    window.gf_apply_rules(formId, [], true);
-                }
-
-                // Also try the newer conditional logic function if available
-                if (window.gf_conditional_logic) {
-                    window.gf_conditional_logic();
-                }
-            }, 50);
+            }, 10);
         }
 
-        this.log(`Triggered form update for form ${formId}`);
+        this.log(`Triggered minimal form update for form ${formId}`);
+    },
+
+    /**
+     * Setup protection against aggressive conditional logic
+     */
+    setupConditionalLogicProtection() {
+        // Use GF's native hooks to protect fields from being incorrectly hidden
+        if (typeof gform !== 'undefined' && gform.addFilter) {
+            // Hook into the conditional logic evaluation to prevent conflicts
+            gform.addFilter('gform_abort_conditional_logic_do_action', (abort, action, targetId, useAnimation, defaultValues, isInit, formId, callback) => {
+                // Allow Data Bind fields to be hidden/shown normally
+                if (targetId && targetId.includes('wicket_data_hidden')) {
+                    return abort;
+                }
+
+                // Protect custom Wicket fields from being incorrectly hidden by Data Bind field updates
+                if (action === 'hide' && targetId) {
+                    const $targetField = jQuery(targetId);
+
+                    // Check if this is a Wicket field that should not be hidden
+                    if ($targetField.length > 0) {
+                        const fieldType = $targetField.find('input, select, textarea').first().attr('class') || '';
+
+                        // Protect specific Wicket field types from being incorrectly hidden
+                        if (fieldType.includes('gf_org_search_select_input') ||
+                            fieldType.includes('wicket-widget-') ||
+                            $targetField.hasClass('wicket-field-protected')) {
+
+                            this.log(`Protecting field ${targetId} from being hidden by conditional logic`);
+                            return true; // Abort the hide action
+                        }
+                    }
+                }
+
+                return abort;
+            });
+
+            // Hook into post conditional logic to ensure protected fields stay visible
+            gform.addAction('gform_post_conditional_logic_field_action', (formId, action, targetId, defaultValues, isInit) => {
+                if (action === 'hide' && targetId) {
+                    const $targetField = jQuery(targetId);
+
+                    if ($targetField.length > 0) {
+                        const fieldType = $targetField.find('input, select, textarea').first().attr('class') || '';
+
+                        // Re-show fields that were incorrectly hidden
+                        if (fieldType.includes('gf_org_search_select_input') ||
+                            fieldType.includes('wicket-widget-') ||
+                            $targetField.hasClass('wicket-field-protected')) {
+
+                            setTimeout(() => {
+                                if ($targetField.hasClass('gform_hidden') && !$targetField.attr('data-conditionally-hidden')) {
+                                    $targetField.removeClass('gform_hidden').show();
+                                    this.log(`Restored visibility for protected field ${targetId}`);
+                                }
+                            }, 20);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fallback protection using periodic checks
+        this.setupPeriodicVisibilityCheck();
+    },
+
+    /**
+     * Setup periodic visibility check as fallback protection
+     */
+    setupPeriodicVisibilityCheck() {
+        // Check every few seconds for incorrectly hidden fields
+        setInterval(() => {
+            if (typeof jQuery !== 'undefined') {
+                // Check for Org Search fields that are incorrectly hidden
+                jQuery('.gf_org_search_select_input').each((index, element) => {
+                    const $input = jQuery(element);
+                    const $fieldContainer = $input.closest('.gfield');
+
+                    if ($fieldContainer.hasClass('gform_hidden') && !$fieldContainer.attr('data-conditionally-hidden')) {
+                        $fieldContainer.removeClass('gform_hidden').show();
+                        this.log(`Periodic check: Restored Org Search field visibility`);
+                    }
+                });
+
+                // Check for other protected Wicket fields
+                jQuery('.wicket-field-protected').each((index, element) => {
+                    const $field = jQuery(element);
+
+                    if ($field.hasClass('gform_hidden') && !$field.attr('data-conditionally-hidden')) {
+                        $field.removeClass('gform_hidden').show();
+                        this.log(`Periodic check: Restored protected field visibility`);
+                    }
+                });
+            }
+        }, 3000); // Check every 3 seconds
     },
 
     /**
@@ -648,7 +829,7 @@ const WicketGFLiveUpdate = {
     },
 
     /**
-     * Populate specific fields
+     * Populate specific fields with bulk conditional logic update
      */
     populateFields($fields) {
         if (window.wicketCurrentPersonData) {
@@ -671,22 +852,20 @@ const WicketGFLiveUpdate = {
                 }
             });
 
-            // Trigger form updates for all affected forms
+            // Trigger a single, gentle form update for all affected forms
             setTimeout(() => {
                 formsToUpdate.forEach(formId => {
-                    this.triggerBulkFormUpdate(formId);
-                    // Also force comprehensive conditional logic evaluation
-                    this.forceConditionalLogicEvaluation(formId);
+                    this.triggerGentleBulkFormUpdate(formId);
                 });
-            }, 100);
+            }, 50);
         }
     },
 
     /**
-     * Trigger form update after bulk field population
+     * Trigger a gentle bulk form update - much less aggressive than before
      */
-    triggerBulkFormUpdate(formId) {
-        this.log(`Triggering bulk form update for form ${formId}`);
+    triggerGentleBulkFormUpdate(formId) {
+        this.log(`Triggering gentle bulk form update for form ${formId}`);
 
         const $form = jQuery(`#gform_${formId}`);
 
@@ -694,129 +873,34 @@ const WicketGFLiveUpdate = {
             return;
         }
 
-        // Use GF's native API for bulk updates
+        // Use GF's native API for a single, gentle update
         if (typeof gform !== 'undefined') {
-            // Trigger conditional logic for entire form
+            // Trigger conditional logic for entire form once
             if (gform.doAction) {
-                gform.doAction('gform_post_conditional_logic', formId, [], true);
-                gform.doAction('gform_post_render', formId, 1);
+                gform.doAction('gform_post_conditional_logic', formId, [], false); // false = don't force
             }
 
-            // Apply conditional logic rules
-            if (window.gf_apply_rules) {
-                window.gf_apply_rules(formId, [], true);
-            }
-
-            // Additional comprehensive conditional logic triggers
+            // Apply conditional logic rules gently
             setTimeout(() => {
-                // Trigger change events on all fields to ensure conditional logic
-                $form.find('input, select, textarea').trigger('change');
-
-                // Force conditional logic re-evaluation
-                if (window.gf_conditional_logic) {
-                    window.gf_conditional_logic();
-                }
-
-                // Re-evaluate all conditional fields
-                $form.find('[data-conditional-logic]').each(function() {
-                    const $conditionalField = jQuery(this);
-                    $conditionalField.trigger('gform_conditional_logic');
-
-                    // Also trigger custom event for manual re-evaluation
-                    $conditionalField.trigger('gform_field_conditional_logic');
-                });
-
-                // Try alternative conditional logic functions
-                if (window.gformInitConditionalLogic) {
-                    window.gformInitConditionalLogic();
-                }
-
-                this.log(`Completed comprehensive conditional logic for form ${formId}`);
-            }, 150);
-        } else {
-            // Fallback for older GF versions
-            $form.trigger('change');
-
-            if (window.gf_apply_rules) {
-                window.gf_apply_rules(formId, [], true);
-            }
-
-            // Additional fallback triggers
-            setTimeout(() => {
-                $form.find('input, select, textarea').trigger('change');
-
-                if (window.gf_conditional_logic) {
-                    window.gf_conditional_logic();
-                }
-            }, 100);
-        }
-
-        this.log(`Completed bulk form update for form ${formId}`);
-    },
-
-    /**
-     * Force conditional logic evaluation using all available GF methods
-     */
-    forceConditionalLogicEvaluation(formId) {
-        this.log(`Force evaluating conditional logic for form ${formId}`);
-
-        const $form = jQuery(`#gform_${formId}`);
-
-        if ($form.length === 0) {
-            return;
-        }
-
-        // Method 1: Use gf_apply_rules (most reliable)
-        if (window.gf_apply_rules) {
-            window.gf_apply_rules(formId, [], true);
-            this.log(`Applied gf_apply_rules for form ${formId}`);
-        }
-
-        // Method 2: Trigger specific field events that drive conditional logic
-        $form.find('input[type="hidden"].wicket-gf-hidden-data-bind-target').each(function() {
-            const $hiddenField = jQuery(this);
-            $hiddenField.trigger('change');
-            $hiddenField.trigger('input');
-            $hiddenField.trigger('keyup');
-        });
-
-        // Method 3: Force evaluation of conditional fields
-        $form.find('[data-conditional-logic]').each(function() {
-            const $conditionalField = jQuery(this);
-
-            // Get field ID and trigger specific GF conditional logic
-            const fieldId = $conditionalField.attr('id');
-            if (fieldId) {
-                const fieldNumber = fieldId.replace('field_' + formId + '_', '');
-
-                // Call GF's conditional logic for this specific field
                 if (window.gf_apply_rules) {
-                    window.gf_apply_rules(formId, [fieldNumber], true);
+                    window.gf_apply_rules(formId, [], false); // false = don't force
                 }
-            }
-        });
 
-        // Method 4: Global conditional logic functions
-        setTimeout(() => {
-            if (window.gf_conditional_logic) {
-                window.gf_conditional_logic();
-            }
+                this.log(`Completed gentle conditional logic for form ${formId}`);
+            }, 50);
+        } else {
+            // Fallback for older GF versions - minimal approach
+            setTimeout(() => {
+                if (window.gf_apply_rules) {
+                    window.gf_apply_rules(formId, [], false);
+                }
+            }, 50);
+        }
 
-            if (window.gformInitConditionalLogic) {
-                window.gformInitConditionalLogic();
-            }
-
-            // Try to find and call form-specific conditional logic
-            if (window['gform_conditional_logic_' + formId]) {
-                window['gform_conditional_logic_' + formId]();
-            }
-
-            this.log(`Completed forced conditional logic evaluation for form ${formId}`);
-        }, 100);
+        this.log(`Completed gentle bulk form update for form ${formId}`);
     }
 };
 
-// Initialize when DOM is ready
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';

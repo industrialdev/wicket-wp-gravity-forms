@@ -30,6 +30,18 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         ];
     }
 
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.wwidget_org_profile_uuid = '';
+            }",
+            $this->type,
+            $this->get_form_editor_field_title()
+        );
+    }
+
     public static function custom_settings($position, $form_id)
     {
         //create settings on position 25 (right after Field Label)
@@ -70,13 +82,13 @@ window.WicketGF.ProfileOrg = window.WicketGF.ProfileOrg || {
         // Allow field to be added
         gform.addFilter('gform_form_editor_can_field_be_added', function(canAdd, fieldType) {
             if (fieldType === 'wicket_widget_profile_org') {
-                return true;
-            }
-            return canAdd;
-        });
-    },
+            return true;
+        }
+        return canAdd;
+            });
+        },
 
-    loadFieldSettings: function(field) {
+        loadFieldSettings: function(field) {
         const orgUuidInput = document.getElementById('wwidget_org_profile_uuid_input');
         if (orgUuidInput) {
             orgUuidInput.value = field.wwidget_org_profile_uuid || '';

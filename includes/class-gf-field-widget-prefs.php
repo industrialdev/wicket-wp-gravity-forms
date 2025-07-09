@@ -30,6 +30,18 @@ class GFWicketFieldWidgetPrefs extends GF_Field
         ];
     }
 
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.wwidget_prefs_hide_comm = false;
+            }",
+            $this->type,
+            $this->get_form_editor_field_title()
+        );
+    }
+
     public static function custom_settings($position, $form_id)
     {
         //create settings on position 25 (right after Field Label)
@@ -52,7 +64,7 @@ window.WicketGF.Prefs = window.WicketGF.Prefs || {
         gform.addAction('gform_load_field_settings', function(field) {
             if (field.type === 'wicket_widget_prefs') {
                 self.loadFieldSettings(field);
-            }
+        }
         });
 
         // Handle field properties
@@ -66,13 +78,13 @@ window.WicketGF.Prefs = window.WicketGF.Prefs || {
         // Allow field to be added
         gform.addFilter('gform_form_editor_can_field_be_added', function(canAdd, fieldType) {
             if (fieldType === 'wicket_widget_prefs') {
-                return true;
-            }
-            return canAdd;
-        });
-    },
+            return true;
+        }
+        return canAdd;
+            });
+        },
 
-    loadFieldSettings: function(field) {
+        loadFieldSettings: function(field) {
         const hideCommCheckbox = document.getElementById('wwidget_prefs_hide_comm');
         if (hideCommCheckbox) {
             hideCommCheckbox.checked = field.wwidget_prefs_hide_comm || false;
