@@ -48,29 +48,59 @@ class Wicket_Gf_Admin
     // Display Settings on Options Page
     public static function options_page()
     { ?>
-<div>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            prefix: 'wgf-',
-            important: true,
+<div class="wrap">
+    <style>
+        .wicket-gf-mapping-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: center;
         }
-    </script>
+        .wicket-gf-mapping-row input[type="text"] {
+            margin-right: 8px;
+            flex: 1;
+            max-width: 200px;
+        }
+        .wicket-gf-mapping-row button {
+            margin-right: 4px;
+            min-width: 30px;
+        }
+        .wicket_pagination_settings,
+        .wicket_orgss_auto_advance {
+            margin-bottom: 15px;
+        }
+        .wicket_pagination_settings label,
+        .wicket_orgss_auto_advance label {
+            margin-left: 8px;
+        }
+        #validation-message {
+            color: #d63638;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        #mapping-ui h3 {
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        #mapping-ui p {
+            margin-bottom: 10px;
+        }
+        #mapping-ui form {
+            margin-top: 20px;
+        }
+    </style>
 
-    <h2 class="wgf-text-2xl wgf-font-bold wgf-mb-4">
-        <?php _e('Wicket Gravity Forms', 'wicket-gf'); ?>
-    </h2>
+    <h1><?php _e('Wicket Gravity Forms', 'wicket-gf'); ?></h1>
 
-    <h3 class="wgf-text-xl wgf-font-semibold wgf-mb-2">
-        <?php _e('Form Slug ID Mapping', 'wicket-gf'); ?>
-    </h3>
+    <h2><?php _e('Form Slug ID Mapping', 'wicket-gf'); ?></h2>
 
-    <p class="wgf-mb-2">
+    <p>
         <?php _e('The mappings below tell the rest of the site which form slugs correspond to which Gravity
                         Form IDs, allowing you to import and update forms easily by simply changing the ID here.', 'wicket-gf'); ?>
+    </p>
 
-    <p class="wgf-mb-2">
+    <p>
         <?php _e('This makes it easy to reference forms by their slug in coding using the <code>wicket_gf_get_form_id_by_slug()</code> function.', 'wicket-gf'); ?>
+    </p>
 
         <?php
         $current_mappings_json = get_option('wicket_gf_slug_mapping');
@@ -96,7 +126,7 @@ class Wicket_Gf_Admin
         ?>
 
     <div id="mapping-ui">
-        <form id="wicket-gf-settings-form" method="post" action="options.php" class="wgf-mt-4">
+        <form id="wicket-gf-settings-form" method="post" action="options.php">
             <?php settings_fields('wicket_gf_options_group'); ?>
 
             <div id="mapping-rows"></div>
@@ -130,15 +160,25 @@ class Wicket_Gf_Admin
 
                         createRow: function(slug, id) {
                             const row = document.createElement('div');
-                            row.className = 'wicket-gf-mapping-row wgf-flex wgf-mb-1';
+                            row.className = 'wicket-gf-mapping-row';
+
+                            // Generate unique IDs for accessibility
+                            const slugId = 'wicket_gf_slug_' + Math.random().toString(36).substr(2, 9);
+                            const formIdId = 'wicket_gf_form_id_' + Math.random().toString(36).substr(2, 9);
 
                             row.innerHTML = `
-                                        <input class="wicket-gf-mapping-row-key wgf-w-50 wgf-mr-2" type="text"
-                                               value="${slug}" placeholder="<?php _e('Slug', 'wicket-gf'); ?>" />
-                                        <input class="wicket-gf-mapping-row-val wgf-w-50 wgf-mr-2" type="text"
-                                               value="${id}" placeholder="<?php _e('Form ID', 'wicket-gf'); ?>" />
-                                        <button type="button" class="button wgf-mr-1 add-row-btn">+</button>
-                                        <button type="button" class="button warning remove-row-btn"
+                                        <input class="wicket-gf-mapping-row-key" type="text"
+                                               id="${slugId}" name="wicket_gf_mapping_slug[]" data-slug="${slug}"
+                                               value="${slug}" placeholder="<?php _e('Slug', 'wicket-gf'); ?>"
+                                               aria-label="<?php _e('Form Slug', 'wicket-gf'); ?>" />
+                                        <input class="wicket-gf-mapping-row-val" type="text"
+                                               id="${formIdId}" name="wicket_gf_mapping_form_id[]" data-slug="${slug}"
+                                               value="${id}" placeholder="<?php _e('Form ID', 'wicket-gf'); ?>"
+                                               aria-label="<?php _e('Gravity Form ID', 'wicket-gf'); ?>" />
+                                        <button type="button" class="button add-row-btn"
+                                                aria-label="<?php _e('Add new mapping row', 'wicket-gf'); ?>">+</button>
+                                        <button type="button" class="button remove-row-btn" data-slug="${slug}"
+                                                aria-label="<?php _e('Remove this mapping row', 'wicket-gf'); ?>"
                                                 ${Object.keys(this.mappings).length <= 1 ? 'disabled' : ''}>-</button>
                                     `;
 
@@ -151,11 +191,13 @@ class Wicket_Gf_Admin
                             const self = this;
 
                             slugInput.addEventListener('input', function(e) {
-                                self.updateSlug(e, slug);
+                                const currentSlug = e.target.dataset.slug || slug;
+                                self.updateSlug(e, currentSlug);
                             });
 
                             idInput.addEventListener('input', function(e) {
-                                self.updateId(e, slug);
+                                const currentSlug = e.target.dataset.slug || slug;
+                                self.updateId(e, currentSlug);
                             });
 
                             addBtn.addEventListener('click', function() {
@@ -163,7 +205,8 @@ class Wicket_Gf_Admin
                             });
 
                             removeBtn.addEventListener('click', function() {
-                                self.removeRow(slug);
+                                const currentSlug = this.dataset.slug || slug;
+                                self.removeRow(currentSlug);
                             });
 
                             return row;
@@ -176,27 +219,38 @@ class Wicket_Gf_Admin
                             newSlug = newSlug.replace(/\s+/g, '-').toLowerCase();
                             event.target.value = newSlug; // Update input field with sanitized value
 
-                            if (newSlug === oldSlug || newSlug === '') return; // No change or empty slug
+                            // Update mappings immediately for live editing
+                            if (newSlug !== oldSlug && oldSlug in this.mappings) {
+                                // Check if the new slug already exists (and it's not empty)
+                                if (newSlug !== '' && this.mappings.hasOwnProperty(newSlug)) {
+                                    alert(
+                                        '<?php _e('Slug already exists. Please choose a unique slug.', 'wicket-gf'); ?>'
+                                    );
+                                    event.target.value = oldSlug; // Revert input field
+                                    return;
+                                }
 
-                            // Check if the new slug already exists
-                            if (this.mappings.hasOwnProperty(newSlug)) {
-                                alert(
-                                    '<?php _e('Slug already exists. Please choose a unique slug.', 'wicket-gf'); ?>'
-                                );
-                                event.target.value = oldSlug; // Revert input field
-                                return;
+                                const newMappings = {
+                                    ...this.mappings
+                                };
+                                const id = newMappings[oldSlug];
+                                delete newMappings[oldSlug];
+                                newMappings[newSlug] = id;
+                                this.mappings = newMappings;
+
+                                // Update the data-slug attribute for all elements in this row
+                                const row = event.target.closest('.wicket-gf-mapping-row');
+                                if (row) {
+                                    const inputs = row.querySelectorAll('input, button');
+                                    inputs.forEach(element => {
+                                        element.dataset.slug = newSlug;
+                                    });
+                                }
+
+                                this.updateHiddenFormField();
+                                this.validateMappings();
+                                // Don't re-render, just update the data
                             }
-
-                            const newMappings = {
-                                ...this.mappings
-                            };
-                            const id = newMappings[oldSlug];
-                            delete newMappings[oldSlug];
-                            newMappings[newSlug] = id;
-                            this.mappings = newMappings;
-                            this.updateHiddenFormField();
-                            this.validateMappings();
-                            this.renderRows(); // Re-render to update event handlers
                         },
 
                         updateId: function(event, slug) {
@@ -287,11 +341,11 @@ class Wicket_Gf_Admin
                 });
             </script>
 
-            <p id="validation-message" class="wgf-text-red-600 wgf-mb-2" style="display: none;">
+            <p id="validation-message" style="display: none;">
                 <?php _e('Please ensure no rows have empty fields.', 'wicket-gf'); ?>
             </p>
 
-            <h3 class="wgf-text-xl wgf-font-semibold wgf-mb-2">
+            <h3>
                 <?php _e('General Gravity Forms Settings', 'wicket-gf'); ?>
             </h3>
 
