@@ -421,7 +421,7 @@ class Wicket_Gf_Main
         }
 
         if (class_exists('GFDataBindHiddenField')) {
-            GFDataBindHiddenField::render_wicket_live_update_settings($position, $form_id);
+            GFDataBindHiddenField::custom_settings($position, $form_id);
         }
 
         if (class_exists('GFWicketFieldWidgetProfileOrg')) {
