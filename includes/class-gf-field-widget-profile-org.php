@@ -26,17 +26,17 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
             'error_message_setting',
             'css_class_setting',
             'conditional_logic_field_setting',
-            'wicket_widget_org_profile_setting',
+            'wicket_widget_profile_org_setting',
         ];
     }
 
     public static function custom_settings($position, $form_id)
     {
         //create settings on position 25 (right after Field Label)
-        if ($position == 25) { ?>
-<?php ob_start(); ?>
+        if ($position == 25) {
+            ob_start(); ?>
 
-<li class="wicket_widget_org_profile_setting field_setting" style="display:none;">
+<li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
     <div>
         <label>Org UUID:</label>
         <input id="wwidget_org_profile_uuid_input" onkeyup="SetFieldProperty('wwidget_org_profile_uuid', this.value)" type="text"
@@ -46,58 +46,59 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     </div>
 </li>
 
-<?php echo ob_get_clean(); ?>
+<script type='text/javascript'>
+window.WicketGF = window.WicketGF || {};
+window.WicketGF.ProfileOrg = window.WicketGF.ProfileOrg || {
+    init: function() {
+        const self = this;
+
+        // Handle field settings load
+        gform.addAction('gform_load_field_settings', function(field) {
+            if (field.type === 'wicket_widget_profile_org') {
+                self.loadFieldSettings(field);
+            }
+        });
+
+        // Handle field properties
+        gform.addAction('gform_editor_js_set_field_properties', function(field) {
+            if (field.type === 'wicket_widget_profile_org') {
+                field.label = 'Wicket Widget: Org Profile';
+                field.wwidget_org_profile_uuid = field.wwidget_org_profile_uuid || '';
+            }
+        });
+
+        // Allow field to be added
+        gform.addFilter('gform_form_editor_can_field_be_added', function(canAdd, fieldType) {
+            if (fieldType === 'wicket_widget_profile_org') {
+                return true;
+            }
+            return canAdd;
+        });
+    },
+
+    loadFieldSettings: function(field) {
+        const orgUuidInput = document.getElementById('wwidget_org_profile_uuid_input');
+        if (orgUuidInput) {
+            orgUuidInput.value = field.wwidget_org_profile_uuid || '';
+        }
+    }
+};
+
+// Initialize if not already done
+if (!window.WicketGF.ProfileOrg.initialized) {
+    window.WicketGF.ProfileOrg.init();
+    window.WicketGF.ProfileOrg.initialized = true;
+}
+</script>
 
 <?php
+            echo ob_get_clean();
         }
     }
 
     public static function editor_script()
     {
-        ?>
-        <script type='text/javascript'>
-    gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
-        if ( fieldType === 'wicket_widget_profile_org' ) {
-            return true;
-        }
-        return canAdd;
-    });
-
-    gform.addFilter( 'gform_form_editor_field_settings', function( settings, field ) {
-        if ( field.type === 'wicket_widget_profile_org' ) {
-            settings.push( 'wicket_widget_org_profile_setting' );
-        }
-        return settings;
-    });
-
-    gform.addAction( 'gform_editor_js_set_field_properties', function( field ) {
-        if ( field.type === 'wicket_widget_profile_org' ) {
-            field.label = 'Wicket Widget: Org Profile';
-            field.wwidget_org_profile_uuid = '';
-        }
-    });
-
-    window.WicketGF = window.WicketGF || {};
-    window.WicketGF.OrgProfile = {
-        init: function() {
-            const self = this;
-            gform.addAction( 'gform_load_field_settings', function( field ) {
-                if ( field.type === 'wicket_widget_profile_org' ) {
-                    window.WicketGF.OrgProfile.loadFieldSettings( field );
-                }
-            });
-        },
-        loadFieldSettings: function(field) {
-            const orgUuidInput = document.getElementById('wwidget_org_profile_uuid_input');
-            if (orgUuidInput) {
-                orgUuidInput.value = field.wwidget_org_profile_uuid || '';
-            }
-        }
-    }
-    window.WicketGF.OrgProfile.init();
-</script>
-
-<?php
+        // JavaScript now embedded in custom_settings method for better integration
     }
 
     // Render the field
