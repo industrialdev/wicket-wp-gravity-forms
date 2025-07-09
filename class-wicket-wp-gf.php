@@ -15,7 +15,7 @@
  * Text Domain:       wicket-gf
  * Requires at least: 6.6
  * Requires PHP: 8.1
- * Requires Plugins: wicket-wp-base-plugin, gravity-forms
+ * Requires Plugins: wicket-wp-base-plugin, gravityforms
  * Requires Plugins: gravityforms
  */
 if (!defined('ABSPATH')) {
@@ -75,7 +75,9 @@ class Wicket_Gf_Main
     /**
      * Constructor. Intentionally left empty and public.
      */
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
     /**
      * Access this plugin’s working instance.
@@ -238,15 +240,15 @@ class Wicket_Gf_Main
         if (get_option('wicket_gf_pagination_sidebar_layout')) {
             ob_start(); ?>
 
-            <script>
-                window.addEventListener('load', function() {
-                    if (document.querySelector('body') !== null) {
+<script>
+	window.addEventListener('load', function() {
+		if (document.querySelector('body') !== null) {
 
-                        // Check and see if the page is using the steps version of pagination,
-                        // and if so re-format it
-                        let paginationStepsCheck = document.querySelector('.gf_page_steps');
-                        if (paginationStepsCheck != null) {
-                            document.head.insertAdjacentHTML("beforeend", `
+			// Check and see if the page is using the steps version of pagination,
+			// and if so re-format it
+			let paginationStepsCheck = document.querySelector('.gf_page_steps');
+			if (paginationStepsCheck != null) {
+				document.head.insertAdjacentHTML("beforeend", `
                         <style>
                             @media(min-width:768px) {
                                 form[id^=gform_] {
@@ -336,12 +338,12 @@ class Wicket_Gf_Main
                                 border-color: var(--border-interactive, #cfd3d9);
                             }
                         </style>`);
-                        }
-                    }
-                });
-            </script>
+			}
+		}
+	});
+</script>
 
-        <?php $output = ob_get_clean();
+<?php $output = ob_get_clean();
 
             // Dynamically create and add this HTML form field on render
             $props = [
@@ -795,3 +797,4 @@ add_action(
 
 // General Helpers
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
+?>
