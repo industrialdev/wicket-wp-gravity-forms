@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-if (!class_exists('GF_Field')) {
-    return;
-}
-
 class GFDataBindHiddenField extends GF_Field
 {
     public string $type = 'wicket_data_hidden';

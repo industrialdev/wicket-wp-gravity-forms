@@ -1,8 +1,6 @@
 <?php
 class GFWicketFieldWidgetProfileOrg extends GF_Field
 {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
-
     public $type = 'wicket_widget_profile_org';
 
     public function get_form_editor_field_title()
@@ -38,7 +36,7 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         if ($position == 25) { ?>
 <?php ob_start(); ?>
 
-<li class="wicket_widget_org_profile_setting_setting field_setting" style="display:none;">
+<li class="wicket_widget_org_profile_setting field_setting" style="display:none;">
     <div>
         <label>Org UUID:</label>
         <input id="wwidget_org_profile_uuid_input" onkeyup="SetFieldProperty('wwidget_org_profile_uuid', this.value)" type="text"
@@ -57,7 +55,7 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     public static function editor_script()
     {
         ?>
-<script>
+        <script type='text/javascript'>
     gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
         if ( fieldType === 'wicket_widget_profile_org' ) {
             return true;
@@ -85,16 +83,18 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
             const self = this;
             gform.addAction( 'gform_load_field_settings', function( field ) {
                 if ( field.type === 'wicket_widget_profile_org' ) {
-                    self.loadFieldSettings( field );
+                    window.WicketGF.OrgProfile.loadFieldSettings( field );
                 }
             });
         },
         loadFieldSettings: function(field) {
-            document.getElementById('wwidget_org_profile_uuid_input').value = field.wwidget_org_profile_uuid || '';
+            const orgUuidInput = document.getElementById('wwidget_org_profile_uuid_input');
+            if (orgUuidInput) {
+                orgUuidInput.value = field.wwidget_org_profile_uuid || '';
+            }
         }
     }
     window.WicketGF.OrgProfile.init();
-});
 </script>
 
 <?php

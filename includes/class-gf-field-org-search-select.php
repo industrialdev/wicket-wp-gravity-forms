@@ -1,9 +1,6 @@
 <?php
-
 class GFWicketFieldOrgSearchSelect extends GF_Field
 {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
-
     public $type = 'wicket_org_search_select';
 
     public static function custom_settings($position, $form_id)
@@ -12,7 +9,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         if ($position == 25) { ?>
 <?php ob_start(); ?>
 
-<li class="wicket_orgss_setting_setting field_setting" style="display:none;">
+<li class="wicket_orgss_setting field_setting" style="display:none;">
     <label>Search Mode</label>
     <select name="orgss_search_mode" id="orgss_search_mode_select" onchange="window.WicketGF.OrgSearch.updateSearchMode(this.value)">
         <option value="org" selected>Organizations</option>
@@ -21,7 +18,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     <div id="orgss-org-settings" style="padding: 1em 0;">
         <label style="display: block;">Organization Type</label>
-        <input onkeyup="SetFieldProperty('orgss_search_org_type', this.value)" 
+        <input onkeyup="SetFieldProperty('orgss_search_org_type', this.value)"
             type="text" name="orgss_search_org_type" id="orgss_search_org_type_input" />
         <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If
                 you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em>
@@ -35,7 +32,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 of multiple relationships (in slug form) that will be created at once.</em></p>
 
         <label style="margin-top: 1em;display: block;">Relationship Mode</label>
-        <input onkeyup="SetFieldProperty('orgss_relationship_mode', this.value)" 
+        <input onkeyup="SetFieldProperty('orgss_relationship_mode', this.value)"
             type="text" name="orgss_relationship_mode" id="orgss_relationship_mode_input" />
 
         <label style="margin-top: 1em;display: block;">Org Type When User Creates New Org</label>
@@ -46,19 +43,19 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 themselves from the frontend.</em></p>
 
         <label style="margin-top: 1em;display: block;">Org name singular</label>
-        <input onkeyup="SetFieldProperty('orgss_org_term_singular', this.value)" 
+        <input onkeyup="SetFieldProperty('orgss_org_term_singular', this.value)"
             type="text" name="orgss_org_term_singular" id="orgss_org_term_singular_input" />
         <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organization" or "Chapter". Can
                 be left blank to use default.</em></p>
 
         <label style="margin-top: 1em;display: block;">Org name plural</label>
-        <input onkeyup="SetFieldProperty('orgss_org_term_plural', this.value)" 
+        <input onkeyup="SetFieldProperty('orgss_org_term_plural', this.value)"
             type="text" name="orgss_org_term_plural" id="orgss_org_term_plural_input" />
         <p style="margin-top: 2px;"><em>How the org will be shown on the frontend, e.g. "Organizations" or "Chapters".
                 Can be left blank to use default.</em></p>
 
         <label style="margin-top: 1em;display: block;">No results found message</label>
-        <input onkeyup="SetFieldProperty('orgss_no_results_message', this.value)" 
+        <input onkeyup="SetFieldProperty('orgss_no_results_message', this.value)"
             type="text" name="orgss_no_results_message" id="orgss_no_results_message_input" />
         <p style="margin-top: 2px;"><em>Message that will display if nothing is found by their search. Can be left blank
                 to use default.</em></p>
@@ -214,54 +211,171 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         ?>
 <script>
     window.WicketGF = window.WicketGF || {};
-    window.WicketGF.OrgSearch = {
+    window.WicketGF.OrgSearch = window.WicketGF.OrgSearch || {};
+
+    // Initialize the OrgSearch object with the functions that can be called from HTML
+    window.WicketGF.OrgSearch.updateSearchMode = function(mode) {
+        document.getElementById('orgss-org-settings').style.display = mode === 'org' ? 'block' : 'none';
+        document.getElementById('orgss-groups-settings').style.display = mode === 'groups' ? 'block' : 'none';
+    };
+
+    window.WicketGF.OrgSearch.toggleActiveMembershipAlert = function(show) {
+        document.getElementById('orgss_active_membership_alert_wrapper').style.display = show ? 'block' : 'none';
+    };
+
+    // Now extend the object with the rest of the functionality
+    Object.assign(window.WicketGF.OrgSearch, {
         init: function() {
-            jQuery(document).on('gform_load_field_settings', (event, field, form) => {
-                if(field.type !== 'wicket_org_search_select') {
-                    return;
+            gform.addAction( 'gform_load_field_settings', function( field ) {
+                if ( field.type === 'wicket_org_search_select' ) {
+                    window.WicketGF.OrgSearch.loadFieldSettings( field );
                 }
-                this.loadFieldSettings(field);
             });
         },
         loadFieldSettings: function(field) {
-            document.getElementById('orgss_search_mode_select').value = field.orgss_search_mode || 'org';
-            document.getElementById('orgss_search_org_type_input').value = field.orgss_search_org_type || '';
-            document.getElementById('orgss_relationship_type_upon_org_creation_input').value = field.orgss_relationship_type_upon_org_creation || 'employee';
-            document.getElementById('orgss_relationship_mode_input').value = field.orgss_relationship_mode || 'person_to_organization';
-            document.getElementById('orgss_new_org_type_override_input').value = field.orgss_new_org_type_override || '';
-            document.getElementById('orgss_org_term_singular_input').value = field.orgss_org_term_singular || 'Organization';
-            document.getElementById('orgss_org_term_plural_input').value = field.orgss_org_term_plural || 'Organizations';
-            document.getElementById('orgss_no_results_message_input').value = field.orgss_no_results_message || '';
-            document.getElementById('orgss_checkbox_id_new_org_input').value = field.orgss_checkbox_id_new_org || '';
-            document.getElementById('orgss_disable_org_creation').checked = field.orgss_disable_org_creation || false;
-            document.getElementById('orgss_hide_remove_buttons').checked = field.orgss_hide_remove_buttons || false;
-            document.getElementById('orgss_hide_select_buttons').checked = field.orgss_hide_select_buttons || false;
-            document.getElementById('orgss_display_removal_alert_message').checked = field.orgss_display_removal_alert_message || false;
-            document.getElementById('orgss_disable_selecting_orgs_with_active_membership').checked = field.orgss_disable_selecting_orgs_with_active_membership || false;
-            document.getElementById('orgss_active_membership_alert_title_input').value = field.orgss_active_membership_alert_title || '';
-            document.getElementById('orgss_active_membership_alert_body_input').value = field.orgss_active_membership_alert_body || '';
-            document.getElementById('orgss_active_membership_alert_button_1_text_input').value = field.orgss_active_membership_alert_button_1_text || '';
-            document.getElementById('orgss_active_membership_alert_button_1_url_input').value = field.orgss_active_membership_alert_button_1_url || '';
-            document.getElementById('orgss_active_membership_alert_button_1_style_select').value = field.orgss_active_membership_alert_button_1_style || 'primary';
-            document.getElementById('orgss_active_membership_alert_button_1_new_tab').checked = field.orgss_active_membership_alert_button_1_new_tab || false;
-            document.getElementById('orgss_active_membership_alert_button_2_text_input').value = field.orgss_active_membership_alert_button_2_text || '';
-            document.getElementById('orgss_active_membership_alert_button_2_url_input').value = field.orgss_active_membership_alert_button_2_url || '';
-            document.getElementById('orgss_active_membership_alert_button_2_style_select').value = field.orgss_active_membership_alert_button_2_style || 'secondary';
-            document.getElementById('orgss_active_membership_alert_button_2_new_tab').checked = field.orgss_active_membership_alert_button_2_new_tab || false;
-            document.getElementById('orgss_grant_roster_man_on_purchase').checked = field.orgss_grant_roster_man_on_purchase || false;
-            document.getElementById('orgss_grant_org_editor_on_select').checked = field.orgss_grant_org_editor_on_select || false;
-            document.getElementById('orgss_grant_org_editor_on_purchase').checked = field.orgss_grant_org_editor_on_purchase || false;
-            this.updateSearchMode(field.orgss_search_mode || 'org');
-            this.toggleActiveMembershipAlert(field.orgss_disable_selecting_orgs_with_active_membership || false);
-        },
-        updateSearchMode: function(mode) {
-            document.getElementById('orgss-org-settings').style.display = mode === 'org' ? 'block' : 'none';
-            document.getElementById('orgss-groups-settings').style.display = mode === 'groups' ? 'block' : 'none';
-        },
-        toggleActiveMembershipAlert: function(show) {
-            document.getElementById('orgss_active_membership_alert_wrapper').style.display = show ? 'block' : 'none';
+            const searchModeSelect = document.getElementById('orgss_search_mode_select');
+            if (searchModeSelect) {
+                searchModeSelect.value = field.orgss_search_mode || 'org';
+            }
+
+            const searchOrgTypeInput = document.getElementById('orgss_search_org_type_input');
+            if (searchOrgTypeInput) {
+                searchOrgTypeInput.value = field.orgss_search_org_type || '';
+            }
+
+            const relationshipTypeInput = document.getElementById('orgss_relationship_type_upon_org_creation_input');
+            if (relationshipTypeInput) {
+                relationshipTypeInput.value = field.orgss_relationship_type_upon_org_creation || 'employee';
+            }
+
+            const relationshipModeInput = document.getElementById('orgss_relationship_mode_input');
+            if (relationshipModeInput) {
+                relationshipModeInput.value = field.orgss_relationship_mode || 'person_to_organization';
+            }
+
+            const newOrgTypeInput = document.getElementById('orgss_new_org_type_override_input');
+            if (newOrgTypeInput) {
+                newOrgTypeInput.value = field.orgss_new_org_type_override || '';
+            }
+
+            const orgTermSingularInput = document.getElementById('orgss_org_term_singular_input');
+            if (orgTermSingularInput) {
+                orgTermSingularInput.value = field.orgss_org_term_singular || 'Organization';
+            }
+
+            const orgTermPluralInput = document.getElementById('orgss_org_term_plural_input');
+            if (orgTermPluralInput) {
+                orgTermPluralInput.value = field.orgss_org_term_plural || 'Organizations';
+            }
+
+            const noResultsMessageInput = document.getElementById('orgss_no_results_message_input');
+            if (noResultsMessageInput) {
+                noResultsMessageInput.value = field.orgss_no_results_message || '';
+            }
+
+            const checkboxIdNewOrgInput = document.getElementById('orgss_checkbox_id_new_org_input');
+            if (checkboxIdNewOrgInput) {
+                checkboxIdNewOrgInput.value = field.orgss_checkbox_id_new_org || '';
+            }
+
+            const disableOrgCreationCheckbox = document.getElementById('orgss_disable_org_creation');
+            if (disableOrgCreationCheckbox) {
+                disableOrgCreationCheckbox.checked = field.orgss_disable_org_creation || false;
+            }
+
+            const hideRemoveButtonsCheckbox = document.getElementById('orgss_hide_remove_buttons');
+            if (hideRemoveButtonsCheckbox) {
+                hideRemoveButtonsCheckbox.checked = field.orgss_hide_remove_buttons || false;
+            }
+
+            const hideSelectButtonsCheckbox = document.getElementById('orgss_hide_select_buttons');
+            if (hideSelectButtonsCheckbox) {
+                hideSelectButtonsCheckbox.checked = field.orgss_hide_select_buttons || false;
+            }
+
+            const displayRemovalAlertCheckbox = document.getElementById('orgss_display_removal_alert_message');
+            if (displayRemovalAlertCheckbox) {
+                displayRemovalAlertCheckbox.checked = field.orgss_display_removal_alert_message || false;
+            }
+
+            // Additional elements with null checking
+            const activeMembershipCheckbox = document.getElementById('orgss_disable_selecting_orgs_with_active_membership');
+            if (activeMembershipCheckbox) {
+                activeMembershipCheckbox.checked = field.orgss_disable_selecting_orgs_with_active_membership || false;
+            }
+
+            const activeMembershipTitleInput = document.getElementById('orgss_active_membership_alert_title_input');
+            if (activeMembershipTitleInput) {
+                activeMembershipTitleInput.value = field.orgss_active_membership_alert_title || '';
+            }
+
+            const activeMembershipBodyInput = document.getElementById('orgss_active_membership_alert_body_input');
+            if (activeMembershipBodyInput) {
+                activeMembershipBodyInput.value = field.orgss_active_membership_alert_body || '';
+            }
+
+            const activeMembershipButton1TextInput = document.getElementById('orgss_active_membership_alert_button_1_text_input');
+            if (activeMembershipButton1TextInput) {
+                activeMembershipButton1TextInput.value = field.orgss_active_membership_alert_button_1_text || '';
+            }
+
+            const activeMembershipButton1UrlInput = document.getElementById('orgss_active_membership_alert_button_1_url_input');
+            if (activeMembershipButton1UrlInput) {
+                activeMembershipButton1UrlInput.value = field.orgss_active_membership_alert_button_1_url || '';
+            }
+
+            const activeMembershipButton1StyleSelect = document.getElementById('orgss_active_membership_alert_button_1_style_select');
+            if (activeMembershipButton1StyleSelect) {
+                activeMembershipButton1StyleSelect.value = field.orgss_active_membership_alert_button_1_style || 'primary';
+            }
+
+            const activeMembershipButton1NewTabCheckbox = document.getElementById('orgss_active_membership_alert_button_1_new_tab');
+            if (activeMembershipButton1NewTabCheckbox) {
+                activeMembershipButton1NewTabCheckbox.checked = field.orgss_active_membership_alert_button_1_new_tab || false;
+            }
+
+            const activeMembershipButton2TextInput = document.getElementById('orgss_active_membership_alert_button_2_text_input');
+            if (activeMembershipButton2TextInput) {
+                activeMembershipButton2TextInput.value = field.orgss_active_membership_alert_button_2_text || '';
+            }
+
+            const activeMembershipButton2UrlInput = document.getElementById('orgss_active_membership_alert_button_2_url_input');
+            if (activeMembershipButton2UrlInput) {
+                activeMembershipButton2UrlInput.value = field.orgss_active_membership_alert_button_2_url || '';
+            }
+
+            const activeMembershipButton2StyleSelect = document.getElementById('orgss_active_membership_alert_button_2_style_select');
+            if (activeMembershipButton2StyleSelect) {
+                activeMembershipButton2StyleSelect.value = field.orgss_active_membership_alert_button_2_style || 'secondary';
+            }
+
+            const activeMembershipButton2NewTabCheckbox = document.getElementById('orgss_active_membership_alert_button_2_new_tab');
+            if (activeMembershipButton2NewTabCheckbox) {
+                activeMembershipButton2NewTabCheckbox.checked = field.orgss_active_membership_alert_button_2_new_tab || false;
+            }
+
+            const grantRosterManCheckbox = document.getElementById('orgss_grant_roster_man_on_purchase');
+            if (grantRosterManCheckbox) {
+                grantRosterManCheckbox.checked = field.orgss_grant_roster_man_on_purchase || false;
+            }
+
+            const grantOrgEditorOnSelectCheckbox = document.getElementById('orgss_grant_org_editor_on_select');
+            if (grantOrgEditorOnSelectCheckbox) {
+                grantOrgEditorOnSelectCheckbox.checked = field.orgss_grant_org_editor_on_select || false;
+            }
+
+            const grantOrgEditorOnPurchaseCheckbox = document.getElementById('orgss_grant_org_editor_on_purchase');
+            if (grantOrgEditorOnPurchaseCheckbox) {
+                grantOrgEditorOnPurchaseCheckbox.checked = field.orgss_grant_org_editor_on_purchase || false;
+            }
+
+            // Call the update functions
+            window.WicketGF.OrgSearch.updateSearchMode(field.orgss_search_mode || 'org');
+            window.WicketGF.OrgSearch.toggleActiveMembershipAlert(field.orgss_disable_selecting_orgs_with_active_membership || false);
         }
-    }
+    });
+
+    // Initialize the field settings handler
     window.WicketGF.OrgSearch.init();
 </script>
 

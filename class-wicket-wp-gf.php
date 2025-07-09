@@ -75,7 +75,9 @@ class Wicket_Gf_Main
     /**
      * Constructor. Intentionally left empty and public.
      */
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
     /**
      * Access this plugin’s working instance.
@@ -143,7 +145,7 @@ class Wicket_Gf_Main
                     ],
                     [
                         'class'     => 'button',
-                        'data-type' => 'wicket_widget_additional_info',
+                        'data-type' => 'wicket_widget_ai',
                         'value'     => __('Add Info W.', 'wicket-gf'),
                     ],
                     [
@@ -218,8 +220,7 @@ class Wicket_Gf_Main
 
         add_action('admin_footer', [$this, 'output_wicket_event_debugger_script']);
 
-        // Add a filter to modify the form object before it is rendered
-        add_filter('gform_admin_pre_render', [$this, 'migrate_legacy_field_data']);
+
     }
 
     /**
@@ -314,7 +315,7 @@ class Wicket_Gf_Main
 
         // Log all registered field types for verification
         $all_fields = GF_Fields::get_all();
-        $field_types = array_map(function($field) { return $field->type; }, $all_fields);
+        $field_types = array_map(function ($field) { return $field->type; }, $all_fields);
         $logger->debug('All field types after registration: ' . print_r($field_types, true), ['source' => 'wicket-gf']);
     }
 
@@ -507,17 +508,18 @@ class Wicket_Gf_Main
         if ($position == 25) {
             ob_start(); ?>
 
-            <li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
-                <style>
-                    .wicket_global_custom_settings_hide_label {
-                        display: block !important;
-                    }
-                </style>
-                <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);" onkeypress="SetFieldProperty('hide_label', this.checked);">
-                <label for="hide_label" class="inline">Hide Label</label>
-            </li>
+<li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
+	<style>
+		.wicket_global_custom_settings_hide_label {
+			display: block !important;
+		}
+	</style>
+	<input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);"
+		onkeypress="SetFieldProperty('hide_label', this.checked);">
+	<label for="hide_label" class="inline">Hide Label</label>
+</li>
 
-        <?php echo ob_get_clean();
+<?php echo ob_get_clean();
         }
     }
 
@@ -618,41 +620,41 @@ class Wicket_Gf_Main
         // Check if WP_ENV is defined and is 'development' or 'staging'
         if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
             ?>
-            <script type="text/javascript" id="wicket-gf-event-debugger">
-                document.addEventListener("DOMContentLoaded", function() {
-                    function wicketLogWidgetEvent(eventName, e) {
-                        //console.log('Full Event Detail:', e.detail);
+<script type="text/javascript" id="wicket-gf-event-debugger">
+	document.addEventListener("DOMContentLoaded", function() {
+		function wicketLogWidgetEvent(eventName, e) {
+			//console.log('Full Event Detail:', e.detail);
 
-                        if (e.detail) {
-                            if (e.detail.dataFields) {
-                                //console.log('Data Fields:', e.detail.dataFields);
-                            } else {
-                                //console.log('Event Detail:', e.detail);
-                            }
+			if (e.detail) {
+				if (e.detail.dataFields) {
+					//console.log('Data Fields:', e.detail.dataFields);
+				} else {
+					//console.log('Event Detail:', e.detail);
+				}
 
-                            if (e.detail.resource) {
-                                //console.log('Resource:', e.detail.resource);
-                            }
-                            if (e.detail.validation) {
-                                //console.log('Validation:', e.detail.validation);
-                            }
-                        }
-                    }
+				if (e.detail.resource) {
+					//console.log('Resource:', e.detail.resource);
+				}
+				if (e.detail.validation) {
+					//console.log('Validation:', e.detail.validation);
+				}
+			}
+		}
 
-                    function initializeWidgetListeners() {
-                        // Listen for widget loaded event
-                        window.addEventListener('wwidget-component-common-loaded', function(e) {
-                            wicketLogWidgetEvent('LOADED', e);
-                        });
-                    }
+		function initializeWidgetListeners() {
+			// Listen for widget loaded event
+			window.addEventListener('wwidget-component-common-loaded', function(e) {
+				wicketLogWidgetEvent('LOADED', e);
+			});
+		}
 
-                    // Check for Wicket and initialize
-                    if (typeof window.Wicket !== 'undefined') {
-                        window.Wicket.ready(initializeWidgetListeners);
-                    }
-                });
-            </script>
-            <?php
+		// Check for Wicket and initialize
+		if (typeof window.Wicket !== 'undefined') {
+			window.Wicket.ready(initializeWidgetListeners);
+		}
+	});
+</script>
+<?php
         }
     }
 
@@ -668,194 +670,9 @@ class Wicket_Gf_Main
         wp_send_json_success();
     }
 
-    /**
-     * Migrate legacy field data to the new format.
-     *
-     * @param array $form
-     * @return array
-     */
-    public function migrate_legacy_field_data($form)
-    {
-        $logger = wc_get_logger();
-        foreach ($form['fields'] as &$field) {
-            // Log the field type and its inputs property before any changes
-            $logger->debug('Migrating field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id, 'inputs_before' => print_r($field->inputs, true)]);
 
-            // Ensure 'inputs' property is always an array for all custom fields
-            if (!isset($field->inputs) || !is_array($field->inputs)) {
-                $field->inputs = [];
-                $logger->debug('Initialized inputs for field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id]);
-            }
 
-            // Ensure 'choices' property is always an array for all custom fields
-            if (!isset($field->choices) || !is_array($field->choices)) {
-                $field->choices = [];
-                $logger->debug('Initialized choices for field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id]);
-            }
 
-            // Ensure 'conditionalLogic' property is always an object with a 'rules' array
-            if (!isset($field->conditionalLogic) || !is_object($field->conditionalLogic)) {
-                $field->conditionalLogic = new stdClass();
-                $field->conditionalLogic->rules = [];
-                $logger->debug('Initialized conditionalLogic for field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id]);
-            } elseif (!isset($field->conditionalLogic->rules) || !is_array($field->conditionalLogic->rules)) {
-                $field->conditionalLogic->rules = [];
-                $logger->debug('Initialized conditionalLogic->rules for field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id]);
-            }
-
-            // Initialize properties for wicket_widget_additional_info
-            if ($field->type == 'wicket_widget_additional_info') {
-                if (!isset($field->wwidget_ai_type)) {
-                    $field->wwidget_ai_type = 'people';
-                    $logger->debug('Initialized wwidget_ai_type for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_org_uuid)) {
-                    $field->wwidget_ai_org_uuid = '';
-                    $logger->debug('Initialized wwidget_ai_org_uuid for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_schemas) || !is_array($field->wwidget_ai_schemas)) {
-                    $field->wwidget_ai_schemas = [[]];
-                    $logger->debug('Initialized wwidget_ai_schemas for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_use_slugs)) {
-                    $field->wwidget_ai_use_slugs = false;
-                    $logger->debug('Initialized wwidget_ai_use_slugs for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                // Crucial: Initialize the setting properties themselves
-                if (!isset($field->wwidget_ai_type_setting)) {
-                    $field->wwidget_ai_type_setting = '';
-                    $logger->debug('Initialized wwidget_ai_type_setting for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_org_uuid_setting)) {
-                    $field->wwidget_ai_org_uuid_setting = '';
-                    $logger->debug('Initialized wwidget_ai_org_uuid_setting for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_schemas_setting)) {
-                    $field->wwidget_ai_schemas_setting = '';
-                    $logger->debug('Initialized wwidget_ai_schemas_setting for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-                if (!isset($field->wwidget_ai_use_slugs_setting)) {
-                    $field->wwidget_ai_use_slugs_setting = '';
-                    $logger->debug('Initialized wwidget_ai_use_slugs_setting for field: ' . $field->id, ['source' => 'wicket-gf-migration']);
-                }
-            }
-            // Initialize properties for wicket_org_search_select
-            if ($field->type == 'wicket_org_search_select') {
-                if (!isset($field->orgss_search_mode)) {
-                    $field->orgss_search_mode = 'org';
-                }
-                if (!isset($field->orgss_search_org_type)) {
-                    $field->orgss_search_org_type = '';
-                }
-                if (!isset($field->orgss_relationship_type_upon_org_creation)) {
-                    $field->orgss_relationship_type_upon_org_creation = 'employee';
-                }
-                if (!isset($field->orgss_relationship_mode)) {
-                    $field->orgss_relationship_mode = 'person_to_organization';
-                }
-                if (!isset($field->orgss_new_org_type_override)) {
-                    $field->orgss_new_org_type_override = '';
-                }
-                if (!isset($field->orgss_org_term_singular)) {
-                    $field->orgss_org_term_singular = 'Organization';
-                }
-                if (!isset($field->orgss_org_term_plural)) {
-                    $field->orgss_org_term_plural = 'Organizations';
-                }
-                if (!isset($field->orgss_no_results_message)) {
-                    $field->orgss_no_results_message = '';
-                }
-                if (!isset($field->orgss_checkbox_id_new_org)) {
-                    $field->orgss_checkbox_id_new_org = '';
-                }
-                if (!isset($field->orgss_disable_org_creation)) {
-                    $field->orgss_disable_org_creation = false;
-                }
-                if (!isset($field->orgss_disable_selecting_orgs_with_active_membership)) {
-                    $field->orgss_disable_selecting_orgs_with_active_membership = false;
-                }
-                if (!isset($field->orgss_active_membership_alert_title)) {
-                    $field->orgss_active_membership_alert_title = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_body)) {
-                    $field->orgss_active_membership_alert_body = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_1_text)) {
-                    $field->orgss_active_membership_alert_button_1_text = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_1_url)) {
-                    $field->orgss_active_membership_alert_button_1_url = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_1_style)) {
-                    $field->orgss_active_membership_alert_button_1_style = 'primary';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_1_new_tab)) {
-                    $field->orgss_active_membership_alert_button_1_new_tab = false;
-                }
-                if (!isset($field->orgss_active_membership_alert_button_2_text)) {
-                    $field->orgss_active_membership_alert_button_2_text = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_2_url)) {
-                    $field->orgss_active_membership_alert_button_2_url = '';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_2_style)) {
-                    $field->orgss_active_membership_alert_button_2_style = 'secondary';
-                }
-                if (!isset($field->orgss_active_membership_alert_button_2_new_tab)) {
-                    $field->orgss_active_membership_alert_button_2_new_tab = false;
-                }
-                if (!isset($field->orgss_grant_roster_man_on_purchase)) {
-                    $field->orgss_grant_roster_man_on_purchase = false;
-                }
-                if (!isset($field->orgss_grant_org_editor_on_select)) {
-                    $field->orgss_grant_org_editor_on_select = false;
-                }
-                if (!isset($field->orgss_grant_org_editor_on_purchase)) {
-                    $field->orgss_grant_org_editor_on_purchase = false;
-                }
-                if (!isset($field->orgss_hide_remove_buttons)) {
-                    $field->orgss_hide_remove_buttons = false;
-                }
-                if (!isset($field->orgss_hide_select_buttons)) {
-                    $field->orgss_hide_select_buttons = false;
-                }
-                if (!isset($field->orgss_display_removal_alert_message)) {
-                    $field->orgss_display_removal_alert_message = false;
-                }
-                // Crucial: Initialize the setting property itself
-                if (!isset($field->wicket_orgss_setting)) {
-                    $field->wicket_orgss_setting = '';
-                }
-            }
-            // For wicket_widget_profile_org
-            if ($field->type == 'wicket_widget_profile_org') {
-                if (!isset($field->wwidget_org_profile_uuid)) {
-                    $field->wwidget_org_profile_uuid = '';
-                }
-                // Crucial: Initialize the setting property itself
-                if (!isset($field->wicket_widget_org_profile_setting)) {
-                    $field->wicket_widget_org_profile_setting = '';
-                }
-            }
-            // For wicket_widget_prefs
-            if ($field->type == 'wicket_widget_prefs') {
-                if (!isset($field->wwidget_prefs_hide_comm)) {
-                    $field->wwidget_prefs_hide_comm = false;
-                }
-                // Crucial: Initialize the setting property itself
-                if (!isset($field->wicket_widget_person_prefs_setting)) {
-                    $field->wicket_widget_person_prefs_setting = '';
-                }
-            }
-            // Log the field type and its inputs property after changes
-            $logger->debug('Migrated field: ' . $field->type, ['source' => 'wicket-gf-migration', 'field_id' => $field->id, 'inputs_after' => print_r($field->inputs, true)]);
-            $logger->debug('Full field object after migration for field: ' . $field->id, ['source' => 'wicket-gf-migration', 'field_object' => print_r($field, true)]);
-        }
-
-        return $form;
-    }
-
-    
 }
 
 add_action(
@@ -866,3 +683,4 @@ add_action(
 
 // General Helpers
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
+?>

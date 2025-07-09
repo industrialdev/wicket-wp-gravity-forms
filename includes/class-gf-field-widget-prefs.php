@@ -1,8 +1,6 @@
 <?php
 class GFWicketFieldWidgetPrefs extends GF_Field
 {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
-
     public $type = 'wicket_widget_prefs';
 
     public function get_form_editor_field_title()
@@ -38,12 +36,13 @@ class GFWicketFieldWidgetPrefs extends GF_Field
         if ($position == 25) { ?>
 <?php ob_start(); ?>
 
-<li class="wicket_widget_person_prefs_setting_setting field_setting" style="display:none;margin-bottom: 10px;">
-    <input onchange="SetFieldProperty('wwidget_prefs_hide_comm', this.checked)" 
+<li class="wicket_widget_person_prefs_setting field_setting" style="display:none;margin-bottom: 10px;">
+    <input onchange="SetFieldProperty('wwidget_prefs_hide_comm', this.checked)"
         type="checkbox" id="wwidget_prefs_hide_comm" class="wwidget_prefs_hide_comm">
     <label for="wwidget_prefs_hide_comm" class="inline">Disable communication preferences?</label>
+</li>
 
-    <?php echo ob_get_clean(); ?>
+<?php echo ob_get_clean(); ?>
 
     <?php
         }
@@ -52,7 +51,8 @@ class GFWicketFieldWidgetPrefs extends GF_Field
     public static function editor_script()
     {
         ?>
-    gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
+        <script type='text/javascript'>
+        gform.addFilter( 'gform_form_editor_can_field_be_added', function( canAdd, fieldType ) {
         if ( fieldType === 'wicket_widget_prefs' ) {
             return true;
         }
@@ -79,16 +79,18 @@ class GFWicketFieldWidgetPrefs extends GF_Field
             const self = this;
             gform.addAction( 'gform_load_field_settings', function( field ) {
                 if ( field.type === 'wicket_widget_prefs' ) {
-                    self.loadFieldSettings( field );
+                    window.WicketGF.Prefs.loadFieldSettings( field );
                 }
             });
         },
         loadFieldSettings: function(field) {
-            document.getElementById('wwidget_prefs_hide_comm').checked = field.wwidget_prefs_hide_comm || false;
+            const hideCommCheckbox = document.getElementById('wwidget_prefs_hide_comm');
+            if (hideCommCheckbox) {
+                hideCommCheckbox.checked = field.wwidget_prefs_hide_comm || false;
+            }
         }
     }
     window.WicketGF.Prefs.init();
-});
 </script>
 
 <?php
@@ -153,19 +155,4 @@ class GFWicketFieldWidgetPrefs extends GF_Field
     {
         // Do nothing as the preferences widget doesn't need validation
     }
-
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
-
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
-
 }
-?>

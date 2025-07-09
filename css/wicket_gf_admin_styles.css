@@ -1,7 +1,10 @@
 /* Wicket Gravity Forms Admin Styles */
 
 /* Custom field settings panels */
-.wicket_widget_additional_info_setting,
+.ai_type_setting,
+.ai_org_uuid_setting,
+.ai_schemas_setting,
+.ai_use_slugs_setting,
 .wicket_widget_org_profile_setting,
 .wicket_widget_person_prefs_setting,
 .wicket_orgss_setting,
@@ -15,17 +18,14 @@
 }
 
 /* When field is selected, show relevant settings */
-.gform_editor .field_setting.wicket_widget_additional_info_setting.active,
+.gform_editor .field_setting.ai_type_setting.active,
+.gform_editor .field_setting.ai_org_uuid_setting.active,
+.gform_editor .field_setting.ai_schemas_setting.active,
+.gform_editor .field_setting.ai_use_slugs_setting.active,
 .gform_editor .field_setting.wicket_widget_org_profile_setting.active,
 .gform_editor .field_setting.wicket_widget_person_prefs_setting.active,
-.gform_editor .field_setting.wicket_orgss_setting.active,
-.gform_editor .field_setting.live_update_enable_setting.active,
-.gform_editor .field_setting.live_update_summary_setting.active,
-.gform_editor .field_setting.live_update_data_source_setting.active,
-.gform_editor .field_setting.live_update_organization_uuid_setting.active,
-.gform_editor .field_setting.live_update_schema_slug_setting.active,
-.gform_editor .field_setting.live_update_value_key_setting.active {
-    display: block !important;
+.gform_editor .field_setting.wicket_orgss_setting.active {
+    display: block;
 }
 
 /* Ensure our custom settings are properly styled */

@@ -1,8 +1,6 @@
 <?php
 class GFWicketFieldWidgetProfile extends GF_Field
 {
-    // Ref for example: https://awhitepixel.com/tutorial-create-an-advanced-custom-gravity-forms-field-type-and-how-to-handle-multiple-input-values/
-
     public $type = 'wicket_widget_profile_individual';
 
     public function get_form_editor_field_title()

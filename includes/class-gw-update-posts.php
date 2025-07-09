@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Gravity Wiz // Gravity Forms // Update Posts.
  *
