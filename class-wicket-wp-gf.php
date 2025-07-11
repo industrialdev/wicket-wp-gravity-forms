@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.60
+ * Version:           2.0.61
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -238,6 +238,7 @@ class Wicket_Gf_Main
         if (get_option('wicket_gf_pagination_sidebar_layout')) {
             ob_start(); ?>
 
+<div class="wicket-gf-dynamic-hidden-html">
 <script>
 	window.addEventListener('load', function() {
 		if (document.querySelector('body') !== null) {
@@ -340,6 +341,7 @@ class Wicket_Gf_Main
 		}
 	});
 </script>
+</div>
 
 <?php $output = ob_get_clean();
 
@@ -365,11 +367,13 @@ class Wicket_Gf_Main
                         'label'   => 'Dynamic Styles - Do Not Edit',
                         'type'    => 'html',
                         'content' => '
+                            <div class="wicket-gf-dynamic-hidden-html">
                             <style>
                                 .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
                                     display: none;
                                 }
                             </style>
+                            </div>
                             ',
                     ];
                     $field = GF_Fields::create($props);
