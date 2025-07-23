@@ -369,6 +369,36 @@ class Wicket_Gf_Admin
     }
 
     /**
+     * Callback for gform_entry_detail_meta_boxes filter. Adds a custom meta box to the GF entry detail admin view.
+     *
+     * @param array $meta_boxes
+     * @param array $entry
+     * @param array $form
+     * @return array
+     */
+    public static function register_meta_box($meta_boxes, $entry, $form)
+    {
+        return $meta_boxes;
+    }
+
+    /**
+     * Render the custom meta box content for GF entry detail.
+     *
+     * @param array $entry
+     * @param array $form
+     */
+    public static function render_custom_meta_box($entry, $form)
+    {
+        echo '<div class="wicket-gf-admin__custom-meta inside gf_entry_wrap" style="margin-bottom:1em;">';
+        echo '<strong>Entry ID:</strong> ' . esc_html($entry['id']);
+        echo '</div>';
+        echo '<div class="inside gf_entry_wrap" style="max-height:400px; overflow:auto; background:#fafbfc; border:1px solid #e5e5e5; border-radius:4px; padding:10px; font-size:13px; font-family:Menlo,Monaco,Consolas,monospace;">';
+        echo '<strong>Full Entry Array (detailed):</strong>';
+        echo '<pre style="margin:0; white-space:pre;">' . var_dump($entry) . '</pre>';
+        echo '</div>';
+    }
+
+    /**
      * Sanitize the slug mapping input before saving.
      *
      * @param string $input Raw JSON string from the form.
