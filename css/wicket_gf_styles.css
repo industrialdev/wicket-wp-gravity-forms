@@ -41,3 +41,94 @@ div.form_saved_message_emailform form input[type="email"] {
     display: none !important;
   }
 }
+
+body:not(.wicket-theme-v2) .gform_wrapper {
+
+  /* Style for choice-based inputs (radio, checkbox, consent) */
+  .gfield--type-choice {
+    .ginput_container_radio ul.gfield_radio li.gchoice,
+    .ginput_container_checkbox ul.gfield_checkbox li.gchoice,
+    .ginput_container_consent {
+      display: flex;
+      align-items: flex-start; /* Aligns items to the top, better for long text */
+      margin-bottom: 0.5rem; /* Space between options */
+    }
+
+    .ginput_container_radio ul.gfield_radio li.gchoice input[type="radio"],
+    .ginput_container_checkbox ul.gfield_checkbox li.gchoice input[type="checkbox"],
+    .ginput_container_consent input[type="checkbox"] {
+      margin-top: 0.15em; /* Adjust vertical alignment of the input */
+      margin-right: 0.75rem; /* Space between input and label */
+    }
+
+    .ginput_container_radio ul.gfield_radio,
+    .ginput_container_checkbox ul.gfield_checkbox {
+      list-style: none;
+      padding-left: 0;
+      margin-left: 0;
+    }
+
+    /* Justify label text */
+    .ginput_container_radio ul.gfield_radio li.gchoice label,
+    .ginput_container_checkbox ul.gfield_checkbox li.gchoice label,
+    .ginput_container_consent .gfield_consent_label {
+      text-align: justify;
+    }
+  }
+
+  .gf_page_steps {
+    .gf_step:not(.gf_step_hidden) {
+      margin: 8px 32px 8px 0;
+      display: flex !important;
+
+      &:not(.gf_step_hidden) .gf_step_number {
+        background: var(--interactive, #cfd3d9) !important;
+        border-color: var(--interactive, #cfd3d9) !important;
+        color: var(--text-content-reversed, #607382) !important;
+        border-width: var(--border-interactive-md, 2px);
+        max-height: 40px;
+        max-width: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        align-content: center;
+      }
+
+      .gf_step_label {
+        align-content: center;
+      }
+
+      &.gf_step_completed {
+        .gf_step_number {
+          background: 0 0;
+          border: 2px solid #cfd3d9;
+          border-radius: 20px;
+          color: #585e6a;
+          font-size: 14px;
+          font-weight: 500;
+          height: 40px;
+          text-align: center;
+          width: 40px;
+
+          &:after {
+            background-color: transparent !important;
+          }
+        }
+      }
+    }
+  }
+
+  .component-org-search-select  {
+    .component-org-search-select__results {
+      background-color: transparent !important;
+
+      .component-org-search-select__search-container {
+        background-color: transparent !important;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+      }
+      .component-org-search-select__search-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+      }
+    }
+  }
+}
