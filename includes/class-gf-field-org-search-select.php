@@ -324,7 +324,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 field.orgss_active_membership_alert_button_2_new_tab = false;
             }",
             $this->type,
-            $this->get_form_editor_field_title()
+            esc_js($this->get_form_editor_field_title())
         );
     }
 

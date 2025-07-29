@@ -41,7 +41,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 field.wwidget_ai_use_slugs = false;
             }",
             $this->type,
-            $this->get_form_editor_field_title()
+            esc_js($this->get_form_editor_field_title())
         );
     }
 

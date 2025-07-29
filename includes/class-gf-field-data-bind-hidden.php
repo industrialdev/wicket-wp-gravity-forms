@@ -54,7 +54,7 @@ class GFDataBindHiddenField extends GF_Field
                 field.liveUpdateValueKey = '';
             }",
             $this->type,
-            $this->get_form_editor_field_title()
+            esc_js($this->get_form_editor_field_title())
         );
     }
 
