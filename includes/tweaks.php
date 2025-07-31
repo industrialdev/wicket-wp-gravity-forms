@@ -67,4 +67,4 @@ function wicket_maybe_fix_gf_add_field()
 }
 
 // Hook into init to check version and conditionally apply fix
-add_action('init', 'wicket_maybe_fix_gf_add_field');
+//add_action('init', 'wicket_maybe_fix_gf_add_field');
