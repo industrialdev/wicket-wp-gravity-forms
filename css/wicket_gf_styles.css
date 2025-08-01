@@ -157,7 +157,7 @@ body:not(.wicket-theme-v2) .gform_wrapper {
   }
 
   .gf_step_pending .gf_step_label {
-    color: var(--wp--preset--color--vivid-cyan-blue);
+
   }
 
   /* Completed State */
