@@ -66,5 +66,25 @@ function wicket_maybe_fix_gf_add_field()
     }
 }
 
-// Hook into init to check version and conditionally apply fix
-//add_action('init', 'wicket_maybe_fix_gf_add_field');
+/**
+ * Hides the label for Gravity Forms consent fields when the label placement is set to 'hidden_label'.
+ *
+ * This function injects a CSS style to hide the label of consent fields in Gravity Forms
+ * when the field's label placement is configured as 'hidden_label'. It hooks into the
+ * 'gform_field_content' filter to modify the field's HTML output.
+ *
+ * @param string $content The original field content HTML.
+ * @param GF_Field $field The Gravity Forms field object.
+ * @return string The modified field content with the label hidden if conditions are met.
+ */
+function wicket_gf_hide_consent_label($content, $field)
+{
+    if ($field->type === 'consent' && isset($field->labelPlacement) && $field->labelPlacement === 'hidden_label') {
+        $field_id = 'input_' . $field->formId . '_' . $field->id;
+        $css = '<style>.gform_wrapper.gravity-theme label[for=\'input_' . $field_id . '\'].gfield_label { display: none; }</style>';
+        $content = $css . $content;
+    }
+
+    return $content;
+}
+add_filter('gform_field_content', 'wicket_gf_hide_consent_label', 10, 2);

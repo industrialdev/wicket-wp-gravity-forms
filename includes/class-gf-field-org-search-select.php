@@ -347,13 +347,18 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     /**
      * Define the field input for the form editor and front end.
      */
-    public function get_field_input($form, $value = '', $entry = null)
-    {
+    public function get_field_input(
+        $form,
+        $value = '',
+        $entry = null
+    ) {
         if ($this->is_form_editor()) {
             return '<p>Org Search/Select widget will show here on the frontend</p>';
         }
 
         $id = (int) $this->id;
+        $field_id = isset($form['id']) ? $form['id'] . '_' . $id : $id;
+        $hide_label = isset($this->labelPlacement) && $this->labelPlacement === 'hidden_label';
 
         $search_mode = 'org';
         $search_org_type = '';
@@ -517,7 +522,11 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 esc_attr($value)
             );
 
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+            $label_css = $hide_label
+                ? sprintf("<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style>", $field_id)
+                : '';
+
+            return $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
