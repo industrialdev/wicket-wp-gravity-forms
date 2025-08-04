@@ -91,6 +91,7 @@ body:not(.wicket-theme-v2) .gform_wrapper {
       }
 
       .gf_step_label {
+        line-height: var(--wp--preset--font-size--medium, 22px);
         align-content: center;
       }
     }
@@ -117,6 +118,7 @@ body:not(.wicket-theme-v2) .gform_wrapper {
     align-items: flex-start;
     border-bottom: none;
     padding: 0 1rem 0 0;
+    min-width: 380px;
   }
 
   .gf_step {
