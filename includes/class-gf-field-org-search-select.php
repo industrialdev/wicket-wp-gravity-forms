@@ -526,7 +526,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 ? sprintf("<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style>", $field_id)
                 : '';
 
-            return $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+
+            return apply_filters('wicket_gf_org_search_select_html_output', $html_output, $this, $form);
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
