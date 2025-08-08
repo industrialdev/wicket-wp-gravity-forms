@@ -36,6 +36,7 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
             "function SetDefaultValues_%s(field) {
                 field.label = '%s';
                 field.wwidget_org_profile_uuid = '';
+                field.wwidget_org_profile_required_resources = '';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -58,6 +59,14 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     </div>
 </li>
 
+<li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
+    <div>
+        <label>Required Resources:</label>
+        <textarea id="wwidget_org_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_org_profile_required_resources', this.value)" type="text" ></textarea>
+        <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"] }</em></p>
+    </div>
+</li>
+
 <script type='text/javascript'>
 window.WicketGF = window.WicketGF || {};
 window.WicketGF.ProfileOrg = window.WicketGF.ProfileOrg || {
@@ -76,6 +85,7 @@ window.WicketGF.ProfileOrg = window.WicketGF.ProfileOrg || {
             if (field.type === 'wicket_widget_profile_org') {
                 field.label = 'Wicket Widget: Org Profile';
                 field.wwidget_org_profile_uuid = field.wwidget_org_profile_uuid || '';
+                field.wwidget_org_profile_required_resources = field.wwidget_org_profile_required_resources || '';
             }
         });
 
@@ -92,6 +102,11 @@ window.WicketGF.ProfileOrg = window.WicketGF.ProfileOrg || {
         const orgUuidInput = document.getElementById('wwidget_org_profile_uuid_input');
         if (orgUuidInput) {
             orgUuidInput.value = field.wwidget_org_profile_uuid || '';
+        }
+
+        const requiredResourcesInput = document.getElementById('wwidget_org_profile_required_resources_input');
+        if (requiredResourcesInput) {
+            requiredResourcesInput.value = field.wwidget_org_profile_required_resources || '';
         }
     }
 };
@@ -123,6 +138,7 @@ if (!window.WicketGF.ProfileOrg.initialized) {
         $id = (int) $this->id;
 
         $org_uuid = '';
+        $org_required_resources = '';
 
         foreach ($form['fields'] as $field) {
             if (gettype($field) == 'object') {
@@ -130,6 +146,9 @@ if (!window.WicketGF.ProfileOrg.initialized) {
                     if ($field->id == $id) {
                         if (isset($field->wwidget_org_profile_uuid)) {
                             $org_uuid = $field->wwidget_org_profile_uuid;
+                        }
+                        if (isset($field->wwidget_org_profile_required_resources)) {
+                            $org_required_resources = $field->wwidget_org_profile_required_resources;
                         }
                     }
                 }
@@ -151,6 +170,7 @@ if (!window.WicketGF.ProfileOrg.initialized) {
                 'classes'                    => [],
                 'org_info_data_field_name'   => 'input_' . $id,
                 'org_id'                     => $org_uuid,
+                'org_required_resources'     => $org_required_resources,
             ], false);
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
@@ -178,6 +198,15 @@ if (!window.WicketGF.ProfileOrg.initialized) {
         $value_array = json_decode($value, true);
         if (isset($value_array['incompleteRequiredFields'])) {
             if (count($value_array['incompleteRequiredFields']) > 0) {
+                $this->failed_validation = true;
+                if (!empty($this->errorMessage)) {
+                    $this->validation_message = $this->errorMessage;
+                }
+            }
+        }
+        
+        if (isset($value_array['incompleteRequiredResources'])) {
+            if (count($value_array['incompleteRequiredResources']) > 0) {
                 $this->failed_validation = true;
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
