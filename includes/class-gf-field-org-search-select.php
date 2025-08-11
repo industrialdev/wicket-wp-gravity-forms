@@ -480,7 +480,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         }
 
         if (component_exists('org-search-select')) {
-            $component_output = get_component('org-search-select', [
+            $params = [
                 'classes'                                       => [],
                 'search_mode'                                   => $search_mode,
                 'search_org_type'                               => $search_org_type,
@@ -512,7 +512,10 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'hide_select_buttons'                           => $orgss_hide_select_buttons,
                 'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
                 'form_id'                                       => $form['id'] ?? 0,
-            ], false);
+            ];
+
+            $component_output = '<script>console.log("GFWicketFieldOrgSearchSelect PARAMS: ", ' . json_encode($params) . ');</script>';
+            $component_output .= get_component('org-search-select', $params, false);
 
             $hidden_field = sprintf(
                 '<input type="hidden" name="input_%d" id="input_%s_%d" value="%s" class="gf_org_search_select_input" />',

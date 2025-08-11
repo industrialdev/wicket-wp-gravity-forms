@@ -204,7 +204,7 @@ if (!window.WicketGF.ProfileOrg.initialized) {
                 }
             }
         }
-        
+
         if (isset($value_array['incompleteRequiredResources'])) {
             if (count($value_array['incompleteRequiredResources']) > 0) {
                 $this->failed_validation = true;
