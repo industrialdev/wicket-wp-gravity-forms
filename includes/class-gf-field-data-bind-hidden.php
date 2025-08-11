@@ -111,6 +111,9 @@ class GFDataBindHiddenField extends GF_Field
                             <option value="organization">
                                 <?php esc_html_e('Organization', 'wicket-gf'); ?>
                             </option>
+                            <option value="organization_profile">
+                                <?php esc_html_e('Organization Profile', 'wicket-gf'); ?>
+                            </option>
                         </select>
                     </div>
 
@@ -212,6 +215,8 @@ class GFDataBindHiddenField extends GF_Field
                                 dataSourceDisplay = 'Person Profile (Current User)';
                             } else if (field.liveUpdateDataSource === 'organization') {
                                 dataSourceDisplay = 'Organization';
+                            } else if (field.liveUpdateDataSource === 'organization_profile') {
+                                dataSourceDisplay = 'Organization Profile';
                             }
 
                             $('#summaryDataSourceText').text(dataSourceDisplay);
@@ -232,7 +237,7 @@ class GFDataBindHiddenField extends GF_Field
                             var $valueKeyDropdown = $('#liveUpdateValueKey');
 
                             // Show/hide org UUID field
-                            if (dataSource === 'organization') {
+                            if (dataSource === 'organization' || dataSource === 'organization_profile') {
                                 $orgUuidWrapper.show();
                             } else {
                                 $orgUuidWrapper.hide();
@@ -244,7 +249,7 @@ class GFDataBindHiddenField extends GF_Field
 
                             // Load schemas if we have enough info
                             if (dataSource) {
-                                if (dataSource === 'organization') {
+                                if (dataSource === 'organization' || dataSource === 'organization_profile') {
                                     var orgUuid = $('#liveUpdateOrganizationUuid').val();
                                     if (orgUuid && orgUuid.length > 30) {
                                         this.fetchSchemas(dataSource, orgUuid);
@@ -379,7 +384,7 @@ class GFDataBindHiddenField extends GF_Field
 
                     $('#liveUpdateOrganizationUuid').off('input.wicket-databind').on('input.wicket-databind', function() {
                         var dataSource = $('#liveUpdateDataSource').val();
-                        if (dataSource === 'organization') {
+                        if (dataSource === 'organization' || dataSource === 'organization_profile') {
                             var orgUuid = this.value;
                             var uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
                             if (orgUuid && uuidRegex.test(orgUuid)) {
@@ -390,7 +395,7 @@ class GFDataBindHiddenField extends GF_Field
 
                     $('#liveUpdateSchemaSlug').off('change.wicket-databind').on('change.wicket-databind', function() {
                         var dataSource = $('#liveUpdateDataSource').val();
-                        var orgUuid = dataSource === 'organization' ? $('#liveUpdateOrganizationUuid').val() : null;
+                        var orgUuid = dataSource === 'organization' || dataSource === 'organization_profile' ? $('#liveUpdateOrganizationUuid').val() : null;
                         window.WicketGF.DataBind.fetchValueKeys(dataSource, this.value, orgUuid);
                     });
 
@@ -444,7 +449,7 @@ class GFDataBindHiddenField extends GF_Field
                 $data_attributes .= ' data-hidden-data-bind-data-source="' . esc_attr($this->liveUpdateDataSource) . '"';
             }
 
-            if ($this->liveUpdateDataSource === 'organization' && !empty($this->liveUpdateOrganizationUuid)) { // New
+            if (($this->liveUpdateDataSource === 'organization' || $this->liveUpdateDataSource === 'organization_profile') && !empty($this->liveUpdateOrganizationUuid)) {
                 $data_attributes .= ' data-hidden-data-bind-organization-uuid="' . esc_attr($this->liveUpdateOrganizationUuid) . '"';
             }
 
@@ -821,6 +826,58 @@ class GFDataBindHiddenField extends GF_Field
                                     $option_value = $schema_identifier . '.' . $property_key;
                                     $option_text = $property_definition['title'] ?? ucfirst(str_replace('_', ' ', (string) $property_key));
                                     $options[$option_value] = $option_text;
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif ($data_source === 'organization_profile') {
+                // Use dummy UUID for backend dropdown population since actual data binding happens via JS
+                $dummy_org_uuid = 'eb353e8d-4541-41b6-8515-d0684596b718';
+
+                $org_data_response = wicket_get_organization($dummy_org_uuid, 'addresses,web_addresses,emails,phones');
+                if (!$org_data_response || is_wp_error($org_data_response)) {
+                    wp_send_json_error('Failed to fetch organization profile data.');
+
+                    return;
+                }
+
+                // Add main profile data slug - always available
+                $options['profile_attributes'] = 'Profile Attributes';
+
+                // Check for relationships and add collection options
+                if (isset($org_data_response['data']['relationships'])) {
+                    $relationships = $org_data_response['data']['relationships'];
+
+                    $relationship_mappings = [
+                        'addresses' => 'Addresses',
+                        'web_addresses' => 'Web Addresses',
+                        'emails' => 'Emails',
+                        'phones' => 'Phone Numbers',
+                    ];
+
+                    foreach ($relationship_mappings as $rel_key => $label) {
+                        if (isset($relationships[$rel_key]['data']) && !empty($relationships[$rel_key]['data'])) {
+                            $options['profile_' . $rel_key] = $label;
+                        }
+                    }
+                }
+
+                // Check for primary address in included data and add primary address option
+                $included_items_array = $org_data_response['included'] ?? [];
+                if (is_array($included_items_array)) {
+                    foreach ($included_items_array as $item) {
+                        $item_arr = is_object($item) ? (array) $item : $item;
+
+                        if (isset($item_arr['type']) && $item_arr['type'] === 'addresses') {
+                            $address_attributes = $item_arr['attributes'] ?? null;
+                            if (is_array($address_attributes)) {
+                                $is_primary = isset($address_attributes['primary']) && $address_attributes['primary'] === true;
+                                $is_active = isset($address_attributes['active']) && $address_attributes['active'] === true;
+
+                                if ($is_primary && $is_active) {
+                                    $options['profile_primary_address'] = 'Primary Address';
+                                    break; // Found primary address, no need to continue
                                 }
                             }
                         }
@@ -1316,6 +1373,179 @@ class GFDataBindHiddenField extends GF_Field
                             break;
                         }
                     }
+                }
+            } elseif ($data_source === 'organization_profile') {
+                // Handle different profile field types
+                if ($schema_data_slug === 'profile_attributes') {
+                    // Use dummy UUID for backend dropdown population
+                    $dummy_org_uuid = 'eb353e8d-4541-41b6-8515-d0684596b718';
+
+                    $org_data_response = wicket_get_organization($dummy_org_uuid);
+                    if (!$org_data_response || is_wp_error($org_data_response)) {
+                        wp_send_json_error('Failed to fetch organization profile data.');
+
+                        return;
+                    }
+
+                    // Extract organization attributes from API response
+                    $org_data = null;
+                    if (is_array($org_data_response) && isset($org_data_response['data'])) {
+                        $org_data = $org_data_response['data'];
+                    }
+
+                    if ($org_data && isset($org_data['attributes'])) {
+                        $attributes = $org_data['attributes'];
+
+                        // Map actual API field names to user-friendly labels
+                        $field_mappings = [
+                            'legal_name' => 'Legal Name',
+                            'alternate_name' => 'Alternate Name',
+                            'type' => 'Organization Type',
+                            'status' => 'Status',
+                            'description' => 'Description',
+                            'slug' => 'Slug',
+                            'people_count' => 'People Count',
+                            'membership_began_on' => 'Membership Began On',
+                            'identifying_number' => 'Identifying Number',
+                        ];
+
+                        // Add available profile fields based on what exists in the API
+                        foreach ($field_mappings as $api_field => $label) {
+                            if (array_key_exists($api_field, $attributes)) {
+                                $options[$api_field] = $label;
+                            }
+                        }
+
+                        // Add language-specific name fields if available
+                        $lang = defined('ICL_LANGUAGE_CODE') ? ICL_LANGUAGE_CODE : 'en';
+                        $lang_specific_fields = [
+                            'legal_name_' . $lang => 'Legal Name (' . strtoupper($lang) . ')',
+                            'alternate_name_' . $lang => 'Alternate Name (' . strtoupper($lang) . ')',
+                        ];
+
+                        foreach ($lang_specific_fields as $api_field => $label) {
+                            if (array_key_exists($api_field, $attributes)) {
+                                $options[$api_field] = $label;
+                            }
+                        }
+                    }
+                } elseif ($schema_data_slug === 'profile_addresses') {
+                    $options = [
+                        'uuid' => 'Address UUID',
+                        'type' => 'Address Type',
+                        'company_name' => 'Company Name',
+                        'city' => 'City',
+                        'zip_code' => 'Postal/Zip Code',
+                        'address1' => 'Address Line 1',
+                        'address2' => 'Address Line 2',
+                        'state_name' => 'Province/State Name',
+                        'country_code' => 'Country Code',
+                        'country_name' => 'Country Name',
+                        'formatted_address_label' => 'Formatted Address',
+                        'latitude' => 'Latitude',
+                        'longitude' => 'Longitude',
+                        'primary' => 'Is Primary',
+                        'mailing' => 'Is Mailing',
+                        'department' => 'Department',
+                        'division' => 'Division',
+                    ];
+                } elseif ($schema_data_slug === 'profile_web_addresses') {
+                    $options = [
+                        'uuid' => 'Web Address UUID',
+                        'type' => 'Web Address Type',
+                        'uri' => 'URI/URL',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                    ];
+                } elseif ($schema_data_slug === 'profile_emails') {
+                    $options = [
+                        'uuid' => 'Email UUID',
+                        'localpart' => 'Local Part',
+                        'domain' => 'Domain',
+                        'type' => 'Email Type',
+                        'address' => 'Email Address',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                        'unique' => 'Is Unique',
+                    ];
+                } elseif ($schema_data_slug === 'profile_phones') {
+                    $options = [
+                        'uuid' => 'Phone UUID',
+                        'type' => 'Phone Type',
+                        'number' => 'Phone Number',
+                        'extension' => 'Extension',
+                        'primary' => 'Is Primary',
+                        'consent' => 'Has Consent',
+                        'consent_third_party' => 'Third Party Consent',
+                        'consent_directory' => 'Directory Consent',
+                    ];
+                } elseif ($schema_data_slug === 'profile_primary_address') {
+                    // Use dummy UUID for backend dropdown population
+                    $dummy_org_uuid = 'eb353e8d-4541-41b6-8515-d0684596b718';
+
+                    $org_data_response = wicket_get_organization($dummy_org_uuid, 'addresses');
+                    if (!$org_data_response || is_wp_error($org_data_response)) {
+                        wp_send_json_error('Failed to fetch organization address data.');
+
+                        return;
+                    }
+
+                    // Extract included address data
+                    $included_items_array = $org_data_response['included'] ?? [];
+
+                    // Find primary address attributes
+                    if (is_array($included_items_array)) {
+                        foreach ($included_items_array as $item) {
+                            $item_arr = is_object($item) ? (array) $item : $item;
+
+                            if (isset($item_arr['type']) && $item_arr['type'] === 'addresses') {
+                                $address_attributes = $item_arr['attributes'] ?? null;
+                                if (is_array($address_attributes)) {
+                                    $is_primary = isset($address_attributes['primary']) && $address_attributes['primary'] === true;
+                                    $is_active = isset($address_attributes['active']) && $address_attributes['active'] === true;
+
+                                    if ($is_primary && $is_active) {
+                                        // Add individual address field options based on what exists
+                                        $address_field_mappings = [
+                                            'type' => 'Address Type',
+                                            'company_name' => 'Company Name',
+                                            'address1' => 'Address Line 1',
+                                            'address2' => 'Address Line 2',
+                                            'city' => 'City',
+                                            'state_name' => 'State/Province',
+                                            'zip_code' => 'Postal/Zip Code',
+                                            'country_code' => 'Country Code',
+                                            'country_name' => 'Country Name',
+                                            'formatted_address_label' => 'Formatted Address',
+                                            'latitude' => 'Latitude',
+                                            'longitude' => 'Longitude',
+                                            'department' => 'Department',
+                                            'division' => 'Division',
+                                        ];
+
+                                        foreach ($address_field_mappings as $api_field => $label) {
+                                            if (array_key_exists($api_field, $address_attributes)) {
+                                                $options[$api_field] = $label;
+                                            }
+                                        }
+                                        break; // Found primary address, no need to continue
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // If no primary address fields found, provide fallback
+                    if (empty($options)) {
+                        $options['_self'] = 'Primary Address (Not Available)';
+                    }
+                } else {
+                    // For other profile fields, return the value itself
+                    $options['_self'] = 'Value';
                 }
             } else {
                 wp_send_json_error('Invalid data source specified.');

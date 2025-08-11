@@ -476,6 +476,17 @@ const WicketGFLiveUpdate = {
                 result = this.extractFromOrganization(payload, schemaSlug, valueKey);
                 break;
 
+            case 'organization_profile':
+                this.log(`extractValue: Using organization_profile path`);
+                if (schemaSlug === 'profile_attributes') {
+                    this.log(`extractValue: Using organization attributes extraction`);
+                    result = this.extractFromOrganizationAttributes(payload, valueKey);
+                } else if (schemaSlug.startsWith('profile_')) {
+                    this.log(`extractValue: Using organization relationship extraction`);
+                    result = this.extractFromOrganizationRelationship(payload, schemaSlug, valueKey);
+                }
+                break;
+
             default:
                 this.log(`extractValue: Unknown dataSource: ${dataSource}`);
                 break;
@@ -637,6 +648,64 @@ const WicketGFLiveUpdate = {
             if (schemaData?.value && typeof schemaData.value === 'object') {
                 return schemaData.value[propertyKey];
             }
+        }
+
+        return undefined;
+    },
+
+    /**
+     * Extract from organization attributes
+     */
+    extractFromOrganizationAttributes(payload, valueKey) {
+        const attributes = payload.attributes || payload;
+
+        // Handle special cases
+        if (valueKey === '_self') return attributes;
+        if (valueKey?.startsWith('user_')) {
+            const userField = valueKey.replace('user_', '');
+            return attributes.user?.[userField];
+        }
+
+        // Use field mapping
+        const mappedField = this.getFieldName('attributes', valueKey);
+        return attributes[mappedField] !== undefined ? attributes[mappedField] : attributes[valueKey];
+    },
+
+    /**
+     * Extract from organization relationship data (addresses, emails, etc.)
+     */
+    extractFromOrganizationRelationship(payload, schemaSlug, valueKey) {
+        const relationshipType = schemaSlug.replace('profile_', '');
+
+        // Debug logging for address extraction
+        if (relationshipType === 'addresses') {
+            this.log('Debug: Extracting from addresses', {
+                relationshipType,
+                valueKey,
+                payload: payload,
+                addresses: payload.addresses,
+                addressesLength: payload.addresses?.length
+            });
+        }
+
+        // Handle primary address specifically
+        if (relationshipType === 'addresses' || relationshipType === 'primary_address') {
+            return this.extractFromPrimaryAddress(payload, valueKey);
+        }
+
+        // Handle other relationships
+        const relationshipData = payload[relationshipType] || [];
+        if (relationshipData.length > 0) {
+            const firstItem = relationshipData[0];
+            const itemData = firstItem.attributes || firstItem;
+
+            if (valueKey === '_self') return itemData;
+
+            // Use field mapping
+            const mappingContext = this.getMappingContext(relationshipType);
+            const mappedField = this.getFieldName(mappingContext, valueKey);
+
+            return itemData[mappedField] !== undefined ? itemData[mappedField] : itemData[valueKey];
         }
 
         return undefined;
