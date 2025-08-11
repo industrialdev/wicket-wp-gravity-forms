@@ -166,9 +166,15 @@ if (!window.WicketGF.ProfileOrg.initialized) {
         }
 
         if (component_exists('widget-profile-org')) {
+            // Provide sensible defaults for required resources if not configured
+            if (empty($org_required_resources)) {
+                // Require primary address, website, phone, email by default
+                $org_required_resources = '{ "addresses": "primary", "webAddresses": true, "phones": true, "emails": true }';
+            }
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
                 'org_info_data_field_name'   => 'input_' . $id,
+                'validation_data_field_name' => 'input_' . $id . '_validation',
                 'org_id'                     => $org_uuid,
                 'org_required_resources'     => $org_required_resources,
             ], false);
@@ -227,6 +233,4 @@ if (!window.WicketGF.ProfileOrg.initialized) {
     // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
     //   return $this->prettyListOutput($value);
     // }
-
 }
-?>

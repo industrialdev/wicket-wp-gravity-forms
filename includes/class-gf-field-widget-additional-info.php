@@ -502,6 +502,4 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
     //   return $this->prettyListOutput($value);
     // }
-
 }
-?>
