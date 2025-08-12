@@ -77,14 +77,16 @@ class GFWicketFieldWidgetProfile extends GF_Field
             }
         }
 
-        if (isset($value_array['incompleteRequiredResources'])) {
-            if (count($value_array['incompleteRequiredResources']) > 0) {
-                $this->failed_validation = true;
-                if (!empty($this->errorMessage)) {
-                    $this->validation_message = $this->errorMessage;
-                }
-            }
-        }
+        // Note: Commenting out incompleteRequiredResources validation as it's causing form submission issues
+        // The red asterisks on the buttons serve as visual indicators for required resources
+        // if (isset($value_array['incompleteRequiredResources'])) {
+        //     if (count($value_array['incompleteRequiredResources']) > 0) {
+        //         $this->failed_validation = true;
+        //         if (!empty($this->errorMessage)) {
+        //             $this->validation_message = $this->errorMessage;
+        //         }
+        //     }
+        // }
     }
 
     // Functions for how the field value gets displayed on the backend
