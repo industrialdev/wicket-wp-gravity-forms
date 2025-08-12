@@ -168,8 +168,8 @@ if (!window.WicketGF.ProfileOrg.initialized) {
         if (component_exists('widget-profile-org')) {
             // Provide sensible defaults for required resources if not configured
             if (empty($org_required_resources)) {
-                // Require primary address, website, phone, email by default
-                $org_required_resources = '{ "addresses": "primary", "webAddresses": true, "phones": true, "emails": true }';
+                // Require primary address, website, phone, email by default (unescaped for JS literal in component)
+                $org_required_resources = '{ addresses: "primary", webAddresses: true, phones: true, emails: true }';
             }
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
