@@ -1,0 +1,12 @@
+/**
+ * Wicket styles for Vanilla WP sites
+ * (Non Wicket's theme)
+ */
+.wicket {
+  /* Wicket MDP JS Widgets */
+  .wicket__widgets {
+    ul, li {
+      list-style: none;
+    }
+  }
+}
