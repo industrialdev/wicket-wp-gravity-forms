@@ -113,6 +113,13 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     'orderby'   => true,
                     'operators' => $this->supported_operators(),
                 ],
+                'location' => [
+                    'label'     => esc_html__('Location', 'wicket-gf'),
+                    'value'     => 'location',
+                    'callable'  => '__return_empty_array',
+                    'orderby'   => true,
+                    'operators' => $this->supported_operators(),
+                ],
             ];
         }
     }
@@ -234,6 +241,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     'organizations' => 'legal_name_en,legal_name_fr,type',
                 ],
                 'filter' => $filters,
+                'include' => 'addresses',
                 'page' => [
                     'size' => self::$max_results,
                 ],
@@ -248,11 +256,49 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 
             $orgs = [];
             if (isset($get_orgs->data) && !empty($get_orgs->data)) {
+
+                $new_included = [];
+
+                foreach ($get_orgs->included as $included) {
+                    if ($included['type'] !== 'addresses') {
+                        continue;
+                    }
+
+                    if (!isset($included['relationships']['addressable']['data']['id'])) {
+                        continue;
+                    }
+                    
+                    $org_uuid = $included['relationships']['addressable']['data']['id'];
+
+                    if (isset($new_included[$org_uuid])) {
+                        $new_included[$org_uuid][] = $included;
+                    } else {
+                        $new_included[$org_uuid] = [$included];
+                    }
+                }
+
                 foreach ($get_orgs->data as $org) {
+
+                    $city = '';
+                    $state_name = '';
+
+                    if (isset($new_included[$org['id']])) {
+                        foreach ($new_included[$org['id']] as $address) {
+                            if ($address['attributes']['primary'] === true) {
+                                // $address1 = isset($address["address1"]) ? $address["address1"] : '';
+                                $city = isset($address['attributes']['city']) ? $address['attributes']['city'] : '';
+                                // $zip_code = isset($address["zip_code"]) ? $address["zip_code"] : '';
+                                $state_name = isset($address['attributes']['state_name']) ? $address['attributes']['state_name'] : '';
+                                // $country_code = isset($address["country_code"]) ? $address["country_code"] : '';
+                            }
+                        }
+                    }
+
                     $tmp = [];
                     $tmp['uuid'] = $org['id'];
                     $tmp['legal_name'] = $org['attributes']['legal_name_' . $this->language];
                     $tmp['type'] = $org['attributes']['type'];
+                    $tmp['location'] = ($city ? $city . ', ' : '') . $state_name;
                     $orgs[] = $tmp;
                 }
             }
