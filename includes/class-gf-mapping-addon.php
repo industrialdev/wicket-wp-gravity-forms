@@ -438,7 +438,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn
      */
     public function get_menu_icon()
     {
-        return file_get_contents(dirname(__FILE__) . '/../assets/wicket_icon_black.svg');
+
+return file_get_contents(dirname(__FILE__) . '/../assets/images/wicket_icon_black.svg');
+
     }
 
     // # CUSTOM SETTIGNS ON ADDON SETTINGS PAGE -------------------------------------------------------------------------
