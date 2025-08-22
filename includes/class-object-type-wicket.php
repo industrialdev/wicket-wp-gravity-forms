@@ -267,7 +267,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     if (!isset($included['relationships']['addressable']['data']['id'])) {
                         continue;
                     }
-                    
+
                     $org_uuid = $included['relationships']['addressable']['data']['id'];
 
                     if (isset($new_included[$org_uuid])) {
@@ -286,9 +286,9 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                         foreach ($new_included[$org['id']] as $address) {
                             if ($address['attributes']['primary'] === true) {
                                 // $address1 = isset($address["address1"]) ? $address["address1"] : '';
-                                $city = isset($address['attributes']['city']) ? $address['attributes']['city'] : '';
+                                $city = $address['attributes']['city'] ?? '';
                                 // $zip_code = isset($address["zip_code"]) ? $address["zip_code"] : '';
-                                $state_name = isset($address['attributes']['state_name']) ? $address['attributes']['state_name'] : '';
+                                $state_name = $address['attributes']['state_name'] ?? '';
                                 // $country_code = isset($address["country_code"]) ? $address["country_code"] : '';
                             }
                         }

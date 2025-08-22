@@ -50,10 +50,10 @@ function findActiveNextButton() {
 document.addEventListener('gform/post_render', (event) => {
     // If class .wicket-theme-v2 DOES NOT exists
     if (!document.body.classList.contains("wicket-theme-v2")) {
-        console.log("Non-Wicket theme.");
+        //console.log("Non-Wicket theme.");
         // Only if .gform_wrapper exists
         if (document.querySelector(".gform_wrapper")) {
-            console.log("GF detected.");
+            //console.log("GF detected.");
             // Next button .gform_next_button, add class: .button--primary
             document
                 .querySelectorAll(".gform_next_button")

@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.82
+ * Version:           2.0.83
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -107,6 +107,9 @@ class Wicket_Gf_Main
 
         // Hook for shortcode
         add_shortcode('wicket_gravityform', [$this, 'shortcode']);
+
+        // Initialize Wicket Org Validation
+        new Wicket_Gf_Org_Validation();
 
         // Add a custom field group for Wicket fields
         add_filter('gform_add_field_buttons', function ($field_groups) {
@@ -240,14 +243,14 @@ class Wicket_Gf_Main
 
 <div class="wicket-gf-dynamic-hidden-html">
 <script>
-	window.addEventListener('load', function() {
-		if (document.querySelector('body') !== null) {
+    window.addEventListener('load', function() {
+        if (document.querySelector('body') !== null) {
 
-			// Check and see if the page is using the steps version of pagination,
-			// and if so re-format it
-			let paginationStepsCheck = document.querySelector('.gf_page_steps');
-			if (paginationStepsCheck != null) {
-				document.head.insertAdjacentHTML("beforeend", `
+            // Check and see if the page is using the steps version of pagination,
+            // and if so re-format it
+            let paginationStepsCheck = document.querySelector('.gf_page_steps');
+            if (paginationStepsCheck != null) {
+                document.head.insertAdjacentHTML("beforeend", `
                         <style>
                             @media(min-width:768px) {
                                 form[id^=gform_] {
@@ -337,9 +340,9 @@ class Wicket_Gf_Main
                                 border-color: var(--border-interactive, #cfd3d9);
                             }
                         </style>`);
-			}
-		}
-	});
+            }
+        }
+    });
 </script>
 </div>
 
@@ -427,6 +430,7 @@ class Wicket_Gf_Main
     {
         require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-org-validation.php';
     }
 
     /**
@@ -532,17 +536,13 @@ class Wicket_Gf_Main
         // Check if we are on a Gravity Forms admin page
         if (method_exists('GFForms', 'is_gravity_page') && GFForms::is_gravity_page()) {
             // Always enqueue core admin styles and scripts for custom field functionality
-
-wp_enqueue_style('wicket-gf-admin-style', plugins_url('assets/css/wicket_gf_admin_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-
+            wp_enqueue_style('wicket-gf-admin-style', plugins_url('css/wicket_gf_admin_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
             // Enqueue mapping-specific scripts when on the mapping subview
             if (isset($_GET['subview']) && isset($_GET['fid'])) {
                 if ($_GET['subview'] == 'wicketmap') {
-
-wp_enqueue_style('wicket-gf-addon-style', plugins_url('assets/css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-wp_enqueue_script('wicket-gf-addon-script', plugins_url('assets/js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
-
+                    wp_enqueue_style('wicket-gf-addon-style', plugins_url('css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+                    wp_enqueue_script('wicket-gf-addon-script', plugins_url('js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
                 }
             }
         }
@@ -550,26 +550,18 @@ wp_enqueue_script('wicket-gf-addon-script', plugins_url('assets/js/wicket_gf_add
 
     public function enqueue_frontend_scripts_styles()
     {
-
-wp_enqueue_style('wicket-gf-widget-style', plugins_url('assets/css/wicket_gf_widget_style_helpers.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-
+        wp_enqueue_style('wicket-gf-widget-style', plugins_url('css/wicket_gf_widget_style_helpers.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
         // General Wicket GF Styles
-
-wp_enqueue_style('wicket-gf-general-style', plugins_url('assets/css/wicket_gf_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-
+        wp_enqueue_style('wicket-gf-general-style', plugins_url('css/wicket_gf_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
         // General Wicket GF Scripts
-
-wp_enqueue_script('wicket-gf-general-script', plugins_url('assets/js/wicket_gf_script.js', __FILE__), ['jquery'], WICKET_WP_GF_VERSION, true);
-
+        wp_enqueue_script('wicket-gf-general-script', plugins_url('js/wicket_gf_script.js', __FILE__), ['jquery'], WICKET_WP_GF_VERSION, true);
 
         // Include styles only if current theme name doesn't begin with: wicket-
         $theme = wp_get_theme();
         if (!str_starts_with($theme->get('Name'), 'wicket-')) {
-
-wp_enqueue_style('wicket-gf', plugins_url('assets/css/wicket_gf.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-
+            wp_enqueue_style('wicket-gf', plugins_url('css/wicket_gf.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
         }
 
         // Pass data to the script
@@ -652,14 +644,14 @@ wp_enqueue_style('wicket-gf', plugins_url('assets/css/wicket_gf.css', __FILE__),
             ob_start(); ?>
 
 <li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
-	<style>
-		.wicket_global_custom_settings_hide_label {
-			display: block !important;
-		}
-	</style>
-	<input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);"
-		onkeypress="SetFieldProperty('hide_label', this.checked);">
-	<label for="hide_label" class="inline">Hide Label</label>
+    <style>
+        .wicket_global_custom_settings_hide_label {
+            display: block !important;
+        }
+    </style>
+    <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);"
+        onkeypress="SetFieldProperty('hide_label', this.checked);">
+    <label for="hide_label" class="inline">Hide Label</label>
 </li>
 
 <?php echo ob_get_clean();
@@ -764,38 +756,38 @@ wp_enqueue_style('wicket-gf', plugins_url('assets/css/wicket_gf.css', __FILE__),
         if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
             ?>
 <script type="text/javascript" id="wicket-gf-event-debugger">
-	document.addEventListener("DOMContentLoaded", function() {
-		function wicketLogWidgetEvent(eventName, e) {
-			//console.log('Full Event Detail:', e.detail);
+    document.addEventListener("DOMContentLoaded", function() {
+        function wicketLogWidgetEvent(eventName, e) {
+            //console.log('Full Event Detail:', e.detail);
 
-			if (e.detail) {
-				if (e.detail.dataFields) {
-					//console.log('Data Fields:', e.detail.dataFields);
-				} else {
-					//console.log('Event Detail:', e.detail);
-				}
+            if (e.detail) {
+                if (e.detail.dataFields) {
+                    //console.log('Data Fields:', e.detail.dataFields);
+                } else {
+                    //console.log('Event Detail:', e.detail);
+                }
 
-				if (e.detail.resource) {
-					//console.log('Resource:', e.detail.resource);
-				}
-				if (e.detail.validation) {
-					//console.log('Validation:', e.detail.validation);
-				}
-			}
-		}
+                if (e.detail.resource) {
+                    //console.log('Resource:', e.detail.resource);
+                }
+                if (e.detail.validation) {
+                    //console.log('Validation:', e.detail.validation);
+                }
+            }
+        }
 
-		function initializeWidgetListeners() {
-			// Listen for widget loaded event
-			window.addEventListener('wwidget-component-common-loaded', function(e) {
-				wicketLogWidgetEvent('LOADED', e);
-			});
-		}
+        function initializeWidgetListeners() {
+            // Listen for widget loaded event
+            window.addEventListener('wwidget-component-common-loaded', function(e) {
+                wicketLogWidgetEvent('LOADED', e);
+            });
+        }
 
-		// Check for Wicket and initialize
-		if (typeof window.Wicket !== 'undefined') {
-			window.Wicket.ready(initializeWidgetListeners);
-		}
-	});
+        // Check for Wicket and initialize
+        if (typeof window.Wicket !== 'undefined') {
+            window.Wicket.ready(initializeWidgetListeners);
+        }
+    });
 </script>
 <?php
         }
