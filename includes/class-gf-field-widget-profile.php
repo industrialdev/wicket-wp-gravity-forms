@@ -40,13 +40,23 @@ class GFWicketFieldWidgetProfile extends GF_Field
         $id = (int) $this->id;
 
         if (component_exists('widget-profile-individual')) {
-            $component_output = get_component('widget-profile-individual', [
-                'classes'                    => [],
-                'user_info_data_field_name'  => 'input_' . $id,
-            ], false);
+            // Default component args with filter for extensibility
+            $component_args = [
+                'classes'                   => [],
+                'user_info_data_field_name' => 'input_' . $id,
+            ];
+            $component_args = apply_filters('wicket_gf_widget_profile_component_args', $component_args, $form, $this, $id);
 
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+            $component_output = get_component('widget-profile-individual', $component_args, false);
+
+            // Build output with default wrapper classes (no filter needed)
+            $output = '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+
+            do_action('wicket_gf_widget_profile_output_after', $output, $component_output, $form, $this, $id);
+
+            return $output;
         } else {
+            // No hooks in missing component state; return a static message.
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
 

@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.83
+ * Version:           2.0.84
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -536,13 +536,13 @@ class Wicket_Gf_Main
         // Check if we are on a Gravity Forms admin page
         if (method_exists('GFForms', 'is_gravity_page') && GFForms::is_gravity_page()) {
             // Always enqueue core admin styles and scripts for custom field functionality
-            wp_enqueue_style('wicket-gf-admin-style', plugins_url('css/wicket_gf_admin_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+            wp_enqueue_style('wicket-gf-admin-style', plugins_url('assets/css/wicket_gf_admin_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
             // Enqueue mapping-specific scripts when on the mapping subview
             if (isset($_GET['subview']) && isset($_GET['fid'])) {
                 if ($_GET['subview'] == 'wicketmap') {
-                    wp_enqueue_style('wicket-gf-addon-style', plugins_url('css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
-                    wp_enqueue_script('wicket-gf-addon-script', plugins_url('js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
+                    wp_enqueue_style('wicket-gf-addon-style', plugins_url('assets/css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+                    wp_enqueue_script('wicket-gf-addon-script', plugins_url('assets/js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
                 }
             }
         }
@@ -550,18 +550,18 @@ class Wicket_Gf_Main
 
     public function enqueue_frontend_scripts_styles()
     {
-        wp_enqueue_style('wicket-gf-widget-style', plugins_url('css/wicket_gf_widget_style_helpers.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+        wp_enqueue_style('wicket-gf-widget-style', plugins_url('assets/css/wicket_gf_widget_style_helpers.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
         // General Wicket GF Styles
-        wp_enqueue_style('wicket-gf-general-style', plugins_url('css/wicket_gf_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+        wp_enqueue_style('wicket-gf-general-style', plugins_url('assets/css/wicket_gf_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
 
         // General Wicket GF Scripts
-        wp_enqueue_script('wicket-gf-general-script', plugins_url('js/wicket_gf_script.js', __FILE__), ['jquery'], WICKET_WP_GF_VERSION, true);
+        wp_enqueue_script('wicket-gf-general-script', plugins_url('assets/js/wicket_gf_script.js', __FILE__), ['jquery'], WICKET_WP_GF_VERSION, true);
 
         // Include styles only if current theme name doesn't begin with: wicket-
         $theme = wp_get_theme();
         if (!str_starts_with($theme->get('Name'), 'wicket-')) {
-            wp_enqueue_style('wicket-gf', plugins_url('css/wicket_gf.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
+            wp_enqueue_style('wicket-gf', plugins_url('assets/css/wicket_gf.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
         }
 
         // Pass data to the script
