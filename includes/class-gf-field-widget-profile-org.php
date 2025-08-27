@@ -221,7 +221,7 @@ jQuery(document).ready(function($) {
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         } else {
-            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-org component is missing. Please update the Wicket Base Plugin.</p></div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
         }
 
     }
@@ -293,7 +293,8 @@ jQuery(document).ready(function($) {
                     $this->failed_validation = true;
                     $this->validation_message = !empty($this->errorMessage)
                         ? $this->errorMessage
-                        : 'Please ensure the organization has at least one address, email, phone, and web address.';
+                        /* translators: Message displayed when organization profile is incomplete */
+                        : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
                 }
             }
 
@@ -301,16 +302,39 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        // On final submission, perform full checks
+        // On final submission, perform checks but avoid false blocking when field isn't on this page
         $value_array = json_decode($value, true);
         $value_array = is_array($value_array) ? $value_array : [];
+
+        // If the hidden flag is posted and explicitly false, block; if it's absent, don't use it to block
+        $flag_false_submit = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+        if ($validation_flag !== null && $flag_false_submit) {
+            $this->failed_validation = true;
+            $this->validation_message = !empty($this->errorMessage)
+                ? $this->errorMessage
+                : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+
+            return;
+        }
+
+        // If the hidden flag is explicitly true, allow submit (authoritative success from the widget)
+        $flag_true_submit = ($validation_flag === true || $validation_flag === 'true' || $validation_flag === '1');
+        if ($flag_true_submit) {
+            return;
+        }
+
+        // If there is no JSON payload at all, allow submit (field likely not present on this page / no new data)
+        if (empty($value_array)) {
+            return;
+        }
+
         if (isset($value_array['incompleteRequiredFields'])) {
             if (count($value_array['incompleteRequiredFields']) > 0) {
                 $this->failed_validation = true;
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
                 } else {
-                    $this->validation_message = 'Please complete all required fields in the organization profile.';
+                    $this->validation_message = __('Please complete all required fields in the organization profile.', 'wicket_gf');
                 }
 
                 return;
@@ -323,7 +347,7 @@ jQuery(document).ready(function($) {
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
                 } else {
-                    $this->validation_message = 'Please ensure the organization has at least one address, email, phone, and web address.';
+                    $this->validation_message = __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
                 }
 
                 return;
@@ -339,22 +363,9 @@ jQuery(document).ready(function($) {
             $this->failed_validation = true;
             $this->validation_message = !empty($this->errorMessage)
                 ? $this->errorMessage
-                : 'Please ensure the organization has at least one address, email, phone, and web address.';
+                : _x('Please ensure the organization has at least one address, email, phone, and web address.', 'Validation message for organization profile', 'wicket_gf');
 
             return;
         }
     }
-
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
-
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
 }
