@@ -37,9 +37,6 @@ div.form_saved_message_emailform form input[type="email"] {
     padding-right: 10px;
   }
 
-  .gf_page_steps .gf_step_label {
-    display: none !important;
-  }
 }
 
 body:not(.wicket-theme-v2) .gform_wrapper {
