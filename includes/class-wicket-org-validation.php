@@ -49,6 +49,24 @@ class Wicket_Gf_Org_Validation
             $should_validate = true;
         }
 
+        // Detect if form is multi-step (has page fields)
+        $is_multi_step = false;
+        if (!empty($form['fields']) && is_array($form['fields'])) {
+            foreach ($form['fields'] as $f) {
+                if ((is_object($f) && isset($f->type) && $f->type === 'page') || (is_array($f) && isset($f['type']) && $f['type'] === 'page')) {
+                    $is_multi_step = true;
+                    break;
+                }
+            }
+        }
+
+        // If multi-step and on final submit, skip org profile validation entirely (handled earlier on its page)
+        if ($is_multi_step && $target_page == 0) {
+            $validation_result['form'] = $form;
+
+            return $validation_result;
+        }
+
         // If we should validate, check all Wicket org profile fields
         if ($should_validate) {
             foreach ($form['fields'] as &$field) {
