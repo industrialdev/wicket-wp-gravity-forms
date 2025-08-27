@@ -274,6 +274,20 @@ jQuery(document).ready(function($) {
             return;
         }
 
+        // If this is a multi-step form and we're on final submit, skip validation for this field
+        $is_multi_step = false;
+        if (!empty($form['fields']) && is_array($form['fields'])) {
+            foreach ($form['fields'] as $f) {
+                if ((is_object($f) && isset($f->type) && $f->type === 'page') || (is_array($f) && isset($f['type']) && $f['type'] === 'page')) {
+                    $is_multi_step = true;
+                    break;
+                }
+            }
+        }
+        if ($on_submit && $is_multi_step) {
+            return;
+        }
+
         $field_id = $this->id ?? null;
         $validation_flag = $field_id !== null ? rgpost('input_' . $field_id . '_validation') : null;
 
