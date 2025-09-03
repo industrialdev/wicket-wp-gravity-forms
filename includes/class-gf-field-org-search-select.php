@@ -487,7 +487,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'relationship_type_upon_org_creation'           => $relationship_type_upon_org_creation,
                 'relationship_mode'                             => $relationship_mode,
                 'new_org_type_override'                         => $new_org_type_override,
-                'selected_uuid_hidden_field_name'               => 'input_' . $id,
+                // Use a unique name for the component's internal hidden field to avoid colliding with GF's own input_{id}
+                // The GF field value should be stored in the hidden input rendered below with name="input_{$id}"
+                'selected_uuid_hidden_field_name'               => 'orgss_selected_uuid_' . $id,
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
                 'key'                                           => $id,
                 'org_term_singular'                             => $org_term_singular,
@@ -514,8 +516,8 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'form_id'                                       => $form['id'] ?? 0,
             ];
 
-            $component_output = '<script>console.log("GFWicketFieldOrgSearchSelect PARAMS: ", ' . json_encode($params) . ');</script>';
-            $component_output .= get_component('org-search-select', $params, false);
+            $component_output = get_component('org-search-select', $params, false);
+            //$component_output .= '<script>console.log("GFWicketFieldOrgSearchSelect PARAMS: ", ' . json_encode($params) . ');</script>';
 
             $hidden_field = sprintf(
                 '<input type="hidden" name="input_%d" id="input_%s_%d" value="%s" class="gf_org_search_select_input" />',
@@ -678,5 +680,3 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         ];
     }
 }
-
-?>
