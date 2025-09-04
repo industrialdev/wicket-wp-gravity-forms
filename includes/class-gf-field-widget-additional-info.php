@@ -366,16 +366,16 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         if ($use_slugs) {
             foreach ($ai_widget_schemas as $ai_item) {
                 $cleaned_ai_widget_schemas[] = [
-                    'slug'           => $ai_item[0],
-                    'resourceSlug'   => $ai_item[1],
-                    'showAsRequired' => $ai_item[3],
+                    'slug'           => $ai_item[0] ?? '',
+                    'resourceSlug'   => $ai_item[1] ?? '',
+                    'showAsRequired' => $ai_item[3] ?? false,
                 ];
             }
         } else {
             foreach ($ai_widget_schemas as $ai_item) {
                 $cleaned_ai_widget_schemas[] = [
-                    'id'             => $ai_item[0],
-                    'resourceId'     => $ai_item[1],
+                    'id'             => $ai_item[0] ?? '',
+                    'resourceId'     => $ai_item[1] ?? '',
                     'showAsRequired' => $ai_item[3] ?? false,
                 ];
             }
