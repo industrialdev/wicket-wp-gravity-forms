@@ -41,16 +41,23 @@ class GFWicketFieldWidgetProfile extends GF_Field
 
         if (component_exists('widget-profile-individual')) {
             // Default component args with filter for extensibility
+            $user_info_field_name = 'wicket_user_info_data_' . $id;
             $component_args = [
                 'classes'                   => [],
-                'user_info_data_field_name' => 'input_' . $id,
+                'user_info_data_field_name' => $user_info_field_name,
             ];
             $component_args = apply_filters('wicket_gf_widget_profile_component_args', $component_args, $form, $this, $id);
 
             $component_output = get_component('widget-profile-individual', $component_args, false);
 
             // Build output with default wrapper classes (no filter needed)
-            $output = '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
+            // with the component-rendered hidden input. Prefill its value from the component
+            // POST key if present so we don't lose any submitted data in edge cases.
+            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
+            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST[$user_info_field_name]) ? esc_attr($_POST[$user_info_field_name]) : '') . '" />';
+
+            $output = '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
 
             do_action('wicket_gf_widget_profile_output_after', $output, $component_output, $form, $this, $id);
 

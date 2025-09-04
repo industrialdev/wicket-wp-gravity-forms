@@ -388,7 +388,8 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             get_component('widget-additional-info', [
                 'id'                               => $unique_component_id, // Pass the unique ID to the component
                 'classes'                          => [],
-                'additional_info_data_field_name'  => 'input_' . $id,
+                // Use unique hidden field name to avoid colliding with GF's input_{id}
+                'additional_info_data_field_name'  => 'wicket_ai_data_' . $id,
                 'resource_type'                    => $ai_type,
                 'org_uuid'                         => $org_uuid,
                 'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
@@ -396,7 +397,12 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
             $component_output = ob_get_clean();
 
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
+            // with the component-rendered input. Prefill from the component POST key if present.
+            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
+            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST['wicket_ai_data_' . $id]) ? esc_attr($_POST['wicket_ai_data_' . $id]) : '') . '" />';
+
+            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
         }

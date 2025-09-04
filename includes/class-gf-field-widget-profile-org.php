@@ -211,15 +211,25 @@ jQuery(document).ready(function($) {
             if (empty($org_required_resources)) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
+            // Use a unique hidden field name for component data to avoid colliding with GF's input_{id}
+            $org_info_field_name = 'wicket_org_info_data_' . $id;
+            $org_validation_field_name = 'wicket_org_info_validation_' . $id;
+
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
-                'org_info_data_field_name'   => 'input_' . $id,
-                'validation_data_field_name' => 'input_' . $id . '_validation',
+                'org_info_data_field_name'   => $org_info_field_name,
+                'validation_data_field_name' => $org_validation_field_name,
                 'org_id'                     => $org_uuid,
                 'org_required_resources'     => $org_required_resources,
             ], false);
 
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
+            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
+            // with the component-rendered hidden input. Prefill from the component POST key
+            // if present so previously-submitted values aren't lost.
+            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
+            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST[$org_info_field_name]) ? esc_attr($_POST[$org_info_field_name]) : '') . '" />';
+
+            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
         }
