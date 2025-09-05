@@ -353,11 +353,16 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         $entry = null
     ) {
         if ($this->is_form_editor()) {
-            return '<p>Org Search/Select widget will show here on the frontend</p>';
+            return '<p>Org Search Select will show here on the frontend</p>';
         }
 
+        $field_id = (int) $this->id;
+        $form_id = (int) $form['id'];
+
+        // Use only standard GF naming convention
+        $input_name = 'input_' . $field_id;
+
         $id = (int) $this->id;
-        $field_id = isset($form['id']) ? $form['id'] . '_' . $id : $id;
         $hide_label = isset($this->labelPlacement) && $this->labelPlacement === 'hidden_label';
 
         $search_mode = 'org';
@@ -487,9 +492,8 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'relationship_type_upon_org_creation'           => $relationship_type_upon_org_creation,
                 'relationship_mode'                             => $relationship_mode,
                 'new_org_type_override'                         => $new_org_type_override,
-                // Use a unique name for the component's internal hidden field to avoid colliding with GF's own input_{id}
-                // The GF field value should be stored in the hidden input rendered below with name="input_{$id}"
-                'selected_uuid_hidden_field_name'               => 'orgss_selected_uuid_' . $id,
+                // Use standard GF naming convention
+                'selected_uuid_hidden_field_name'               => 'input_' . $id,
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
                 'key'                                           => $id,
                 'org_term_singular'                             => $org_term_singular,
@@ -517,17 +521,14 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             ];
 
             $component_output = get_component('org-search-select', $params, false);
-            //$component_output .= '<script>console.log("GFWicketFieldOrgSearchSelect PARAMS: ", ' . json_encode($params) . ');</script>';
 
-            // Use a unique hidden field name for the widget to avoid colliding with Gravity Forms' own
-            // "input_{id}" fields on the page. Keep the value for backwards compatibility but prefer
-            // the orgss_selected_uuid_{id} name.
-            $unique_hidden_name = 'orgss_selected_uuid_' . $id;
-            $unique_hidden_id = sprintf('orgss_selected_uuid_%s_%d', $form['id'] ?? 0, $id);
+            // Single hidden field using standard GF convention
+            $gf_field_name = 'input_' . $id;
+            $gf_field_id = 'input_' . $form['id'] . '_' . $id;
             $hidden_field = sprintf(
                 '<input type="hidden" name="%s" id="%s" value="%s" class="gf_org_search_select_input" />',
-                esc_attr($unique_hidden_name),
-                esc_attr($unique_hidden_id),
+                esc_attr($gf_field_name),
+                esc_attr($gf_field_id),
                 esc_attr($value)
             );
 
@@ -556,22 +557,13 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     public function get_value_submission($field_values, $get_from_post_global_var = true)
     {
-        // Prefer the widget's unique hidden field name, fall back to GF's legacy input_{id}
-        $preferred = 'orgss_selected_uuid_' . $this->id;
-        $legacy = 'input_' . $this->id;
+        // Use only the standard GF field name
+        $field_name = 'input_' . $this->id;
 
         if ($get_from_post_global_var) {
-            if (isset($_POST[$preferred])) {
-                $value = rgpost($preferred);
-            } else {
-                $value = rgpost($legacy);
-            }
+            $value = rgpost($field_name);
         } else {
-            if (isset($field_values[$preferred])) {
-                $value = $field_values[$preferred];
-            } else {
-                $value = $field_values[$legacy] ?? '';
-            }
+            $value = $field_values[$field_name] ?? '';
         }
 
         return $value;
@@ -588,12 +580,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     public function is_value_submission_empty($form_id)
     {
-        $preferred = 'orgss_selected_uuid_' . $this->id;
-        $legacy = 'input_' . $this->id;
-        $value = rgpost($preferred);
-        if ($value === null) {
-            $value = rgpost($legacy);
-        }
+        // Use only the standard GF field name
+        $field_name = 'input_' . $this->id;
+        $value = rgpost($field_name);
 
         return empty($value);
     }

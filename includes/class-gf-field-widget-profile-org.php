@@ -183,9 +183,11 @@ jQuery(document).ready(function($) {
             // Find the org_uuid from the POST data of the previous page
             foreach ($form['fields'] as $field) {
                 if ($field->type == 'wicket_org_search_select') {
-                    $input_name = 'orgss_selected_uuid_' . $field->id;
-                    if (!empty($_POST[$input_name])) {
-                        $org_uuid = sanitize_text_field($_POST[$input_name]);
+                    // Use standard GF naming convention
+                    $field_name = 'input_' . $field->id;
+
+                    if (!empty($_POST[$field_name])) {
+                        $org_uuid = sanitize_text_field($_POST[$field_name]);
                         break;
                     }
                 }
@@ -200,9 +202,9 @@ jQuery(document).ready(function($) {
             if (empty($org_required_resources)) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
-            // Use a unique hidden field name for component data to avoid colliding with GF's input_{id}
-            $org_info_field_name = 'wicket_org_info_data_' . $this->id;
-            $org_validation_field_name = 'wicket_org_info_validation_' . $this->id;
+            // Use standard GF naming convention
+            $org_info_field_name = 'input_' . $this->id;
+            $org_validation_field_name = 'input_' . $this->id . '_validation';
 
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],

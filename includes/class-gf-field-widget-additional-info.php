@@ -319,7 +319,8 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     public function get_value_submission($field_values, $get_from_post = true)
     {
         if ($get_from_post) {
-            $value = rgpost('wicket_ai_info_data_' . $this->id);
+            // Use standard GF naming convention
+            $value = rgpost('input_' . $this->id);
 
             return $value;
         }
@@ -376,11 +377,20 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         $org_uuid = $this->wwidget_ai_org_uuid ?? '';
         $use_slugs = $this->wwidget_ai_use_slugs ?? false;
 
-        // On multi-page forms, the org_uuid may be a field ID from a previous step. We need to get its value from POST data.
-        if (!empty($org_uuid) && is_numeric($org_uuid)) {
-            $input_name = 'orgss_selected_uuid_' . $org_uuid;
-            if (isset($_POST[$input_name])) {
-                $org_uuid = sanitize_text_field($_POST[$input_name]);
+        // On multi-page forms, the pre-render hook runs too late. We need to get the UUID directly from POST.
+        $current_page = GFFormDisplay::get_current_page($form['id']);
+        if ($current_page > 1) {
+            // Find the org_uuid from the POST data of the previous page
+            foreach ($form['fields'] as $field) {
+                if ($field->type == 'wicket_org_search_select') {
+                    // Use standard GF naming convention
+                    $field_name = 'input_' . $field->id;
+
+                    if (!empty($_POST[$field_name])) {
+                        $org_uuid = sanitize_text_field($_POST[$field_name]);
+                        break;
+                    }
+                }
             }
         }
 
@@ -406,9 +416,9 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
         if (component_exists('widget-additional-info')) {
 
-            // Use a unique hidden field name for component data to avoid colliding with GF's input_{id}
-            $ai_info_field_name = 'wicket_ai_info_data_' . $id;
-            $ai_validation_field_name = 'wicket_ai_info_validation_' . $id;
+            // Use standard GF naming convention
+            $ai_info_field_name = 'input_' . $id;
+            $ai_validation_field_name = 'input_' . $id . '_validation';
 
             $component_output = get_component(
                 'widget-additional-info',
@@ -438,7 +448,6 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/additional_info';
 
         return $link_to_user_profile;
-        //return '<a href="'.$link_to_user_profile.'">Link to user profile in Wicket</a>';
     }
 
     public function validate($value, $form)

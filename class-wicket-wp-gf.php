@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.94
+ * Version:           2.0.95
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -391,9 +391,11 @@ class Wicket_Gf_Main
         // Find the org_uuid from the POST data of the previous page
         foreach ($form['fields'] as $field) {
             if ($field->type == 'wicket_org_search_select') {
-                $input_name = 'orgss_selected_uuid_' . $field->id;
-                if (!empty($_POST[$input_name])) {
-                    $org_uuid = sanitize_text_field($_POST[$input_name]);
+                // Use standard GF naming convention
+                $field_name = 'input_' . $field->id;
+
+                if (!empty($_POST[$field_name])) {
+                    $org_uuid = sanitize_text_field($_POST[$field_name]);
                     break;
                 }
             }
