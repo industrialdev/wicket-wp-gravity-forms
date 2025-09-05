@@ -175,35 +175,24 @@ jQuery(document).ready(function($) {
             return '<p>Widget will show here on the frontend</p>';
         }
 
-        $id = (int) $this->id;
+        $org_uuid = $this->wwidget_org_profile_uuid ?? '';
 
-        $org_uuid = '';
-        $org_required_resources = '';
-
-        foreach ($form['fields'] as $field) {
-            if (gettype($field) == 'object') {
-                if (get_class($field) == 'GFWicketFieldWidgetProfileOrg') {
-                    if ($field->id == $id) {
-                        if (isset($field->wwidget_org_profile_uuid)) {
-                            $org_uuid = $field->wwidget_org_profile_uuid;
-                        }
-                        if (isset($field->wwidget_org_profile_required_resources)) {
-                            $org_required_resources = $field->wwidget_org_profile_required_resources;
-                        }
+        // On multi-page forms, the pre-render hook runs too late. We need to get the UUID directly from POST.
+        $current_page = GFFormDisplay::get_current_page($form['id']);
+        if ($current_page > 1) {
+            // Find the org_uuid from the POST data of the previous page
+            foreach ($form['fields'] as $field) {
+                if ($field->type == 'wicket_org_search_select') {
+                    $input_name = 'orgss_selected_uuid_' . $field->id;
+                    if (!empty($_POST[$input_name])) {
+                        $org_uuid = sanitize_text_field($_POST[$input_name]);
+                        break;
                     }
                 }
             }
         }
 
-        // Test if a UUID was manually saved, or if a field ID was saved instead (in the case of a multi-page form)
-        if (!str_contains($org_uuid, '-')) {
-            if (isset($_POST['input_' . $org_uuid])) {
-                $field_value = $_POST['input_' . $org_uuid];
-                if (str_contains($field_value, '-')) {
-                    $org_uuid = $field_value;
-                }
-            }
-        }
+        $org_required_resources = $this->wwidget_org_profile_required_resources ?? '';
 
         if (component_exists('widget-profile-org')) {
             // If admin has not configured requiredResources, use sane defaults with valid types
@@ -212,8 +201,8 @@ jQuery(document).ready(function($) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
             // Use a unique hidden field name for component data to avoid colliding with GF's input_{id}
-            $org_info_field_name = 'wicket_org_info_data_' . $id;
-            $org_validation_field_name = 'wicket_org_info_validation_' . $id;
+            $org_info_field_name = 'wicket_org_info_data_' . $this->id;
+            $org_validation_field_name = 'wicket_org_info_validation_' . $this->id;
 
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
@@ -223,13 +212,7 @@ jQuery(document).ready(function($) {
                 'org_required_resources'     => $org_required_resources,
             ], false);
 
-            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
-            // with the component-rendered hidden input. Prefill from the component POST key
-            // if present so previously-submitted values aren't lost.
-            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
-            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST[$org_info_field_name]) ? esc_attr($_POST[$org_info_field_name]) : '') . '" />';
-
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
         }

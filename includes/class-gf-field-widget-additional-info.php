@@ -316,48 +316,71 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     }
 
     // Render the field
+    public function get_value_submission($field_values, $get_from_post = true)
+    {
+        if ($get_from_post) {
+            $value = rgpost('wicket_ai_info_data_' . $this->id);
+            return $value;
+        }
+
+        return parent::get_value_submission($field_values, $get_from_post);
+    }
+
+    // Ensure GF does not treat our JSON payload as empty when required logic runs.
+    // We let validate() decide validity based on the widget's 'invalid' array.
+    public function is_value_submission_empty($form_id)
+    {
+        $value = $this->get_value_submission([], true);
+
+        // Log for diagnostics
+        $logger = wc_get_logger();
+        $logger->debug('GF AI Widget is_value_submission_empty called for field ' . $this->id . ' with value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return true; // truly empty
+            }
+
+            // If it's valid JSON representing an object/array, treat as not empty so GF doesn't auto-fail required check.
+            $decoded = json_decode($trimmed, true);
+            if (json_last_error() === JSON_ERROR_NONE && (is_array($decoded))) {
+                return false;
+            }
+
+            // Non-empty string, not JSON: still consider not empty to avoid false required failures.
+            return false;
+        }
+
+        // Fallback to parent behavior for non-string cases.
+        return parent::is_value_submission_empty($form_id);
+    }
+
     public function get_field_input($form, $value = '', $entry = null)
     {
         if ($this->is_form_editor()) {
             return '<p>Widget will show here on the frontend</p>';
         }
 
+        $logger = wc_get_logger();
+        $logger->debug('GF AI Widget get_field_input called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Field properties: ' . var_export(get_object_vars($this), true), ['source' => 'gravityforms-state-debug']);
+
         $id = (int) $this->id;
         $unique_component_id = 'wicket-ai-widget-' . $id; // Generate a unique ID for the component instance
 
-        $ai_widget_schemas = [[]];
-        $ai_type = 'people';
-        $org_uuid = '';
-        $use_slugs = false;
+        $ai_widget_schemas = $this->wwidget_ai_schemas ?? [[]];
+        $ai_type = $this->wwidget_ai_type ?? 'people';
+        $org_uuid = $this->wwidget_ai_org_uuid ?? '';
+        $use_slugs = $this->wwidget_ai_use_slugs ?? false;
 
-        foreach ($form['fields'] as $field) {
-            if (gettype($field) == 'object') {
-                if (get_class($field) == 'GFWicketFieldWidgetAdditionalInfo') {
-                    if ($field->id == $id) {
-                        if (isset($field->wwidget_ai_schemas)) {
-                            $ai_widget_schemas = $field->wwidget_ai_schemas;
-                        }
-                        if (isset($field->wwidget_ai_type)) {
-                            $ai_type = $field->wwidget_ai_type;
-                        }
-                        if (isset($field->wwidget_ai_org_uuid)) {
-                            $org_uuid = $field->wwidget_ai_org_uuid;
-                        }
-                        if (isset($field->wwidget_ai_use_slugs)) {
-                            $use_slugs = $field->wwidget_ai_use_slugs;
-                        }
-                    }
-                }
-            }
-        }
 
-        // Test if a UUID was manually saved, or if a field ID was saved instead (in the case of a multi-page form)
-        if (!str_contains($org_uuid, '-')) {
-            if (isset($_POST['input_' . $org_uuid])) {
-                $field_value = $_POST['input_' . $org_uuid];
-                if (str_contains($field_value, '-')) {
-                    $org_uuid = $field_value;
-                }
+        // On multi-page forms, the org_uuid may be a field ID from a previous step. We need to get its value from POST data.
+        if (!empty($org_uuid) && is_numeric($org_uuid)) {
+            $input_name = 'orgss_selected_uuid_' . $org_uuid;
+            if (isset($_POST[$input_name])) {
+                $org_uuid = sanitize_text_field($_POST[$input_name]);
             }
         }
 
@@ -382,27 +405,22 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         }
 
         if (component_exists('widget-additional-info')) {
-            // Adding extra ob_start/clean since the component was jumping the gun for some reason
-            ob_start();
 
-            get_component('widget-additional-info', [
-                'id'                               => $unique_component_id, // Pass the unique ID to the component
-                'classes'                          => [],
-                // Use unique hidden field name to avoid colliding with GF's input_{id}
-                'additional_info_data_field_name'  => 'wicket_ai_data_' . $id,
-                'resource_type'                    => $ai_type,
-                'org_uuid'                         => $org_uuid,
-                'schemas_and_overrides'            => $cleaned_ai_widget_schemas,
-            ], true);
+            // Use a unique hidden field name for component data to avoid colliding with GF's input_{id}
+            $ai_info_field_name = 'wicket_ai_info_data_' . $id;
+            $ai_validation_field_name = 'wicket_ai_info_validation_' . $id;
 
-            $component_output = ob_get_clean();
+            $component_output = get_component(
+                'widget-additional-info',
+                [
+                    'additional_info_data_field_name' => $ai_info_field_name,
+                    'validation_data_field_name'      => $ai_validation_field_name,
+                'resource_type'                   => $ai_type,
+                'org_uuid'                        => $org_uuid,
+                'schemas_and_overrides'           => $cleaned_ai_widget_schemas,
+            ], false);
 
-            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
-            // with the component-rendered input. Prefill from the component POST key if present.
-            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
-            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST['wicket_ai_data_' . $id]) ? esc_attr($_POST['wicket_ai_data_' . $id]) : '') . '" />';
-
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
@@ -423,89 +441,35 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
     public function validate($value, $form)
     {
+        $logger = wc_get_logger();
+        $logger->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Validate value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+
         $value_array = json_decode($value, true);
+        $logger->debug('JSON decode result: ' . var_export($value_array, true), ['source' => 'gravityforms-state-debug']);
 
-        $notFound = $value_array['notFound'] ?? [];
-        $validation = $value_array['validation'] ?? [];
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $logger->debug('JSON decode error: ' . json_last_error_msg(), ['source' => 'gravityforms-state-debug']);
+            if (!empty($value)) {
+                $this->failed_validation = true;
+                $this->validation_message = 'Invalid data format submitted.';
+                $logger->debug('Setting failed_validation due to JSON error', ['source' => 'gravityforms-state-debug']);
+            }
+            return;
+        }
+
         $invalid = $value_array['invalid'] ?? [];
+        $logger->debug('Invalid array: ' . var_export($invalid, true), ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
 
-        if (count($invalid) > 0 && $this->isRequired) {
+        if ($this->isRequired && !empty($invalid)) {
             $this->failed_validation = true;
-            if (!empty($this->errorMessage)) {
-                $this->validation_message = $this->errorMessage;
-            }
-        }
-
-        // Find our field in the form to get the schemas
-        $id = (int) $this->id;
-        $field_schemas = [];
-        $use_slugs = false;
-
-        // Find this field's data in the form
-        foreach ($form['fields'] as $field) {
-            if (gettype($field) == 'object' && get_class($field) == 'GFWicketFieldWidgetAdditionalInfo' && $field->id == $id) {
-                if (isset($field->wwidget_ai_schemas)) {
-                    $field_schemas = $field->wwidget_ai_schemas;
-                }
-                if (isset($field->wwidget_ai_use_slugs)) {
-                    $use_slugs = $field->wwidget_ai_use_slugs;
-                }
-                break;
-            }
-        }
-
-        // Check for required schemas that are empty
-        $missing_required = [];
-
-        foreach ($field_schemas as $index => $schema) {
-            // Check if schema is marked as required (4th element)
-            $is_required = isset($schema[3]) && $schema[3] === true;
-
-            if ($is_required) {
-                $schema_identifier = $use_slugs ? $schema[0] : $schema[0]; // schema ID or slug
-                $schema_name = !empty($schema[2]) ? $schema[2] : $schema_identifier; // friendly name or fallback
-
-                // Check if this required schema has data in the validation array
-                $has_data = false;
-
-                if (isset($validation[$schema_identifier])) {
-                    $schema_data = $validation[$schema_identifier];
-                    // Consider it has data if any field in the schema has a value
-                    if (is_array($schema_data)) {
-                        foreach ($schema_data as $field_value) {
-                            if (!empty($field_value)) {
-                                $has_data = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!$has_data) {
-                    $missing_required[] = $schema_name;
-                }
-            }
-        }
-
-        if (!empty($missing_required)) {
-            $this->failed_validation = true;
-            $this->validation_message = sprintf(
-                'The following required information is missing: %s',
-                implode(', ', $missing_required)
-            );
+            $this->validation_message = $this->errorMessage ?: 'Please fill out all required fields.';
+            $logger->debug('Setting failed_validation due to required field and invalid data', ['source' => 'gravityforms-state-debug']);
+        } else {
+            $this->failed_validation = false;
+            $this->validation_message = '';
+            $logger->debug('Validation passed - clearing failed_validation', ['source' => 'gravityforms-state-debug']);
         }
     }
-
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
-
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
 }

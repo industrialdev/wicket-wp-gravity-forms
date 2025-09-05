@@ -386,7 +386,39 @@ class Wicket_Gf_Main
             $hide_label_i++;
         }
 
-        // Return the form untouched
+        $org_uuid = '';
+
+        // Find the org_uuid from the POST data of the previous page
+        foreach ($form['fields'] as $field) {
+            if ($field->type == 'wicket_org_search_select') {
+                $input_name = 'orgss_selected_uuid_' . $field->id;
+                if (!empty($_POST[$input_name])) {
+                    $org_uuid = sanitize_text_field($_POST[$input_name]);
+                    break;
+                }
+            }
+        }
+
+        if (!empty($org_uuid)) {
+            // Loop through the fields again to populate the widgets that need the org_uuid
+            foreach ($form['fields'] as &$field) {
+                // The Org Profile Edit Widget
+                if ($field->type == 'wicket_widget_profile_org') {
+                    $field->wwidget_org_profile_uuid = $org_uuid;
+                }
+
+                // The Additional Info Widget
+                if ($field->type == 'wicket_widget_ai') {
+                    $field->org_uuid = $org_uuid;
+                }
+
+                // The Individual Profile Widget
+                if ($field->type == 'wicket_widget_profile_individual') {
+                    $field->org_uuid = $org_uuid;
+                }
+            }
+        }
+
         return $form;
     }
 
@@ -431,6 +463,8 @@ class Wicket_Gf_Main
         require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-org-validation.php';
+        // Debug: DO NOT REMOVE
+        require_once plugin_dir_path(__FILE__) . 'includes/class-debug-gravityforms-state.php';
     }
 
     /**

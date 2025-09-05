@@ -145,12 +145,7 @@ if (!window.WicketGF.Prefs.initialized) {
 
             $component_output = ob_get_clean();
 
-            // Render a defensive wrapper fallback input with a distinct name to avoid colliding
-            // with the component-rendered hidden input. Prefill from the component POST key if present.
-            $wrapper_fallback_name = 'wicket_wrapper_fallback_' . $id;
-            $hidden = '<input type="hidden" name="' . esc_attr($wrapper_fallback_name) . '" value="' . (isset($_POST['wicket_prefs_data_' . $id]) ? esc_attr($_POST['wicket_prefs_data_' . $id]) : '') . '" />';
-
-            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden . '</div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         } else {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-prefs-person component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
