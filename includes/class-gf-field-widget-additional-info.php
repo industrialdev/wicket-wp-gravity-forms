@@ -320,6 +320,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     {
         if ($get_from_post) {
             $value = rgpost('wicket_ai_info_data_' . $this->id);
+
             return $value;
         }
 
@@ -375,7 +376,6 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         $org_uuid = $this->wwidget_ai_org_uuid ?? '';
         $use_slugs = $this->wwidget_ai_use_slugs ?? false;
 
-
         // On multi-page forms, the org_uuid may be a field ID from a previous step. We need to get its value from POST data.
         if (!empty($org_uuid) && is_numeric($org_uuid)) {
             $input_name = 'orgss_selected_uuid_' . $org_uuid;
@@ -415,10 +415,12 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 [
                     'additional_info_data_field_name' => $ai_info_field_name,
                     'validation_data_field_name'      => $ai_validation_field_name,
-                'resource_type'                   => $ai_type,
-                'org_uuid'                        => $org_uuid,
-                'schemas_and_overrides'           => $cleaned_ai_widget_schemas,
-            ], false);
+                    'resource_type'                   => $ai_type,
+                    'org_uuid'                        => $org_uuid,
+                    'schemas_and_overrides'           => $cleaned_ai_widget_schemas,
+                ],
+                false
+            );
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         } else {
@@ -455,6 +457,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 $this->validation_message = 'Invalid data format submitted.';
                 $logger->debug('Setting failed_validation due to JSON error', ['source' => 'gravityforms-state-debug']);
             }
+
             return;
         }
 

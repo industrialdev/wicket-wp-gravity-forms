@@ -90,11 +90,9 @@ add_filter('gform_validation', function ($validation_result) {
             continue;
         }
 
-
         // Use json_decode to reliably detect JSON
         $decoded_val = json_decode($val);
         if (!is_null($decoded_val) && (is_object($decoded_val) || is_array($decoded_val))) {
-
 
             $hash = wp_hash($val);
             // ensure gf_state key exists

@@ -37,7 +37,6 @@ class GFWicketFieldWidgetProfile extends GF_Field
             return '<p>Widget will show here on the frontend</p>';
         }
 
-
         $id = (int) $this->id;
 
         if (component_exists('widget-profile-individual')) {
