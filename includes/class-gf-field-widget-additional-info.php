@@ -462,13 +462,40 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         }
 
         $invalid = $value_array['invalid'] ?? [];
+        $validation = $value_array['validation'] ?? [];
         $logger->debug('Invalid array: ' . var_export($invalid, true), ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Validation array: ' . var_export($validation, true), ['source' => 'gravityforms-state-debug']);
         $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
 
-        if ($this->isRequired && !empty($invalid)) {
+        // Check for validation errors regardless of field requirement status
+        // Individual schemas can have their own required fields
+        $has_validation_errors = !empty($invalid) || !empty($validation);
+
+        if ($has_validation_errors) {
             $this->failed_validation = true;
-            $this->validation_message = $this->errorMessage ?: 'Please fill out all required fields.';
-            $logger->debug('Setting failed_validation due to required field and invalid data', ['source' => 'gravityforms-state-debug']);
+            $error_message = $this->errorMessage ?: 'Please complete all required information in the form.';
+
+            // If we have specific validation messages, include them
+            if (!empty($validation)) {
+                $specific_errors = [];
+                foreach ($validation as $schema_validation) {
+                    if (isset($schema_validation['errors'])) {
+                        foreach ($schema_validation['errors'] as $error) {
+                            $property = $error['property'] ?? '';
+                            $message = $error['message'] ?? '';
+                            if ($property && $message) {
+                                $specific_errors[] = ucfirst(str_replace('.', ' ', trim($property, '.'))) . ' ' . $message;
+                            }
+                        }
+                    }
+                }
+                if (!empty($specific_errors)) {
+                    $error_message .= ' Issues: ' . implode(', ', array_unique($specific_errors));
+                }
+            }
+
+            $this->validation_message = $error_message;
+            $logger->debug('Setting failed_validation due to schema validation errors', ['source' => 'gravityforms-state-debug']);
         } else {
             $this->failed_validation = false;
             $this->validation_message = '';

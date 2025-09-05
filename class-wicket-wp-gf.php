@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.93
+ * Version:           2.0.94
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -109,7 +109,7 @@ class Wicket_Gf_Main
         add_shortcode('wicket_gravityform', [$this, 'shortcode']);
 
         // Initialize Wicket Org Validation
-        new Wicket_Gf_Org_Validation();
+        $Wicket_Gf_Validation = new Wicket_Gf_Validation();
 
         // Add a custom field group for Wicket fields
         add_filter('gform_add_field_buttons', function ($field_groups) {
@@ -460,11 +460,12 @@ class Wicket_Gf_Main
      */
     private function project_includes()
     {
+        // Debug
+        require_once plugin_dir_path(__FILE__) . 'includes/class-debug-gravityforms-state.php';
+
         require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-org-validation.php';
-        // Debug: DO NOT REMOVE
-        //require_once plugin_dir_path(__FILE__) . 'includes/class-debug-gravityforms-state.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-validation.php';
     }
 
     /**

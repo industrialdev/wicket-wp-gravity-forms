@@ -82,39 +82,27 @@ class GFWicketFieldWidgetProfile extends GF_Field
 
     public function validate($value, $form)
     {
+        $logger = wc_get_logger();
+        $logger->debug('Profile Individual Widget validate called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
+        $logger->debug('Profile Individual Widget validate value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+
         $value_array = json_decode($value, true);
+        $logger->debug('Profile Individual Widget JSON decode result: ' . var_export($value_array, true), ['source' => 'gravityforms-state-debug']);
+
         if (isset($value_array['incompleteRequiredFields'])) {
+            $logger->debug('Profile Individual Widget incompleteRequiredFields count: ' . count($value_array['incompleteRequiredFields']), ['source' => 'gravityforms-state-debug']);
             if (count($value_array['incompleteRequiredFields']) > 0) {
+                $logger->debug('Profile Individual Widget failing validation due to incomplete required fields', ['source' => 'gravityforms-state-debug']);
                 $this->failed_validation = true;
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
                 }
+            } else {
+                $logger->debug('Profile Individual Widget no incomplete required fields, validation passed', ['source' => 'gravityforms-state-debug']);
             }
+        } else {
+            $logger->debug('Profile Individual Widget no incompleteRequiredFields key found', ['source' => 'gravityforms-state-debug']);
         }
 
-        // Note: Commenting out incompleteRequiredResources validation as it's causing form submission issues
-        // The red asterisks on the buttons serve as visual indicators for required resources
-        // if (isset($value_array['incompleteRequiredResources'])) {
-        //     if (count($value_array['incompleteRequiredResources']) > 0) {
-        //         $this->failed_validation = true;
-        //         if (!empty($this->errorMessage)) {
-        //             $this->validation_message = $this->errorMessage;
-        //         }
-        //     }
-        // }
     }
-
-    // Functions for how the field value gets displayed on the backend
-    // public function get_value_entry_list($value, $entry, $field_id, $columns, $form) {
-    //   return __('Enter details', 'txtdomain');
-    // }
-    // public function get_value_entry_detail($value, $currency = '', $use_text = false, $format = 'html', $media = 'screen') {
-    //     return '';
-    // }
-
-    // Edit merge tag
-    // public function get_value_merge_tag($value, $input_id, $entry, $form, $modifier, $raw_value, $url_encode, $esc_html, $format, $nl2br) {
-    //   return $this->prettyListOutput($value);
-    // }
-
 }
