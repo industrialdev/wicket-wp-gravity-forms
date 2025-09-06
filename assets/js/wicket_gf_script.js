@@ -23,61 +23,13 @@ if (WicketGfPluginData.shouldAutoAdvance) {
         );
     });
 
-    // Listen for org selection (existing or just created) to then proceed to the next GF page, of a multi-step
-    jQuery(window).on("orgss-selection-made", (event) => {
-        // Additional check to ensure form is ready
-        if (typeof gform === "undefined" || !gform) {
-            return;
-        }
+    // Note: Auto-advance logic has been moved to nonce-handling.js for better nonce validation
+}
 
-        // Check if event detail contains the required information
-        if (!event.detail || !event.detail.uuid) {
-            return;
-        }
-
-        setTimeout(function () {
-            // Check if the form is visible
-            if (!jQuery(".gform_wrapper:visible").length) {
-                return;
-            }
-
-            // Try multiple methods to find and click the next button
-            let nextButton = null;
-
-            // Method 1: Use the stored activeNextButtonId
-            if (window.activeNextButtonId) {
-                nextButton = jQuery("#" + window.activeNextButtonId);
-            }
-
-            // Method 2: Find visible next button with class gform_next_button
-            if (!nextButton || nextButton.length === 0) {
-                nextButton = jQuery(".gform_next_button:visible");
-            }
-
-            // Method 3: Find next button by ID pattern
-            if (!nextButton || nextButton.length === 0) {
-                nextButton = jQuery("[id^=gform_next_button_]:visible");
-            }
-
-            // Method 4: Find input with type submit that has gform_next_button class
-            if (!nextButton || nextButton.length === 0) {
-                nextButton = jQuery(
-                    "input[type='submit'].gform_next_button:visible"
-                );
-            }
-
-            if (nextButton && nextButton.length > 0) {
-                // Additional check to ensure button is enabled
-                if (nextButton.first().is(":disabled")) {
-                    return;
-                }
-
-                // Trigger click event
-                nextButton.first().trigger("click");
-            } else {
-            }
-        }, 2000); // Give GF a couple seconds to register any programatic form changes before we advance too fast
-    });
+// Separate function to execute the auto-advance logic
+function wicketGf_ExecuteAutoAdvance() {
+    // This function is now handled by nonce-handling.js
+    console.log('Auto-advance logic moved to nonce-handling.js');
 }
 
 // On page load, find out active next button, make note of it, and hide it

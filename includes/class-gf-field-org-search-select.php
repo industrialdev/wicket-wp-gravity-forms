@@ -667,6 +667,22 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             $this->failed_validation = true;
             $this->validation_message = empty($this->errorMessage) ? esc_html__('This field is required.', 'wicket-gf') : $this->errorMessage;
         }
+
+        // Enhanced validation for nonce timeout issues in production
+        if (empty($value) && !empty($_POST['is_submit_' . $form['id']])) {
+            // Check if this might be a nonce timeout issue
+            $form_nonce = $_POST['gform_submit'] ?? '';
+            if (!empty($form_nonce) && !wp_verify_nonce($form_nonce, 'gform_submit_' . $form['id'])) {
+                $logger = wc_get_logger();
+                $logger->warning('Possible nonce timeout for form ' . $form['id'] . ' field ' . $this->id, ['source' => 'wicket-gf-org-search']);
+
+                // Provide user-friendly error message for required fields
+                if ($this->isRequired) {
+                    $this->failed_validation = true;
+                    $this->validation_message = esc_html__('Your session has expired. Please refresh the page and try again.', 'wicket-gf');
+                }
+            }
+        }
     }
 
     /**
