@@ -401,7 +401,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 $cleaned_ai_widget_schemas[] = [
                     'slug'           => $ai_item[0] ?? '',
                     'resourceSlug'   => $ai_item[1] ?? '',
-                    'showAsRequired' => $ai_item[3] ?? false,
+                    'showAsRequired' => isset($ai_item[3]) ? (bool) $ai_item[3] : false,
                 ];
             }
         } else {
@@ -409,7 +409,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                 $cleaned_ai_widget_schemas[] = [
                     'id'             => $ai_item[0] ?? '',
                     'resourceId'     => $ai_item[1] ?? '',
-                    'showAsRequired' => $ai_item[3] ?? false,
+                    'showAsRequired' => isset($ai_item[3]) ? (bool) $ai_item[3] : false,
                 ];
             }
         }
@@ -476,9 +476,59 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         $logger->debug('Validation array: ' . var_export($validation, true), ['source' => 'gravityforms-state-debug']);
         $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
 
-        // Check for validation errors regardless of field requirement status
-        // Individual schemas can have their own required fields
-        $has_validation_errors = !empty($invalid) || !empty($validation);
+        // Check for validation errors, but only for fields that are actually required
+        // Individual schemas can have their own required fields based on showAsRequired setting
+        $has_validation_errors = false;
+
+        // If the field itself is required, check for any validation errors
+        if ($this->isRequired) {
+            $has_validation_errors = !empty($invalid) || !empty($validation);
+        } else {
+            // If the field is not required, only fail validation for specific required schemas
+            // Check if any of the invalid/validation errors are from schemas marked as showAsRequired
+            $required_schemas_with_errors = false;
+
+            // Get the schema settings for this field
+            $ai_widget_schemas = $this->wwidget_ai_schemas ?? [[]];
+
+            // Check invalid array for required schema errors
+            if (!empty($invalid)) {
+                foreach ($invalid as $schema_id => $errors) {
+                    // Find if this schema is marked as required
+                    foreach ($ai_widget_schemas as $schema_config) {
+                        $schema_id_or_slug = $schema_config[0] ?? ''; // ID or slug
+                        $show_as_required = $schema_config[3] ?? false; // showAsRequired setting
+
+                        // If this schema is marked as required and has errors, fail validation
+                        if (($schema_id_or_slug == $schema_id || $schema_id_or_slug == $schema_id) && $show_as_required) {
+                            $required_schemas_with_errors = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            // Check validation array for required schema errors
+            if (!$required_schemas_with_errors && !empty($validation)) {
+                foreach ($validation as $schema_id => $schema_validation) {
+                    // Find if this schema is marked as required
+                    foreach ($ai_widget_schemas as $schema_config) {
+                        $schema_id_or_slug = $schema_config[0] ?? ''; // ID or slug
+                        $show_as_required = $schema_config[3] ?? false; // showAsRequired setting
+
+                        // If this schema is marked as required and has validation errors, fail validation
+                        if (($schema_id_or_slug == $schema_id || $schema_id_or_slug == $schema_id) && $show_as_required) {
+                            if (isset($schema_validation['errors']) && !empty($schema_validation['errors'])) {
+                                $required_schemas_with_errors = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $has_validation_errors = $required_schemas_with_errors;
+        }
 
         if ($has_validation_errors) {
             $this->failed_validation = true;
