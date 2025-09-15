@@ -44,11 +44,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn
 
         // Uncomment to see field map choice details for the addon screen you're viewing
         // add_filter( 'gform_field_map_choices', function( $fields, $form_id, $field_type, $exclude_field_types ) {
-        // 	return $fields;
+        //  return $fields;
         // }, 10, 4 );
     }
-
-    // # FEED PROCESSING -----------------------------------------------------------------------------------------------
 
     /**
      * Process the feed e.g. subscribe the user to a list.
@@ -61,7 +59,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn
      */
     public function process_feed($feed, $entry, $form)
     {
-
         // NOTE: Per Terry, watch out for these scenarios that could cause save-to-MDP issues:
         /* Any field that is marked required (this can be at any level of nesting)
          * Repeater entries
@@ -79,6 +76,9 @@ class GFWicketMappingAddOn extends GFFeedAddOn
             // Get the field value for the specified field id
             $merge_vars[$name] = $this->get_field_value($form, $entry, $field_id);
         }
+
+        // Allow customization of merge_vars via filter hook
+        $merge_vars = apply_filters('wicket_gf_process_feed_merge_vars', $merge_vars, $form, $entry, $feed);
 
         // Loop through the field mappings to organize them by same type (e.g. profile) and same schema to batch API calls
         $grouped_updates = [];
@@ -309,8 +309,6 @@ class GFWicketMappingAddOn extends GFFeedAddOn
         return parent::styles();
     }
 
-    // # ADMIN FUNCTIONS -----------------------------------------------------------------------------------------------
-
     /**
      * Configures the settings which should be rendered on the feed edit page in the Form Settings > Simple Feed Add-On area.
      *
@@ -364,10 +362,10 @@ class GFWicketMappingAddOn extends GFFeedAddOn
                 // The value is set in a way where it can be split by the / characters when we process the feed, and
                 // know exactly where to save that data in the Wicket Member schemas
                 // if( isset( $schema['schema_id'] ) && !empty( $schema['schema_id'] )) {
-                // 	$value .= $schema['schema_id'] . '/';
+                //  $value .= $schema['schema_id'] . '/';
                 // }
                 // if( isset( $child_field['path_to_field'] ) && !empty( $child_field['path_to_field'] ) ) {
-                // 	$value .= $child_field['path_to_field'] . '/';
+                //  $value .= $child_field['path_to_field'] . '/';
                 // }
                 // $value .= $child_field['name'];
 
