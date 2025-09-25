@@ -465,6 +465,147 @@ class GFDataBindHiddenField extends GF_Field
         return sprintf("<input name='input_%d' id='%s' type='hidden'%s value='%s'%s />", $id, $field_id, $class_attribute, $input_value, $data_attributes);
     }
 
+    private static function extract_included_items_from_response($api_response): ?array
+    {
+        $included_items_array = null;
+
+        if (is_object($api_response)) {
+            if (method_exists($api_response, 'included')) {
+                try {
+                    $included_data = $api_response->included();
+                    if ($included_data instanceof Illuminate\Support\Collection) {
+                        $included_items_array = $included_data->all();
+                    } elseif (is_array($included_data)) {
+                        $included_items_array = $included_data;
+                    }
+                } catch (Exception $e) {
+                    // Ignore inclusion extraction failures and fallback to other strategies.
+                }
+            }
+
+            if (is_null($included_items_array) && property_exists($api_response, 'included')) {
+                $included_data_prop = $api_response->included;
+                if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                    $included_items_array = $included_data_prop->all();
+                } elseif (is_array($included_data_prop)) {
+                    $included_items_array = $included_data_prop;
+                }
+            }
+
+            if (is_null($included_items_array) && method_exists($api_response, 'toJsonAPI')) {
+                try {
+                    $response_as_array = $api_response->toJsonAPI();
+                    if (isset($response_as_array['included'])) {
+                        if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                            $included_items_array = $response_as_array['included']->all();
+                        } elseif (is_array($response_as_array['included'])) {
+                            $included_items_array = $response_as_array['included'];
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Ignore and fallback to other response shapes.
+                }
+            }
+        } elseif (is_array($api_response) && isset($api_response['included'])) {
+            $included_data_from_main_array = $api_response['included'];
+            if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                $included_items_array = $included_data_from_main_array->all();
+            } elseif (is_array($included_data_from_main_array)) {
+                $included_items_array = $included_data_from_main_array;
+            }
+        }
+
+        return $included_items_array;
+    }
+
+    private static function build_schema_property_options(array $schema_attributes): array
+    {
+        $schema_definition = null;
+
+        foreach (['schema', 'schema_raw'] as $schema_key) {
+            if (isset($schema_attributes[$schema_key]) && is_array($schema_attributes[$schema_key])) {
+                $schema_definition = $schema_attributes[$schema_key];
+                break;
+            }
+        }
+
+        if (!$schema_definition || !isset($schema_definition['properties']) || !is_array($schema_definition['properties'])) {
+            return [];
+        }
+
+        $ui_schema = null;
+        foreach (['ui_schema', 'ui_schema_raw'] as $ui_schema_key) {
+            if (isset($schema_attributes[$ui_schema_key]) && is_array($schema_attributes[$ui_schema_key])) {
+                $ui_schema = $schema_attributes[$ui_schema_key];
+                break;
+            }
+        }
+
+        $options = [];
+
+        foreach ($schema_definition['properties'] as $property_key => $property_definition) {
+            if (!is_array($property_definition)) {
+                continue;
+            }
+
+            $label = self::derive_schema_property_label($property_key, $property_definition, $ui_schema);
+            $options[$property_key] = $label;
+        }
+
+        return $options;
+    }
+
+    private static function derive_schema_property_label(string $property_key, array $property_definition, ?array $ui_schema): string
+    {
+        $label = null;
+
+        if (is_array($ui_schema) && isset($ui_schema[$property_key]) && is_array($ui_schema[$property_key])) {
+            $label = self::extract_label_from_ui_schema_section($ui_schema[$property_key]);
+        }
+
+        if (!$label && isset($property_definition['title']) && is_string($property_definition['title'])) {
+            $label = $property_definition['title'];
+        }
+
+        if (!$label && isset($property_definition['description']) && is_string($property_definition['description'])) {
+            $label = $property_definition['description'];
+        }
+
+        return $label ?: ucwords(str_replace(['_', '-'], ' ', $property_key));
+    }
+
+    private static function extract_label_from_ui_schema_section(array $ui_schema_section): ?string
+    {
+        if (isset($ui_schema_section['ui:i18n']['label'])) {
+            $label_data = $ui_schema_section['ui:i18n']['label'];
+
+            if (is_array($label_data)) {
+                foreach (['en', 'fr'] as $locale) {
+                    if (!empty($label_data[$locale]) && is_string($label_data[$locale])) {
+                        return $label_data[$locale];
+                    }
+                }
+
+                $first_value = reset($label_data);
+                if (is_string($first_value)) {
+                    return $first_value;
+                }
+            } elseif (is_string($label_data)) {
+                return $label_data;
+            }
+        }
+
+        if (isset($ui_schema_section['label']) && is_string($ui_schema_section['label'])) {
+            return $ui_schema_section['label'];
+        }
+
+        if (isset($ui_schema_section['ui:title']) && is_string($ui_schema_section['ui:title'])) {
+            return $ui_schema_section['ui:title'];
+        }
+
+        return null;
+    }
+
     /**
      * AJAX handler to get MDP schemas for the selected data source.
      */
@@ -946,6 +1087,7 @@ class GFDataBindHiddenField extends GF_Field
                     return;
                 }
 
+                $included_items_array = self::extract_included_items_from_response($person_data_response);
                 $person_attributes_arr = null;
                 if (is_object($person_data_response)) {
                     // Attempt 1: Direct access to data_fields property
@@ -1014,6 +1156,33 @@ class GFDataBindHiddenField extends GF_Field
                             } elseif (isset($current_schema_value_arr['value'])) {
                                 $options['_self'] = 'Value';
                             }
+                            break;
+                        }
+                    }
+                }
+
+                if (empty($options) && is_array($included_items_array)) {
+                    foreach ($included_items_array as $item) {
+                        $item_arr = is_object($item) ? (array) $item : $item;
+
+                        if (($item_arr['type'] ?? '') !== 'json_schemas') {
+                            continue;
+                        }
+
+                        $attributes = $item_arr['attributes'] ?? null;
+                        if (!is_array($attributes)) {
+                            continue;
+                        }
+
+                        $current_schema_slug = $attributes['slug'] ?? $attributes['key'] ?? null;
+                        if (!$current_schema_slug || $current_schema_slug !== $schema_data_slug) {
+                            continue;
+                        }
+
+                        $schema_options = self::build_schema_property_options($attributes);
+
+                        if (!empty($schema_options)) {
+                            $options = $schema_options;
                             break;
                         }
                     }
