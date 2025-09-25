@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.99
+ * Version:           2.0.100
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -104,7 +104,7 @@ class Wicket_Gf_Main
         $this->project_includes();
 
         // Load includes that depend on the Wicket base plugin
-        add_action('plugins_loaded', [$this, 'project_includes_after_base'], 99);
+        add_action('init', [$this, 'project_includes_after_base'], 99);
 
         // Other plugin initialization
         add_action('plugins_loaded', [$this, 'init']);
