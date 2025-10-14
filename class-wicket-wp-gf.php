@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.0.102
+ * Version:           2.1.0
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -245,16 +245,16 @@ class Wicket_Gf_Main
         if (get_option('wicket_gf_pagination_sidebar_layout')) {
             ob_start(); ?>
 
-<div class="wicket-gf-dynamic-hidden-html">
-<script>
-    window.addEventListener('load', function() {
-        if (document.querySelector('body') !== null) {
+            <div class="wicket-gf-dynamic-hidden-html">
+                <script>
+                    window.addEventListener('load', function() {
+                        if (document.querySelector('body') !== null) {
 
-            // Check and see if the page is using the steps version of pagination,
-            // and if so re-format it
-            let paginationStepsCheck = document.querySelector('.gf_page_steps');
-            if (paginationStepsCheck != null) {
-                document.head.insertAdjacentHTML("beforeend", `
+                            // Check and see if the page is using the steps version of pagination,
+                            // and if so re-format it
+                            let paginationStepsCheck = document.querySelector('.gf_page_steps');
+                            if (paginationStepsCheck != null) {
+                                document.head.insertAdjacentHTML("beforeend", `
                         <style>
                             @media(min-width:768px) {
                                 form[id^=gform_] {
@@ -344,13 +344,13 @@ class Wicket_Gf_Main
                                 border-color: var(--border-interactive, #cfd3d9);
                             }
                         </style>`);
-            }
-        }
-    });
-</script>
-</div>
+                            }
+                        }
+                    });
+                </script>
+            </div>
 
-<?php $output = ob_get_clean();
+        <?php $output = ob_get_clean();
 
             // Dynamically create and add this HTML form field on render
             $props = [
@@ -473,6 +473,7 @@ class Wicket_Gf_Main
         require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-validation.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-nonce-handler.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-consent-field-extension.php';
     }
 
     /**
@@ -648,6 +649,11 @@ class Wicket_Gf_Main
         if (class_exists('GFWicketFieldWidgetPrefs')) {
             GFWicketFieldWidgetPrefs::custom_settings($position, $form_id);
         }
+
+        // Add consent field extension settings
+        if (class_exists('GFWicket_Consent_Field_Extension')) {
+            GFWicket_Consent_Field_Extension::custom_settings($position, $form_id);
+        }
     }
 
     /**
@@ -677,6 +683,10 @@ class Wicket_Gf_Main
         if (class_exists('GFWicketFieldWidgetPrefs')) {
             GFWicketFieldWidgetPrefs::editor_script();
         }
+
+        if (class_exists('GFWicket_Consent_Field_Extension')) {
+            GFWicket_Consent_Field_Extension::editor_script();
+        }
     }
 
     public static function gf_editor_global_custom_fields($position, $form_id)
@@ -685,18 +695,18 @@ class Wicket_Gf_Main
         if ($position == 25) {
             ob_start(); ?>
 
-<li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
-    <style>
-        .wicket_global_custom_settings_hide_label {
-            display: block !important;
-        }
-    </style>
-    <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);"
-        onkeypress="SetFieldProperty('hide_label', this.checked);">
-    <label for="hide_label" class="inline">Hide Label</label>
-</li>
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
+                <style>
+                    .wicket_global_custom_settings_hide_label {
+                        display: block !important;
+                    }
+                </style>
+                <input type="checkbox" id="hide_label" onclick="SetFieldProperty('hide_label', this.checked);"
+                    onkeypress="SetFieldProperty('hide_label', this.checked);">
+                <label for="hide_label" class="inline">Hide Label</label>
+            </li>
 
-<?php echo ob_get_clean();
+        <?php echo ob_get_clean();
         }
     }
 
@@ -794,43 +804,46 @@ class Wicket_Gf_Main
 
     public function output_wicket_event_debugger_script(): void
     {
+        // Output field editor scripts for Gravity Forms form editor
+        $this->output_field_editor_scripts();
+
         // Check if WP_ENV is defined and is 'development' or 'staging'
         if (defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true)) {
             ?>
-<script type="text/javascript" id="wicket-gf-event-debugger">
-    document.addEventListener("DOMContentLoaded", function() {
-        function wicketLogWidgetEvent(eventName, e) {
-            //console.log('Full Event Detail:', e.detail);
+            <script type="text/javascript" id="wicket-gf-event-debugger">
+                document.addEventListener("DOMContentLoaded", function() {
+                    function wicketLogWidgetEvent(eventName, e) {
+                        //console.log('Full Event Detail:', e.detail);
 
-            if (e.detail) {
-                if (e.detail.dataFields) {
-                    //console.log('Data Fields:', e.detail.dataFields);
-                } else {
-                    //console.log('Event Detail:', e.detail);
-                }
+                        if (e.detail) {
+                            if (e.detail.dataFields) {
+                                //console.log('Data Fields:', e.detail.dataFields);
+                            } else {
+                                //console.log('Event Detail:', e.detail);
+                            }
 
-                if (e.detail.resource) {
-                    //console.log('Resource:', e.detail.resource);
-                }
-                if (e.detail.validation) {
-                    //console.log('Validation:', e.detail.validation);
-                }
-            }
-        }
+                            if (e.detail.resource) {
+                                //console.log('Resource:', e.detail.resource);
+                            }
+                            if (e.detail.validation) {
+                                //console.log('Validation:', e.detail.validation);
+                            }
+                        }
+                    }
 
-        function initializeWidgetListeners() {
-            // Listen for widget loaded event
-            window.addEventListener('wwidget-component-common-loaded', function(e) {
-                wicketLogWidgetEvent('LOADED', e);
-            });
-        }
+                    function initializeWidgetListeners() {
+                        // Listen for widget loaded event
+                        window.addEventListener('wwidget-component-common-loaded', function(e) {
+                            wicketLogWidgetEvent('LOADED', e);
+                        });
+                    }
 
-        // Check for Wicket and initialize
-        if (typeof window.Wicket !== 'undefined') {
-            window.Wicket.ready(initializeWidgetListeners);
-        }
-    });
-</script>
+                    // Check for Wicket and initialize
+                    if (typeof window.Wicket !== 'undefined') {
+                        window.Wicket.ready(initializeWidgetListeners);
+                    }
+                });
+            </script>
 <?php
         }
     }
