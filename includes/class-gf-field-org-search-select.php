@@ -32,6 +32,13 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                             you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em>
                     </p>
 
+                    <label style="margin-top: 1em;display: block;" for="orgss_display_org_fields">Display Org Fields:</label>
+                    <select name="orgss_display_org_fields" id="orgss_display_org_fields" onchange="SetFieldProperty('orgss_display_org_fields', this.value)">
+                        <option value="name">Org Name</option>
+                        <option value="name_location">Org Name and Location</option>
+                        <option value="name_address">Org Name and Address</option>
+                    </select>
+
                     <label style="margin-top: 1em;display: block;">Relationship Type(s) Upon Org Creation/Selection</label>
                     <input onkeyup="SetFieldProperty('orgss_relationship_type_upon_org_creation', this.value)" type="text" name="orgss_relationship_type_upon_org_creation" id="orgss_relationship_type_upon_org_creation_input" />
                     <p style="margin-top: 2px;margin-bottom: 0px;"><em>This can be a single relationship, or a comma-separated list
@@ -201,6 +208,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     $('#orgss_grant_roster_man_on_purchase').prop('checked', field.orgss_grant_roster_man_on_purchase || false);
                     $('#orgss_grant_org_editor_on_select').prop('checked', field.orgss_grant_org_editor_on_select || false);
                     $('#orgss_grant_org_editor_on_purchase').prop('checked', field.orgss_grant_org_editor_on_purchase || false);
+                    $('#orgss_display_org_fields').val(field.orgss_display_org_fields || 'name');
 
                     // Handle active membership alert fields
                     $('#orgss_active_membership_alert_title_input').val(field.orgss_active_membership_alert_title || '');
@@ -312,6 +320,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 field.orgss_grant_roster_man_on_purchase = false;
                 field.orgss_grant_org_editor_on_select = false;
                 field.orgss_grant_org_editor_on_purchase = false;
+                field.orgss_display_org_fields = 'name';
                 field.orgss_active_membership_alert_title = '';
                 field.orgss_active_membership_alert_body = '';
                 field.orgss_active_membership_alert_button_1_text = '';
@@ -379,6 +388,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         $grant_roster_man_on_purchase = false;
         $orgss_grant_org_editor_on_select = false;
         $orgss_grant_org_editor_on_purchase = false;
+        $orgss_display_org_fields = 'name';
         $orgss_hide_remove_buttons = false;
         $orgss_hide_select_buttons = false;
         $orgss_display_removal_alert_message = false;
@@ -470,6 +480,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         if (isset($field->orgss_grant_org_editor_on_purchase)) {
                             $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
                         }
+                        if (isset($field->orgss_display_org_fields)) {
+                            $orgss_display_org_fields = $field->orgss_display_org_fields;
+                        }
                         if (isset($field->orgss_hide_remove_buttons)) {
                             $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
                         }
@@ -514,6 +527,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
                 'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
                 'grant_org_editor_on_purchase'                  => $orgss_grant_org_editor_on_purchase,
+                'display_org_fields'                            => $orgss_display_org_fields,
                 'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
                 'hide_select_buttons'                           => $orgss_hide_select_buttons,
                 'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
