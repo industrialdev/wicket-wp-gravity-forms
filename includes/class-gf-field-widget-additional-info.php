@@ -4,9 +4,10 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     public $type = 'wicket_widget_ai';
 
     /**
-     * Initialize the widget field and enqueue validation scripts
+     * Initialize the widget field and enqueue validation scripts.
      */
-    public static function init() {
+    public static function init()
+    {
         // Enqueue validation scripts when this widget is used
         add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
     }
@@ -571,13 +572,14 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
     }
 
     /**
-     * Enqueue validation scripts for MDP widgets
+     * Enqueue validation scripts for MDP widgets.
      */
-    public static function enqueue_validation_scripts($form, $is_ajax) {
+    public static function enqueue_validation_scripts($form, $is_ajax)
+    {
         // Check if this form contains an additional info widget
         $has_ai_widget = false;
         foreach ($form['fields'] as $field) {
-            if ($field instanceof GFWicketFieldWidgetAdditionalInfo) {
+            if ($field instanceof self) {
                 $has_ai_widget = true;
                 break;
             }
@@ -607,7 +609,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             [
                 'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
                 'enableAutoDetection' => true,
-                'debugMode' => defined('WP_ENV') && WP_ENV === 'development'
+                'debugMode' => defined('WP_ENV') && WP_ENV === 'development',
             ]
         );
     }

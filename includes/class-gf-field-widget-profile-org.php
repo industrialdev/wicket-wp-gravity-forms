@@ -7,9 +7,10 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     public $wwidget_org_profile_required_resources = '';
 
     /**
-     * Initialize the widget field and enqueue validation scripts
+     * Initialize the widget field and enqueue validation scripts.
      */
-    public static function init() {
+    public static function init()
+    {
         // Enqueue validation scripts when this widget is used
         add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
     }
@@ -387,13 +388,14 @@ jQuery(document).ready(function($) {
     }
 
     /**
-     * Enqueue validation scripts for MDP widgets
+     * Enqueue validation scripts for MDP widgets.
      */
-    public static function enqueue_validation_scripts($form, $is_ajax) {
+    public static function enqueue_validation_scripts($form, $is_ajax)
+    {
         // Check if this form contains an org profile widget
         $has_org_widget = false;
         foreach ($form['fields'] as $field) {
-            if ($field instanceof GFWicketFieldWidgetProfileOrg) {
+            if ($field instanceof self) {
                 $has_org_widget = true;
                 break;
             }
@@ -423,7 +425,7 @@ jQuery(document).ready(function($) {
             [
                 'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
                 'enableAutoDetection' => true,
-                'debugMode' => defined('WP_ENV') && WP_ENV === 'development'
+                'debugMode' => defined('WP_ENV') && WP_ENV === 'development',
             ]
         );
     }

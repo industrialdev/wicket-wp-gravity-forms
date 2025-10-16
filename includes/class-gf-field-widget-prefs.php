@@ -4,9 +4,10 @@ class GFWicketFieldWidgetPrefs extends GF_Field
     public $type = 'wicket_widget_prefs';
 
     /**
-     * Initialize the widget field and enqueue validation scripts
+     * Initialize the widget field and enqueue validation scripts.
      */
-    public static function init() {
+    public static function init()
+    {
         // Enqueue validation scripts when this widget is used
         add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
     }
@@ -179,13 +180,14 @@ if (!window.WicketGF.Prefs.initialized) {
     }
 
     /**
-     * Enqueue validation scripts for MDP widgets
+     * Enqueue validation scripts for MDP widgets.
      */
-    public static function enqueue_validation_scripts($form, $is_ajax) {
+    public static function enqueue_validation_scripts($form, $is_ajax)
+    {
         // Check if this form contains a preferences widget
         $has_prefs_widget = false;
         foreach ($form['fields'] as $field) {
-            if ($field instanceof GFWicketFieldWidgetPrefs) {
+            if ($field instanceof self) {
                 $has_prefs_widget = true;
                 break;
             }
@@ -215,7 +217,7 @@ if (!window.WicketGF.Prefs.initialized) {
             [
                 'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
                 'enableAutoDetection' => true,
-                'debugMode' => defined('WP_ENV') && WP_ENV === 'development'
+                'debugMode' => defined('WP_ENV') && WP_ENV === 'development',
             ]
         );
     }
