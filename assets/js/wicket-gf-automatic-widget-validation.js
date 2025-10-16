@@ -57,6 +57,7 @@ const WicketMDPAutoValidation = {
             }
         }
 
+  
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
             enableLogging: this.enableLogging,
@@ -161,10 +162,60 @@ const WicketMDPAutoValidation = {
 
         if (validationInfo) {
             this.updateValidationState(eventType, validationInfo);
+            // Update hidden form fields with current widget data
+            this.updateHiddenFormFields(widgetData);
         }
 
         // Store widget reference for tracking
         this.trackWidget(eventType, widgetData);
+    },
+
+    /**
+     * Update hidden form fields with current widget data using documented MDP APIs
+     */
+    updateHiddenFormFields(widgetData) {
+        // Use Wicket.ready to ensure we're working with the official API
+        if (typeof window.Wicket !== 'undefined' && window.Wicket.ready) {
+            window.Wicket.ready(() => {
+                // Find all hidden inputs that might contain widget data
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"], input[type="hidden"][class*="wicket"]');
+
+                hiddenInputs.forEach((input) => {
+                    try {
+                        // Try to parse existing data
+                        let existingData = {};
+                        try {
+                            existingData = JSON.parse(input.value || '{}');
+                        } catch (e) {
+                            // If parsing fails, start fresh
+                            existingData = {};
+                        }
+
+                        // Update with current widget data from documented event payload
+                        if (widgetData.incompleteRequiredFields !== undefined) {
+                            existingData.incompleteRequiredFields = widgetData.incompleteRequiredFields;
+                        }
+                        if (widgetData.incompleteRequiredResources !== undefined) {
+                            existingData.incompleteRequiredResources = widgetData.incompleteRequiredResources;
+                        }
+                        if (widgetData.notFound !== undefined) {
+                            existingData.notFound = widgetData.notFound;
+                        }
+                        if (widgetData.validation) {
+                            existingData.validation = widgetData.validation;
+                        }
+
+                        // Update the hidden field value
+                        const newValue = JSON.stringify(existingData);
+                        input.value = newValue;
+
+                        this.log(`Updated hidden field ${input.name} with current widget data via MDP API`);
+                    } catch (error) {
+                        this.log(`Error updating hidden field ${input.name}:`, error);
+                    }
+                });
+            });
+        }
     },
 
     /**
@@ -290,14 +341,13 @@ const WicketMDPAutoValidation = {
     },
 
     /**
-     * Scan DOM for MDP widget elements
+     * Scan DOM for MDP widget elements and validate using HTML parsing
      */
     scanForWidgetElements() {
         // Look for common MDP widget selectors
         const widgetSelectors = [
-            '[id*="wicket-widget"]',
-            '[class*="wicket-widget"]',
-            '[data-wicket-widget]',
+            '[id*="profile-"]',  // Based on the HTML example: id="profile-2153092545028218887"
+            '.wicket__widgets',
             '.wicket-person-profile',
             '.wicket-org-profile',
             '.wicket-additional-info',
@@ -311,6 +361,11 @@ const WicketMDPAutoValidation = {
             if (elements.length > 0) {
                 this.log(`Found ${elements.length} widget elements with selector: ${selector}`);
                 foundWidgets = true;
+
+                // Validate each widget using HTML parsing
+                elements.forEach(element => {
+                    this.validateWidgetFromHTML(element);
+                });
             }
         });
 
@@ -318,6 +373,95 @@ const WicketMDPAutoValidation = {
             this.currentValidationState.widgetsReady = true;
             this.log('Widget elements detected in DOM, validation system ready');
         }
+    },
+
+    /**
+     * Validate widget by parsing its HTML structure to find required fields
+     */
+    validateWidgetFromHTML(widgetElement) {
+        // Find all required field indicators within this widget
+        const requiredIndicators = widgetElement.querySelectorAll('.required-symbol');
+
+        const incompleteFields = [];
+
+        requiredIndicators.forEach(indicator => {
+            // Find the associated field label
+            const label = this.findFieldLabel(indicator);
+            if (label) {
+                // Check if the field has a value
+                const fieldValue = this.getFieldValue(indicator);
+
+                if (!fieldValue || fieldValue.trim() === '') {
+                    incompleteFields.push(label);
+                }
+            }
+        });
+
+        // Update validation state based on HTML parsing
+        if (incompleteFields.length > 0) {
+            this.currentValidationState.incompleteRequiredFields = incompleteFields;
+            this.currentValidationState.incompleteRequiredResources = [];
+            this.currentValidationState.hasRequiredFields = true;
+        } else {
+            this.currentValidationState.incompleteRequiredFields = [];
+            this.currentValidationState.incompleteRequiredResources = [];
+        }
+
+        this.log('HTML-based validation result:', {
+            incompleteFields: incompleteFields,
+            totalRequired: requiredIndicators.length,
+            isComplete: incompleteFields.length === 0
+        });
+    },
+
+    /**
+     * Find the field label associated with a required indicator
+     */
+    findFieldLabel(requiredIndicator) {
+        // Look for the label element that contains this required indicator
+        let labelElement = requiredIndicator.closest('.label');
+        if (labelElement) {
+            // Get the text content, removing the required indicator and extra whitespace
+            const labelText = labelElement.textContent.replace(/\*\s*$/, '').trim();
+            return labelText;
+        }
+
+        // Fallback: look for a control-label that contains this indicator
+        labelElement = requiredIndicator.closest('.control-label');
+        if (labelElement) {
+            const labelText = labelElement.textContent.replace(/\*\s*$/, '').trim();
+            return labelText;
+        }
+
+        return null;
+    },
+
+    /**
+     * Get the actual value of a field based on its required indicator
+     */
+    getFieldValue(requiredIndicator) {
+        // Find the parent container that holds both the label and the value
+        const container = requiredIndicator.closest('.InputStatic, .TypeableResource, .form-group');
+
+        if (!container) {
+            return null;
+        }
+
+        // For InputStatic fields (read-only display fields)
+        const valueElement = container.querySelector('.value, .TypeableResource__content-value, .form-control');
+        if (valueElement) {
+            const value = valueElement.textContent.trim();
+            return value;
+        }
+
+        // For editable fields that might have input elements
+        const inputElement = container.querySelector('input, select, textarea');
+        if (inputElement) {
+            const value = inputElement.value.trim();
+            return value;
+        }
+
+        return null;
     },
 
     /**
@@ -392,9 +536,8 @@ const WicketMDPAutoValidation = {
         errorContainer.style.display = 'block';
         errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        setTimeout(() => {
-            errorContainer.style.display = 'none';
-        }, 10000);
+        // Error message now persists until another error needs to be shown
+        // Removed auto-hide timeout
     },
 
     /**
@@ -449,7 +592,13 @@ const WicketMDPAutoValidation = {
             if (form.id && form.id.startsWith('gform_')) {
                 self.log('Gravity Form submission detected, checking widget validation');
 
-                if (self.shouldBlockNavigation()) {
+                // First, update hidden fields with latest widget data before validation
+                self.updateAllWidgetDataBeforeSubmit();
+
+                // Check if we should block navigation
+                const shouldBlock = self.shouldBlockNavigation();
+
+                if (shouldBlock) {
                     self.log('Form submission validation failed, preventing submit');
                     event.preventDefault();
                     event.stopPropagation();
@@ -464,9 +613,63 @@ const WicketMDPAutoValidation = {
     },
 
     /**
+     * Update all widget data before form submission using documented MDP APIs
+     */
+    updateAllWidgetDataBeforeSubmit() {
+        // Use Wicket.ready to ensure we're working with the official API
+        if (typeof window.Wicket !== 'undefined' && window.Wicket.ready) {
+            window.Wicket.ready(() => {
+                this.log('Updating all widget data before form submission');
+
+                // Find all hidden inputs that might contain widget data
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"], input[type="hidden"][class*="wicket"]');
+
+                hiddenInputs.forEach((input) => {
+                    try {
+                        // Try to parse existing data
+                        let existingData = {};
+                        try {
+                            existingData = JSON.parse(input.value || '{}');
+                        } catch (e) {
+                            existingData = {};
+                        }
+
+                        // Update incomplete fields from current validation state
+                        const incompleteFields = this.currentValidationState.incompleteRequiredFields;
+                        const incompleteResources = this.currentValidationState.incompleteRequiredResources;
+
+                        if (incompleteFields.length > 0) {
+                            existingData.incompleteRequiredFields = incompleteFields;
+                        } else {
+                            existingData.incompleteRequiredFields = [];
+                        }
+
+                        if (incompleteResources.length > 0) {
+                            existingData.incompleteRequiredResources = incompleteResources;
+                        } else {
+                            existingData.incompleteRequiredResources = [];
+                        }
+
+                        // Update the hidden field value
+                        const newValue = JSON.stringify(existingData);
+                        input.value = newValue;
+
+                        this.log(`Updated hidden field ${input.name} before submission`);
+                    } catch (error) {
+                        this.log(`Error updating hidden field ${input.name} before submission:`, error);
+                    }
+                });
+            });
+        }
+    },
+
+    /**
      * Check if navigation should be blocked based on widget validation
      */
     shouldBlockNavigation() {
+        // First, update validation state using HTML parsing
+        this.updateValidationFromHTML();
+
         // Don't block if no widgets are detected
         if (!this.currentValidationState.widgetsReady) {
             this.log('No widgets detected, allowing navigation');
@@ -480,8 +683,9 @@ const WicketMDPAutoValidation = {
         }
 
         // Block if there are incomplete required fields
-        const hasIncompleteFields = this.currentValidationState.incompleteRequiredFields.length > 0 ||
-                                   this.currentValidationState.incompleteRequiredResources.length > 0;
+        const incompleteFields = this.currentValidationState.incompleteRequiredFields;
+        const incompleteResources = this.currentValidationState.incompleteRequiredResources;
+        const hasIncompleteFields = incompleteFields.length > 0 || incompleteResources.length > 0;
 
         this.log('Navigation block check:', {
             widgetsReady: this.currentValidationState.widgetsReady,
@@ -492,6 +696,91 @@ const WicketMDPAutoValidation = {
         });
 
         return hasIncompleteFields;
+    },
+
+    /**
+     * Update validation state by parsing HTML of all widgets
+     */
+    updateValidationFromHTML() {
+        const widgetSelectors = [
+            '[id*="profile-"]',
+            '.wicket__widgets',
+            '.wicket-person-profile',
+            '.wicket-org-profile',
+            '.wicket-additional-info',
+            '.wicket-preferences'
+        ];
+
+        let allIncompleteFields = [];
+        let widgetsFound = false;
+
+        widgetSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                widgetsFound = true;
+
+                elements.forEach(element => {
+                    const incompleteFields = this.getIncompleteFieldsFromHTML(element);
+                    allIncompleteFields.push(...incompleteFields);
+                });
+            }
+        });
+
+        // Update the global validation state
+        if (widgetsFound) {
+            this.currentValidationState.widgetsReady = true;
+            this.currentValidationState.hasRequiredFields = allIncompleteFields.length > 0 || this.hasAnyRequiredFields();
+            this.currentValidationState.incompleteRequiredFields = allIncompleteFields;
+            this.currentValidationState.incompleteRequiredResources = []; // Clear resources as we're using HTML parsing
+        }
+    },
+
+    /**
+     * Get incomplete fields from a specific widget element
+     */
+    getIncompleteFieldsFromHTML(widgetElement) {
+        const incompleteFields = [];
+
+        // Find all required field indicators within this widget
+        const requiredIndicators = widgetElement.querySelectorAll('.required-symbol');
+
+        requiredIndicators.forEach(indicator => {
+            const label = this.findFieldLabel(indicator);
+            if (label) {
+                const fieldValue = this.getFieldValue(indicator);
+
+                if (!fieldValue || fieldValue.trim() === '') {
+                    incompleteFields.push(label);
+                }
+            }
+        });
+
+        return incompleteFields;
+    },
+
+    /**
+     * Check if any widget has required fields at all
+     */
+    hasAnyRequiredFields() {
+        const widgetSelectors = [
+            '[id*="profile-"]',
+            '.wicket__widgets',
+            '.wicket-person-profile',
+            '.wicket-org-profile',
+            '.wicket-additional-info',
+            '.wicket-preferences'
+        ];
+
+        for (const selector of widgetSelectors) {
+            const elements = document.querySelectorAll(selector);
+            for (const element of elements) {
+                const requiredIndicators = element.querySelectorAll('.required-symbol');
+                if (requiredIndicators.length > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     },
 
     /**
