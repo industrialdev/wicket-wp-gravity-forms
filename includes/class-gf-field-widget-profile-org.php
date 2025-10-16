@@ -6,6 +6,14 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
 
+    /**
+     * Initialize the widget field and enqueue validation scripts
+     */
+    public static function init() {
+        // Enqueue validation scripts when this widget is used
+        add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
+    }
+
     // Ensure new fields have sane defaults server-side
     public function get_default_properties()
     {
@@ -377,4 +385,49 @@ jQuery(document).ready(function($) {
             return;
         }
     }
+
+    /**
+     * Enqueue validation scripts for MDP widgets
+     */
+    public static function enqueue_validation_scripts($form, $is_ajax) {
+        // Check if this form contains an org profile widget
+        $has_org_widget = false;
+        foreach ($form['fields'] as $field) {
+            if ($field instanceof GFWicketFieldWidgetProfileOrg) {
+                $has_org_widget = true;
+                break;
+            }
+        }
+
+        if (!$has_org_widget) {
+            return;
+        }
+
+        $plugin_dir = plugin_dir_path(dirname(__FILE__));
+        $plugin_url = plugin_dir_url(dirname(__FILE__));
+        $version = defined('WICKET_WP_GF_VERSION') ? WICKET_WP_GF_VERSION : '1.0.0';
+
+        // Enqueue the validation scripts
+        wp_enqueue_script(
+            'wicket-gf-automatic-widget-validation',
+            $plugin_url . 'assets/js/wicket-gf-automatic-widget-validation.js',
+            ['jquery'],
+            $version,
+            true
+        );
+
+        // Pass configuration to automatic validation script
+        wp_localize_script(
+            'wicket-gf-automatic-widget-validation',
+            'WicketMDPAutoValidationConfig',
+            [
+                'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
+                'enableAutoDetection' => true,
+                'debugMode' => defined('WP_ENV') && WP_ENV === 'development'
+            ]
+        );
+    }
 }
+
+// Initialize the widget field
+GFWicketFieldWidgetProfileOrg::init();

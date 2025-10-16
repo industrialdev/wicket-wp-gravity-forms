@@ -4,6 +4,14 @@ class GFWicketFieldWidgetProfile extends GF_Field
 {
     public $type = 'wicket_widget_profile_individual';
 
+    /**
+     * Initialize the widget field and enqueue validation scripts
+     */
+    public static function init() {
+        // Enqueue validation scripts when this widget is used
+        add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
+    }
+
     public function get_form_editor_field_title()
     {
         return esc_attr__('Wicket Widget: Profile', 'wicket-gf');
@@ -67,6 +75,48 @@ class GFWicketFieldWidgetProfile extends GF_Field
 
     }
 
+    /**
+     * Enqueue validation scripts for MDP widgets
+     */
+    public static function enqueue_validation_scripts($form, $is_ajax) {
+        // Check if this form contains a profile widget
+        $has_profile_widget = false;
+        foreach ($form['fields'] as $field) {
+            if ($field instanceof GFWicketFieldWidgetProfile) {
+                $has_profile_widget = true;
+                break;
+            }
+        }
+
+        if (!$has_profile_widget) {
+            return;
+        }
+
+        $plugin_dir = plugin_dir_path(dirname(__FILE__));
+        $plugin_url = plugin_dir_url(dirname(__FILE__));
+        $version = defined('WICKET_WP_GF_VERSION') ? WICKET_WP_GF_VERSION : '1.0.0';
+
+        // Enqueue the automatic widget validation script
+        wp_enqueue_script(
+            'wicket-gf-automatic-widget-validation',
+            $plugin_url . 'assets/js/wicket-gf-automatic-widget-validation.js',
+            ['jquery'],
+            $version,
+            true
+        );
+
+        // Pass configuration to automatic validation script
+        wp_localize_script(
+            'wicket-gf-automatic-widget-validation',
+            'WicketMDPAutoValidationConfig',
+            [
+                'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
+                'enableAutoDetection' => true,
+                'debugMode' => defined('WP_ENV') && WP_ENV === 'development'
+            ]
+        );
+    }
+
     // Override how to Save the field value
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
     {
@@ -106,3 +156,6 @@ class GFWicketFieldWidgetProfile extends GF_Field
 
     }
 }
+
+// Initialize the widget field
+GFWicketFieldWidgetProfile::init();
