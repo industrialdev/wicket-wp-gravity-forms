@@ -193,7 +193,7 @@ jQuery(document).ready(function($) {
             // Check if the UUID is actually a field ID
             if (is_numeric($org_uuid)) {
                 $field_id = (int) $org_uuid;
-                
+
                 // Use standard GF naming convention
                 $field_name = 'input_' . $field_id;
 

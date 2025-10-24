@@ -177,8 +177,8 @@ const WicketMDPAutoValidation = {
         // Use Wicket.ready to ensure we're working with the official API
         if (typeof window.Wicket !== 'undefined' && window.Wicket.ready) {
             window.Wicket.ready(() => {
-                // Find all hidden inputs that might contain widget data
-                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"], input[type="hidden"][class*="wicket"]');
+                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target)');
 
                 hiddenInputs.forEach((input) => {
                     try {
@@ -621,8 +621,8 @@ const WicketMDPAutoValidation = {
             window.Wicket.ready(() => {
                 this.log('Updating all widget data before form submission');
 
-                // Find all hidden inputs that might contain widget data
-                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"], input[type="hidden"][class*="wicket"]');
+                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target)');
 
                 hiddenInputs.forEach((input) => {
                     try {
