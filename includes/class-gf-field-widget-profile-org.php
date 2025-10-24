@@ -189,6 +189,19 @@ jQuery(document).ready(function($) {
         // On multi-page forms, the pre-render hook runs too late. We need to get the UUID directly from POST.
         $current_page = GFFormDisplay::get_current_page($form['id']);
         if ($current_page > 1) {
+
+            // Check if the UUID is actually a field ID
+            if (is_numeric($org_uuid)) {
+                $field_id = (int) $org_uuid;
+                
+                // Use standard GF naming convention
+                $field_name = 'input_' . $field_id;
+
+                if (!empty($_POST[$field_name])) {
+                    $org_uuid = sanitize_text_field($_POST[$field_name]);
+                }
+            }
+
             // Find the org_uuid from the POST data of the previous page
             foreach ($form['fields'] as $field) {
                 if ($field->type == 'wicket_org_search_select') {
