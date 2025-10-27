@@ -131,9 +131,7 @@ const WicketGFLiveUpdate = {
         }
 
         if (data !== null) {
-            console.log(`Wicket GF: ${message}`, data);
         } else {
-            console.log(`Wicket GF: ${message}`);
         }
     },
 
@@ -145,7 +143,6 @@ const WicketGFLiveUpdate = {
         if (!this.enableLogging) {
             return;
         }
-        console.warn(`Wicket GF: ${message}`);
     },
 
     /**

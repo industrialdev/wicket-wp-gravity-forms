@@ -137,7 +137,6 @@ jQuery(document).ready(function($) {
                             $activeMembershipModal.css("pointer-events") !==
                                 "none";
                         if (isActiveMembershipVisible) {
-                            console.log("Active membership modal detected");
                             hasModal = true;
                         }
                     }
@@ -149,16 +148,12 @@ jQuery(document).ready(function($) {
                             $confirmationPopup.css("opacity") !== "0" &&
                             $confirmationPopup.css("pointer-events") !== "none";
                         if (isConfirmationVisible) {
-                            console.log("Confirmation popup detected");
                             hasModal = true;
                         }
                     }
 
                     if (hasModal) {
                         // Don't auto-advance if there's a modal - wait for user confirmation
-                        console.log(
-                            "Confirmation modal detected. Waiting for user confirmation before auto-advance."
-                        );
 
                         // Set up a listener for when the modal is closed/confirmed
                         var modalCheckInterval = setInterval(function () {
@@ -203,14 +198,8 @@ jQuery(document).ready(function($) {
                                     }
                                 });
                                 if (orgSelected) {
-                                    console.log(
-                                        "Modal confirmed and organization selected. Proceeding with auto-advance."
-                                    );
                                     executeAutoAdvance();
                                 } else {
-                                    console.log(
-                                        "Modal closed but no organization selected. Skipping auto-advance."
-                                    );
                                 }
                             }
                         }, 500); // Check every 500ms
@@ -218,9 +207,6 @@ jQuery(document).ready(function($) {
                         // Timeout after 30 seconds to prevent infinite waiting
                         setTimeout(function () {
                             clearInterval(modalCheckInterval);
-                            console.log(
-                                "Modal confirmation timeout. Skipping auto-advance."
-                            );
                         }, 30000);
                     } else {
                         // No modal, proceed with immediate auto-advance

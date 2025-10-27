@@ -29,7 +29,6 @@ if (WicketGfPluginData.shouldAutoAdvance) {
 // Separate function to execute the auto-advance logic
 function wicketGf_ExecuteAutoAdvance() {
     // This function is now handled by nonce-handling.js
-    console.log('Auto-advance logic moved to nonce-handling.js');
 }
 
 // On page load, find out active next button, make note of it, and hide it

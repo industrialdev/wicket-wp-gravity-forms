@@ -35,9 +35,7 @@ const WicketMDPAutoValidation = {
         if (!this.enableLogging) return;
 
         if (data !== null) {
-            console.log(`Wicket MDP Auto Validation: ${message}`, data);
         } else {
-            console.log(`Wicket MDP Auto Validation: ${message}`);
         }
     },
 
@@ -57,7 +55,7 @@ const WicketMDPAutoValidation = {
             }
         }
 
-  
+
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
             enableLogging: this.enableLogging,
