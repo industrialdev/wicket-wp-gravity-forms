@@ -18,6 +18,7 @@
  * Requires Plugins: wicket-wp-base-plugin, gravityforms
  * Requires Plugins: gravityforms
  */
+
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
