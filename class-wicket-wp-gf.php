@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.1.5
+ * Version:           2.2.0
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -18,7 +18,6 @@
  * Requires Plugins: wicket-wp-base-plugin, gravityforms
  * Requires Plugins: gravityforms
  */
-
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
@@ -140,7 +139,12 @@ class Wicket_Gf_Main
                     [
                         'class'     => 'button',
                         'data-type' => 'wicket_data_hidden',
-                        'value'     => __('Data Bind', 'wicket-gf'),
+                        'value'     => __('JS Data Bind', 'wicket-gf'),
+                    ],
+                    [
+                        'class'     => 'button',
+                        'data-type' => 'wicket_api_data_bind',
+                        'value'     => __('API Data Bind', 'wicket-gf'),
                     ],
                     [
                         'class'     => 'button',
@@ -489,6 +493,7 @@ class Wicket_Gf_Main
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-data-bind-hidden.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-api-data-bind.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-additional-info.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
@@ -498,6 +503,7 @@ class Wicket_Gf_Main
         GF_Fields::register(new GFWicketFieldUserMdpTags());
         GF_Fields::register(new GFWicketFieldWidgetProfile());
         GF_Fields::register(new GFDataBindHiddenField());
+        GF_Fields::register(new GFApiDataBindField());
         GF_Fields::register(new GFWicketFieldWidgetProfileOrg());
         GF_Fields::register(new GFWicketFieldWidgetAdditionalInfo());
         GF_Fields::register(new GFWicketFieldWidgetPrefs());
@@ -637,6 +643,9 @@ class Wicket_Gf_Main
 
         if (class_exists('GFDataBindHiddenField')) {
             GFDataBindHiddenField::custom_settings($position, $form_id);
+        }
+        if (class_exists('GFApiDataBindField')) {
+            GFApiDataBindField::custom_settings($position, $form_id);
         }
 
         if (class_exists('GFWicketFieldWidgetProfileOrg')) {
