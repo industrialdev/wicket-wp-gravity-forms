@@ -8,7 +8,7 @@ class GFDataBindHiddenField extends GF_Field
 
     public function get_form_editor_field_title(): string
     {
-        return esc_attr__('Wicket Hidden Data Bind', 'wicket-gf');
+        return esc_attr__('JS Data Bind', 'wicket-gf');
     }
 
     public function get_form_editor_button(): array
@@ -68,13 +68,13 @@ class GFDataBindHiddenField extends GF_Field
                 <input type="checkbox" id="liveUpdateEnabled"
                     onchange="SetFieldProperty('liveUpdateEnabled', this.checked);" />
                 <label for="liveUpdateEnabled" class="inline">
-                    <?php esc_html_e('Enable Data Bind', 'wicket-gf'); ?>
+                    <?php esc_html_e('Enable JS Data Bind', 'wicket-gf'); ?>
                     <?php gform_tooltip('live_update_enable_setting'); ?>
                 </label>
 
                 <?php // Summary View (initially hidden, shown by JS)?>
                 <div id="liveUpdateSummaryContainer" style="display:none; margin-top: 10px;">
-                    <label class="section_label"><?php esc_html_e('Current Data Bind Configuration', 'wicket-gf'); ?></label>
+                    <label class="section_label"><?php esc_html_e('Current JS Data Bind Configuration', 'wicket-gf'); ?></label>
                     <div id="liveUpdateSummaryDetails" style="padding-bottom: 10px;">
                         <p><strong><?php esc_html_e('Data Source:', 'wicket-gf'); ?></strong>
                             <span id="summaryDataSourceText"></span></p>
@@ -87,7 +87,7 @@ class GFDataBindHiddenField extends GF_Field
                             <span id="summaryValueKeyText"></span></p>
                     </div>
                     <button type="button" id="wicketResetLiveUpdateSettingsButton" class="button gf_input_button">
-                        <?php esc_html_e('Change Settings', 'wicket-gf'); ?>
+                        <?php esc_html_e('Change JS Data Bind Settings', 'wicket-gf'); ?>
                     </button>
                 </div>
 
@@ -433,7 +433,7 @@ class GFDataBindHiddenField extends GF_Field
     public function get_field_input($form, $value = '', $entry = null): string
     {
         if ($this->is_form_editor()) {
-            return '<p>' . esc_html__('Wicket Hidden Data Bind Field: Captures data from Wicket widgets or other sources. Configure in field settings.', 'wicket-gf') . '</p>';
+            return '<p>' . esc_html__('JS Data Bind Field: Captures data from JavaScript widgets. Configure in field settings.', 'wicket-gf') . '</p>';
         }
         $id = (int) $this->id;
         $field_id = sprintf('input_%d_%d', $form['id'], $this->id);
