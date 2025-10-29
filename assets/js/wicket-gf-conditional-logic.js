@@ -238,7 +238,7 @@
         // Set up change listeners for all form inputs that could affect ORGSS fields
         $(document).on('change', 'input[type="radio"], input[type="checkbox"], select, input[type="text"]', function() {
             var formId = $(this).closest('form').find('input[name="form_id"]').val() ||
-                         $(this).closest('.gform_wrapper').attr('id').replace('gform_', '');
+                         (($(this).closest('.gform_wrapper').attr('id') || '').replace('gform_', ''));
 
             if (formId) {
                 // Check if this form has conditional logic configured and affects ORGSS fields
