@@ -1,6 +1,41 @@
 (function ($) {
     "use strict";
 
+    // Check if a field has conditional logic configured
+    function hasConditionalLogicForField(formId, fieldId) {
+        // Check standard Gravity Forms conditional logic
+        if (window.gf_form_conditional_logic && window.gf_form_conditional_logic[formId]) {
+            var conditionalLogic = window.gf_form_conditional_logic[formId];
+
+            // Check if this field is a target of conditional logic
+            if (conditionalLogic.animation && conditionalLogic.animation[fieldId]) {
+                return true;
+            }
+
+            // Check if this field has dependency rules
+            if (conditionalLogic.dependency && conditionalLogic.dependency[fieldId]) {
+                return true;
+            }
+
+            // Check rules directly
+            if (conditionalLogic.rules) {
+                for (var targetFieldId in conditionalLogic.rules) {
+                    if (conditionalLogic.rules[targetFieldId] &&
+                        conditionalLogic.rules[targetFieldId].length > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check Advanced Conditional Logic
+        if (window.GFACL && window.GFACL.logic && window.GFACL.logic[formId]) {
+            return true;
+        }
+
+        return false;
+    }
+
     // Initialize ORGSS fields for conditional logic compatibility
     function initOrgssConditionalLogic() {
         // Find all org search/select field hidden inputs
@@ -14,31 +49,22 @@
             var $fieldContainer = $input.closest(".gfield");
 
             if ($fieldContainer.length && fieldId && formId) {
-                // Check if this field should be hidden based on current conditional logic
-                if (window.gf_form_conditional_logic && window.gf_form_conditional_logic[formId]) {
+                // Check if this field has conditional logic configured
+                var hasConditionalLogic = hasConditionalLogicForField(formId, fieldId);
+
+                if (hasConditionalLogic) {
                     // Use try-catch in case gf_check_field_rule is not available
                     try {
                         var shouldShow = gf_check_field_rule(formId, fieldId, true);
 
-                        // Special handling for ORGSS fields based on field 21 selection
-                        var field21Value = $('input[name="input_21"]:checked').val();
-
-                        // Force hide ORGSS fields if no radio option is selected in field 21
-                        if (!field21Value || field21Value === '') {
-                            $fieldContainer.hide();
-                        } else if (shouldShow === "hide") {
+                        if (shouldShow === "hide") {
                             $fieldContainer.hide();
                         } else {
                             $fieldContainer.show();
                         }
                     } catch (err) {
-                        // Fallback: hide ORGSS fields if no selection in field 21
-                        var field21Value = $('input[name="input_21"]:checked').val();
-                        if (!field21Value || field21Value === '') {
-                            $fieldContainer.hide();
-                        } else {
-                            $fieldContainer.show();
-                        }
+                        // Fallback: show the field if we can't determine conditional logic
+                        $fieldContainer.show();
                     }
                 } else {
                     // If no standard GF conditional logic is configured, check for Advanced Conditional Logic
@@ -209,56 +235,61 @@
             }
         });
 
-        // Set up radio button change listeners for field 21 (Renewal Type)
-        $(document).on('change', 'input[name="input_21"]', function() {
+        // Set up change listeners for all form inputs that could affect ORGSS fields
+        $(document).on('change', 'input[type="radio"], input[type="checkbox"], select, input[type="text"]', function() {
             var formId = $(this).closest('form').find('input[name="form_id"]').val() ||
                          $(this).closest('.gform_wrapper').attr('id').replace('gform_', '');
 
             if (formId) {
-                // Trigger conditional logic re-evaluation for the entire form
-                setTimeout(function() {
-                    try {
-                        // Re-initialize ORGSS fields visibility
-                        initOrgssConditionalLogic();
+                // Check if this form has conditional logic configured and affects ORGSS fields
+                var hasConditionalLogicConfigured = false;
+                var orgssFieldIds = [];
 
-                        // Handle Advanced Conditional Logic first
-                        if (window.GFACL && window.GFACL.logic && window.GFACL.logic[formId]) {
-                            // Advanced Conditional Logic is active, trigger rule re-evaluation
+                // Collect ORGSS field IDs
+                $("input.gf_org_search_select_input").each(function() {
+                    var inputId = $(this).attr("id");
+                    var fieldId = inputId ? inputId.split("_").pop() : null;
+                    if (fieldId && hasConditionalLogicForField(formId, fieldId)) {
+                        orgssFieldIds.push(fieldId);
+                        hasConditionalLogicConfigured = true;
+                    }
+                });
 
-                            // Get all ORGSS field IDs to re-evaluate
-                            var orgssFieldIds = [];
-                            $("input.gf_org_search_select_input").each(function() {
-                                var inputId = $(this).attr("id");
-                                var fieldId = inputId ? inputId.split("_").pop() : null;
-                                if (fieldId) {
-                                    orgssFieldIds.push(fieldId);
+                // Only proceed if conditional logic is configured and affects ORGSS fields
+                if (hasConditionalLogicConfigured || (window.GFACL && window.GFACL.logic && window.GFACL.logic[formId])) {
+                    // Trigger conditional logic re-evaluation for ORGSS fields
+                    setTimeout(function() {
+                        try {
+                            // Re-initialize ORGSS fields visibility
+                            initOrgssConditionalLogic();
+
+                            // Handle Advanced Conditional Logic first
+                            if (window.GFACL && window.GFACL.logic && window.GFACL.logic[formId]) {
+                                // Advanced Conditional Logic is active, trigger rule re-evaluation
+                                if (orgssFieldIds.length > 0 && typeof gf_apply_rules === 'function') {
+                                    gf_apply_rules(formId, orgssFieldIds, false);
                                 }
-                            });
-
-                            // Trigger conditional logic for ORGSS fields
-                            if (orgssFieldIds.length > 0 && typeof gf_apply_rules === 'function') {
-                                gf_apply_rules(formId, orgssFieldIds, false);
-                            }
-                        } else {
-                            // Standard GF conditional logic
-                            if (window.gform && typeof window.gform.doAction === 'function') {
-                                // Use GF's action system if available
-                                $(document).trigger('gform_post_conditional_logic', [formId, null, null]);
-                            } else if (typeof gf_apply_rules === 'function') {
-                                // Fallback to older GF method
-                                var $form = $("#gform_" + formId);
-                                if ($form.length) {
-                                    var $formFields = $form.find(".gfield");
-                                    if ($formFields.length) {
-                                        gf_apply_rules(formId, $formFields);
+                            } else {
+                                // Standard GF conditional logic
+                                if (window.gform && typeof window.gform.doAction === 'function') {
+                                    // Use GF's action system if available
+                                    $(document).trigger('gform_post_conditional_logic', [formId, orgssFieldIds, null]);
+                                } else if (typeof gf_apply_rules === 'function') {
+                                    // Fallback to older GF method
+                                    var $form = $("#gform_" + formId);
+                                    if ($form.length) {
+                                        var $formFields = $form.find(".gfield");
+                                        if ($formFields.length) {
+                                            gf_apply_rules(formId, $formFields);
+                                        }
                                     }
                                 }
                             }
+                        } catch (err) {
+                            // Error handling - fail silently
                         }
-                    } catch (err) {
-                        // Error handling - fail silently
-                    }
-                }, 100); // Small delay to ensure the radio value is updated
+                    }, 100); // Small delay to ensure the field value is updated
+                }
             }
         });
 
