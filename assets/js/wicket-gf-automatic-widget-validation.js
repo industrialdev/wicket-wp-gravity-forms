@@ -35,9 +35,9 @@ const WicketMDPAutoValidation = {
         if (!this.enableLogging) return;
 
         if (data !== null) {
-            console.log(`[WIDGET-DEBUG] ${message}:`, data);
+            console.log(`[WGF-AUTOVALID] ${message}:`, data);
         } else {
-            console.log(`[WIDGET-DEBUG] ${message}`);
+            console.log(`[WGF-AUTOVALID] ${message}`);
         }
     },
 
@@ -45,28 +45,10 @@ const WicketMDPAutoValidation = {
      * Initialize the automatic validation system
      */
     init() {
-        // Override configuration with PHP values if available
-        if (typeof window.WicketMDPAutoValidationConfig !== 'undefined') {
-            const config = window.WicketMDPAutoValidationConfig;
-            if (config.enableLogging !== undefined) {
-                this.enableLogging = config.enableLogging;
-            }
-            if (config.enableAutoDetection !== undefined && !config.enableAutoDetection) {
-                this.log('Automatic widget detection disabled by configuration');
-                return;
-            }
-        }
-
-        // Allow debug mode to be enabled via localStorage for quick testing
-        if (localStorage.getItem('wicket_debug_mode') === 'true') {
-            this.enableLogging = true;
-        }
-
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
             enableLogging: this.enableLogging,
-            autoDetectionEnabled: true,
-            debugModeEnabled: localStorage.getItem('wicket_debug_mode') === 'true'
+            autoDetectionEnabled: true
         });
 
         this.detectWicketPresence();
