@@ -398,36 +398,97 @@ const WicketMDPAutoValidation = {
         this.log('Scanning DOM with selectors:', widgetSelectors);
 
         let foundWidgets = false;
+        let visibleWidgets = 0;
 
         widgetSelectors.forEach(selector => {
             const elements = document.querySelectorAll(selector);
             if (elements.length > 0) {
                 this.log(`Found ${elements.length} widget elements with selector: ${selector}`);
                 elements.forEach((element, index) => {
+                    const isVisible = this.isWidgetVisible(element);
                     this.log(`Widget element ${index + 1} details:`, {
                         tagName: element.tagName,
                         id: element.id,
                         className: element.className,
+                        isVisible: isVisible,
                         innerHTML: element.innerHTML.substring(0, 200) + '...'
                     });
-                });
-                foundWidgets = true;
 
-                // Validate each widget using HTML parsing
-                elements.forEach(element => {
-                    this.validateWidgetFromHTML(element);
+                    // Only validate widgets that are visible on the current form step
+                    if (isVisible) {
+                        visibleWidgets++;
+                        foundWidgets = true;
+                        this.log(`Widget ${index + 1} is visible, validating it`);
+                        this.validateWidgetFromHTML(element);
+                    } else {
+                        this.log(`Widget ${index + 1} is NOT visible, skipping validation`);
+                    }
                 });
             } else {
                 this.log(`No widgets found with selector: ${selector}`);
             }
         });
 
+        this.log(`Scan complete: ${visibleWidgets} visible widgets found`);
+
         if (foundWidgets && !this.currentValidationState.widgetsReady) {
             this.currentValidationState.widgetsReady = true;
-            this.log('Widget elements detected in DOM, validation system ready');
+            this.log('Visible widget elements detected, validation system ready');
         } else if (!foundWidgets) {
-            this.log('No widget elements found in DOM during scan');
+            this.log('No visible widget elements found in DOM during scan');
         }
+    },
+
+    /**
+     * Check if a widget is visible on the current form step
+     */
+    isWidgetVisible(widgetElement) {
+        this.log(`Checking visibility for widget: ${widgetElement.id || widgetElement.className}`);
+
+        // Check if the element itself is visible
+        const style = window.getComputedStyle(widgetElement);
+        const isVisible = style.display !== 'none' &&
+                         style.visibility !== 'hidden' &&
+                         style.opacity !== '0' &&
+                         widgetElement.offsetWidth > 0 &&
+                         widgetElement.offsetHeight > 0;
+
+        this.log(`Widget direct visibility check: ${isVisible} (display: ${style.display}, visibility: ${style.visibility}, opacity: ${style.opacity})`);
+
+        if (!isVisible) {
+            this.log('Widget is not directly visible');
+            return false;
+        }
+
+        // Check if the widget is within a visible Gravity Form page/step
+        const gfPage = widgetElement.closest('.gform_page');
+        if (gfPage) {
+            const gfPageStyle = window.getComputedStyle(gfPage);
+            const isGfPageVisible = gfPageStyle.display !== 'none' &&
+                                   gfPage.offsetWidth > 0 &&
+                                   gfPage.offsetHeight > 0;
+            this.log(`Widget is in Gravity Form page with visibility: ${isGfPageVisible}`);
+            return isGfPageVisible;
+        }
+
+        // Check if the widget is within any container that might be hidden
+        const hiddenContainer = widgetElement.closest('[style*="display: none"], [style*="visibility: hidden"], .gform_hidden, .gf_step_hidden, .gform_page_fields:has(> .gform_hidden)');
+        if (hiddenContainer) {
+            this.log('Widget is within a hidden container');
+            return false;
+        }
+
+        // Check if the widget is in the current viewport or at least in the current form step
+        const rect = widgetElement.getBoundingClientRect();
+        const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
+        this.log(`Widget viewport check: ${isInViewport} (rect: ${rect.top}, ${rect.bottom}, window height: ${window.innerHeight})`);
+
+        // For Gravity Forms multi-step, widgets on non-current steps might still be in DOM but not visible
+        // We'll consider a widget visible if it's not explicitly hidden and is reasonably close to viewport
+        const isNearViewport = rect.top < window.innerHeight + 1000 && rect.bottom > -500;
+
+        this.log(`Widget final visibility result: ${isInViewport || isNearViewport}`);
+        return isInViewport || isNearViewport;
     },
 
     /**
@@ -866,6 +927,7 @@ const WicketMDPAutoValidation = {
 
         let allIncompleteFields = [];
         let widgetsFound = false;
+        let visibleWidgetsCount = 0;
 
         this.log('Checking widgets with selectors:', widgetSelectors);
 
@@ -874,20 +936,30 @@ const WicketMDPAutoValidation = {
             this.log(`Selector ${selectorIndex + 1} "${selector}" found ${elements.length} elements`);
 
             if (elements.length > 0) {
-                widgetsFound = true;
-
                 elements.forEach((element, elementIndex) => {
+                    const isVisible = this.isWidgetVisible(element);
                     this.log(`Processing element ${elementIndex + 1} for selector "${selector}":`, {
                         id: element.id,
-                        className: element.className
+                        className: element.className,
+                        isVisible: isVisible
                     });
 
-                    const incompleteFields = this.getIncompleteFieldsFromHTML(element);
-                    this.log(`Element ${elementIndex + 1} incomplete fields:`, incompleteFields);
-                    allIncompleteFields.push(...incompleteFields);
+                    // Only process visible widgets
+                    if (isVisible) {
+                        visibleWidgetsCount++;
+                        widgetsFound = true;
+
+                        const incompleteFields = this.getIncompleteFieldsFromHTML(element);
+                        this.log(`Element ${elementIndex + 1} incomplete fields:`, incompleteFields);
+                        allIncompleteFields.push(...incompleteFields);
+                    } else {
+                        this.log(`Element ${elementIndex + 1} is not visible, skipping validation`);
+                    }
                 });
             }
         });
+
+        this.log(`HTML validation complete: ${visibleWidgetsCount} visible widgets processed`);
 
         // Update the global validation state
         if (widgetsFound) {
@@ -898,6 +970,7 @@ const WicketMDPAutoValidation = {
 
             this.log('Validation state updated from HTML:', {
                 widgetsFound: true,
+                visibleWidgetsCount: visibleWidgetsCount,
                 widgetsReady: this.currentValidationState.widgetsReady,
                 hasRequiredFields: this.currentValidationState.hasRequiredFields,
                 incompleteFields: this.currentValidationState.incompleteRequiredFields,
@@ -912,7 +985,12 @@ const WicketMDPAutoValidation = {
                 this.log('🚨 JOB LEVEL FIELDS DETECTED IN HTML SCAN:', jobLevelFields);
             }
         } else {
-            this.log('No widgets found during HTML validation scan');
+            this.log('No visible widgets found during HTML validation scan');
+            // Reset validation state if no visible widgets
+            this.currentValidationState.widgetsReady = false;
+            this.currentValidationState.hasRequiredFields = false;
+            this.currentValidationState.incompleteRequiredFields = [];
+            this.currentValidationState.incompleteRequiredResources = [];
         }
     },
 
@@ -961,7 +1039,7 @@ const WicketMDPAutoValidation = {
     },
 
     /**
-     * Check if any widget has required fields at all
+     * Check if any visible widget has required fields at all
      */
     hasAnyRequiredFields() {
         const widgetSelectors = [
@@ -976,12 +1054,17 @@ const WicketMDPAutoValidation = {
         for (const selector of widgetSelectors) {
             const elements = document.querySelectorAll(selector);
             for (const element of elements) {
-                const requiredIndicators = element.querySelectorAll('.required-symbol');
-                if (requiredIndicators.length > 0) {
-                    return true;
+                // Only check visible widgets
+                if (this.isWidgetVisible(element)) {
+                    const requiredIndicators = element.querySelectorAll('.required-symbol');
+                    if (requiredIndicators.length > 0) {
+                        this.log(`Found ${requiredIndicators.length} required fields in visible widget: ${element.id || element.className}`);
+                        return true;
+                    }
                 }
             }
         }
+        this.log('No required fields found in any visible widgets');
         return false;
     },
 
