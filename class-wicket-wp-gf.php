@@ -176,6 +176,7 @@ class Wicket_Gf_Main
             add_action('gform_loaded', [$this, 'register_custom_fields'], 5);
         }
         add_action('gform_field_standard_settings', [$this, 'register_field_settings'], 25, 2);
+        add_action('gform_editor_js', [$this, 'gf_editor_script']);
         add_action('gform_tooltips', [$this, 'register_tooltips']);
 
         // Bootstrap the GF Addon for field mapping
@@ -381,7 +382,7 @@ class Wicket_Gf_Main
                         'content' => '
                             <div class="wicket-gf-dynamic-hidden-html">
                             <style>
-                                .gform_wrapper.gravity-theme label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
+                                .gform_wrapper label[for="input_' . $field['formId'] . '_' . $field['id'] . '"].gfield_label {
                                     display: none;
                                 }
                             </style>
@@ -718,6 +719,18 @@ class Wicket_Gf_Main
 
         <?php echo ob_get_clean();
         }
+    }
+
+    public function gf_editor_script(){
+        // Action to inject supporting script to the form editor page to populate our custom settings
+        ?>
+        <script type='text/javascript'>
+            // Binding to the load field settings event to initialize the checkbox
+            jQuery(document).on('gform_load_field_settings', function(event, field, form){
+                jQuery( '#hide_label' ).prop( 'checked', Boolean( rgar( field, 'hide_label' ) ) );
+            });
+        </script>
+        <?php
     }
 
     public function entries_list_first_column_content($form_id, $field_id, $value, $entry, $query_string)
