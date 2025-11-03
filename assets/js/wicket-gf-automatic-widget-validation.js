@@ -485,15 +485,16 @@ const WicketMDPAutoValidation = {
         const valueElement = container.querySelector('.value, .TypeableResource__content-value, .form-control');
         if (valueElement) {
             const value = valueElement.textContent.trim();
-            return value;
+            if (value) return value; // It's possible to get a false positive on the value element (i.e. datePicker). Instead of being hyper specific on the query selector, allow it to fall through to other methods.
         }
 
         // For editable fields that might have input elements
         const inputElement = container.querySelector('input, select, textarea');
         if (inputElement) {
             const value = inputElement.value.trim();
-            return value;
+            if (value) return value; // It's possible to get a false positive on the value element (i.e. datePicker). Instead of being hyper specific on the query selector, allow it to fall through to other methods.
         }
+
 
         // Try additional selectors that might contain the field value
         const additionalSelectors = [
