@@ -119,13 +119,75 @@ class GFWicketFieldWidgetProfile extends GF_Field
         );
     }
 
+    /**
+     * Override value submission to retrieve from the widget's component field
+     * while maintaining backwards compatibility with the legacy GF field name.
+     */
+    public function get_value_submission($field_values, $get_from_post_global_var = true)
+    {
+        // The component field with collision-avoidance naming
+        $component_field = 'wicket_user_info_data_' . $this->id;
+
+        // Fallback to legacy GF field name for backwards compatibility
+        $legacy = 'input_' . $this->id;
+
+        if ($get_from_post_global_var) {
+            if (isset($_POST[$component_field])) {
+                $value = rgpost($component_field);
+            } else {
+                $value = rgpost($legacy);
+            }
+        } else {
+            if (isset($field_values[$component_field])) {
+                $value = $field_values[$component_field];
+            } else {
+                $value = $field_values[$legacy] ?? '';
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * Override empty value detection to check component and legacy field names
+     */
+    public function is_value_submission_empty($form_id)
+    {
+        // Check the component field first, then legacy fallback
+        $component_field = 'wicket_user_info_data_' . $this->id;
+        $legacy = 'input_' . $this->id;
+
+        $value = rgpost($component_field);
+        if ($value !== null) {
+            return empty($value);
+        }
+
+        $value = rgpost($legacy);
+        return empty($value);
+    }
+
     // Override how to Save the field value
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
     {
-        $value_array = json_decode($value);
-        $user_id = $value_array->attributes->uuid;
-        $wicket_settings = get_wicket_settings();
+        // If value is empty or malformed, fall back to current logged-in user
+        if (empty($value)) {
+          $user_id = wicket_current_person_uuid();
+        } else {
+          $value_array = json_decode($value);
+          if (!isset($value_array->attributes->uuid)) {
+            // Fallback to current logged-in user if JSON is malformed
+            $user_id = wicket_current_person_uuid();
+          } else {
+            $user_id = $value_array->attributes->uuid;
+          }
+        }
 
+        // Final fallback - if no user ID found, use empty string
+        if (empty($user_id)) {
+          return '';
+        }
+
+        $wicket_settings = get_wicket_settings();
         $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id;
 
         return $link_to_user_profile;
