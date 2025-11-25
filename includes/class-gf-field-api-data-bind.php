@@ -291,7 +291,25 @@ class GFApiDataBindField extends GF_Field
             $current_data = $current_data['data'];
         }
 
-        foreach ($path_parts as $part) {
+        foreach ($path_parts as $index => $part) {
+            // Special handling if current part is 'data_fields' - use dedicated extraction
+            if ($part === 'data_fields') {
+                // Look for data_fields in current level or in attributes
+                $data_fields_array = null;
+                if (isset($current_data['data_fields']) && is_array($current_data['data_fields'])) {
+                    $data_fields_array = $current_data['data_fields'];
+                } elseif (isset($current_data['attributes']['data_fields']) && is_array($current_data['attributes']['data_fields'])) {
+                    $data_fields_array = $current_data['attributes']['data_fields'];
+                }
+
+                if ($data_fields_array) {
+                    $result = $this->extract_data_field_value($data_fields_array, $field_path, $part);
+                    return $result ?? '';
+                }
+
+                return '';
+            }
+
             // Handle array indices (e.g., organizations.0.legal_name)
             if (is_numeric($part)) {
                 if (is_array($current_data) && isset($current_data[(int) $part])) {
@@ -337,8 +355,17 @@ class GFApiDataBindField extends GF_Field
                 }
 
                 // Special handling for data_fields (additional info)
+                // Check if data_fields exists directly
                 if (isset($current_data['data_fields']) && is_array($current_data['data_fields'])) {
                     $data_fields_value = $this->extract_data_field_value($current_data['data_fields'], $field_path, $part);
+                    if ($data_fields_value !== null) {
+                        return $data_fields_value;
+                    }
+                }
+
+                // Check if data_fields exists in attributes
+                if (isset($current_data['attributes']['data_fields']) && is_array($current_data['attributes']['data_fields'])) {
+                    $data_fields_value = $this->extract_data_field_value($current_data['attributes']['data_fields'], $field_path, $part);
                     if ($data_fields_value !== null) {
                         return $data_fields_value;
                     }
@@ -402,6 +429,7 @@ class GFApiDataBindField extends GF_Field
 
     /**
      * Extract value from data_fields (additional info).
+     * Supports advanced search path format: data_fields.{schema_slug}.value.{field_key}
      */
     private function extract_data_field_value($data_fields, $full_field_path, $current_part): ?string
     {
@@ -413,22 +441,34 @@ class GFApiDataBindField extends GF_Field
         }
 
         $schema_slug = $path_parts[$current_index + 1] ?? null;
-        $field_key = $path_parts[$current_index + 2] ?? null;
+        $value_key = $path_parts[$current_index + 2] ?? null;
+        $field_key = $path_parts[$current_index + 3] ?? null;
 
-        if (!$schema_slug || !$field_key) {
+        if (!$schema_slug) {
+            return null;
+        }
+
+        // Support both formats:
+        // 1. New format: data_fields.{schema_slug}.value.{field_key}
+        // 2. Legacy format: data_fields.{schema_slug}.{field_key}
+        $is_advanced_format = ($value_key === 'value' && $field_key !== null);
+        $actual_field_key = $is_advanced_format ? $field_key : $value_key;
+
+        if (!$actual_field_key) {
             return null;
         }
 
         foreach ($data_fields as $field_data) {
-            if (!is_array($field_data) || !isset($field_data['schema_slug'])) {
+            if (!is_array($field_data) || (!isset($field_data['schema_slug']) && !isset($field_data['schema_id']))) {
                 continue;
             }
 
-            if ($field_data['schema_slug'] === $schema_slug) {
+            $schema_key = $field_data['schema_slug'] ?? $field_data['schema_id'];
+            if ($schema_key === $schema_slug) {
                 $value = $field_data['value'] ?? null;
-                if (is_array($value) && isset($value[$field_key])) {
-                    return (string) $value[$field_key];
-                } elseif ($field_key === '_self' && !is_array($value)) {
+                if (is_array($value) && isset($value[$actual_field_key])) {
+                    return (string) $value[$actual_field_key];
+                } elseif ($actual_field_key === '_self' && !is_array($value)) {
                     return (string) $value;
                 }
             }
@@ -519,7 +559,7 @@ class GFApiDataBindField extends GF_Field
                     placeholder="Required when using Organization data source"
                     onkeyup="SetFieldProperty('apiOrganizationUuid', this.value);" />
                 <p class="instruction">
-                    <?php esc_html_e('Enter the UUID of the organization to fetch data from.', 'wicket-gf'); ?>
+                    <?php esc_html_e('Enter an organization UUID to fetch data from.', 'wicket-gf'); ?>
                 </p>
             </li>
 
@@ -551,7 +591,7 @@ class GFApiDataBindField extends GF_Field
                 </div>
 
                 <p class="instruction" id="fieldPathInstruction">
-                    <?php esc_html_e('Use dot notation to access nested data. Examples: attributes.given_name, organizations.0.legal_name, data_fields.custom_schema.field_name', 'wicket-gf'); ?>
+                    <?php esc_html_e('Use dot notation to access nested data. Examples: attributes.given_name, organizations.0.legal_name, data_fields.{schema_slug}.value.{field_name}', 'wicket-gf'); ?>
                 </p>
 
                 <!-- Common field path examples -->
@@ -1012,8 +1052,11 @@ class GFApiDataBindField extends GF_Field
             $person_data = wicket_convert_obj_to_array($person_data);
         }
 
+        // Extract schema titles and field labels for person profile
+        $schema_info = self::extract_schema_titles($person_data);
+
         $fields = [];
-        self::extract_dynamic_fields($person_data, '', $fields);
+        self::extract_dynamic_fields($person_data, '', $fields, $schema_info);
 
         return $fields;
     }
@@ -1031,21 +1074,87 @@ class GFApiDataBindField extends GF_Field
             return [];
         }
 
+        // Fetch organization data (json_schemas are included by default which contain ui_schema with friendly titles)
         $org_data = wicket_get_organization($organization_uuid);
         if (!$org_data || is_wp_error($org_data)) {
             return [];
         }
 
+        // Extract schema titles and field labels from json_schemas in included data
+        $schema_info = self::extract_schema_titles($org_data);
+
         $fields = [];
-        self::extract_dynamic_fields($org_data, '', $fields);
+        self::extract_dynamic_fields($org_data, '', $fields, $schema_info);
 
         return $fields;
     }
 
     /**
+     * Extract schema titles and field labels from json_schemas in included data.
+     * Returns array with 'titles' and 'field_labels' keys.
+     */
+    private static function extract_schema_titles($data): array
+    {
+        $schema_info = [
+            'titles' => [],
+            'field_labels' => []
+        ];
+
+        if (!is_array($data) || !isset($data['included'])) {
+            return $schema_info;
+        }
+
+        foreach ($data['included'] as $included_item) {
+            if (!is_array($included_item) || !isset($included_item['type']) || $included_item['type'] !== 'json_schemas') {
+                continue;
+            }
+
+            $slug = $included_item['attributes']['slug'] ?? null;
+            $ui_schema = $included_item['attributes']['ui_schema'] ?? null;
+
+            if (!$slug || !is_array($ui_schema)) {
+                continue;
+            }
+
+            // Extract title from ui_schema (ui:i18n → title → en)
+            $title = $ui_schema['ui:i18n']['title']['en'] ??
+                     $ui_schema['ui:i18n']['title']['fr'] ??
+                     $ui_schema['ui:i18n']['Title']['En'] ??
+                     $ui_schema['title'] ??
+                     null;
+
+            if ($title) {
+                $schema_info['titles'][$slug] = $title;
+            }
+
+            // Extract field labels from ui_schema
+            $schema_info['field_labels'][$slug] = [];
+            foreach ($ui_schema as $field_key => $field_config) {
+                // Skip non-field keys like 'ui:i18n', 'ui:order', etc.
+                if (strpos($field_key, 'ui:') === 0 || !is_array($field_config)) {
+                    continue;
+                }
+
+                // Extract field label (ui:i18n → label → en)
+                $field_label = $field_config['ui:i18n']['label']['en'] ??
+                               $field_config['ui:i18n']['label']['fr'] ??
+                               $field_config['ui:i18n']['Label']['En'] ??
+                               $field_config['label'] ??
+                               null;
+
+                if ($field_label) {
+                    $schema_info['field_labels'][$slug][$field_key] = $field_label;
+                }
+            }
+        }
+
+        return $schema_info;
+    }
+
+    /**
      * Recursively extract all available fields from MDP API data structure.
      */
-    private static function extract_dynamic_fields($data, $prefix, &$fields): void
+    private static function extract_dynamic_fields($data, $prefix, &$fields, $schema_info = []): void
     {
         if (!is_array($data) && !is_object($data)) {
             return;
@@ -1056,7 +1165,7 @@ class GFApiDataBindField extends GF_Field
         // Handle JSON:API structure - extract from both main data and included data
         if (is_array($data) && isset($data['data'])) {
             // Process main data structure
-            self::extract_dynamic_fields_recursive($data['data'], '', $fields);
+            self::extract_dynamic_fields_recursive($data['data'], '', $fields, $schema_info);
 
             // Process included data (relationships, phones, addresses, etc.)
             if (isset($data['included']) && is_array($data['included'])) {
@@ -1065,21 +1174,29 @@ class GFApiDataBindField extends GF_Field
                         $item_type = $included_item['type'];
                         $item_id = $included_item['id'] ?? 'unknown';
 
+                        // Skip schema-related included items
+                        $type_lower = strtolower($item_type);
+                        if (strpos($type_lower, 'schema') !== false ||
+                            strpos($type_lower, 'json_schema') !== false ||
+                            strpos($type_lower, 'ui_schema') !== false) {
+                            continue;
+                        }
+
                         // Extract fields from included item with prefix like "included.phones.0.number"
-                        self::extract_dynamic_fields_recursive($included_item['attributes'], "included.{$item_type}.{$item_id}", $fields);
+                        self::extract_dynamic_fields_recursive($included_item['attributes'], "included.{$item_type}.{$item_id}", $fields, $schema_info);
                     }
                 }
             }
         } else {
             // Process as regular array/object
-            self::extract_dynamic_fields_recursive($data, $prefix, $fields);
+            self::extract_dynamic_fields_recursive($data, $prefix, $fields, $schema_info);
         }
     }
 
     /**
      * Recursively extract fields from data structure.
      */
-    private static function extract_dynamic_fields_recursive($data, $prefix, &$fields): void
+    private static function extract_dynamic_fields_recursive($data, $prefix, &$fields, $schema_info = []): void
     {
         if (!is_array($data) && !is_object($data)) {
             return;
@@ -1094,8 +1211,24 @@ class GFApiDataBindField extends GF_Field
             }
 
             // Skip internal/meta fields that users don't need
-            $skip_fields = ['links', 'meta', 'relationships'];
+            $skip_fields = ['links', 'meta', 'relationships', 'json_schema', 'json_schemas', 'ui_schema', 'ui_schemas', 'ui_schemas_for_refs'];
             if (in_array($key, $skip_fields)) {
+                continue;
+            }
+
+            // Skip any keys or paths that contain schema-related terms (case-insensitive)
+            $key_lower = strtolower($key);
+            $path_lower = strtolower($field_path);
+
+            // Check both the key and the full path for schema-related terms
+            if (strpos($key_lower, 'ui:i18n') !== false ||
+                strpos($key_lower, 'ui_schema') !== false ||
+                strpos($key_lower, 'json_schema') !== false ||
+                strpos($path_lower, 'json_schemas') !== false ||
+                strpos($path_lower, 'ui_schemas') !== false ||
+                strpos($path_lower, 'schema.') !== false ||
+                strpos($path_lower, '.schema.') !== false ||
+                (strpos($key_lower, 'schema') !== false && strpos($key_lower, 'ui') !== false)) {
                 continue;
             }
 
@@ -1112,16 +1245,28 @@ class GFApiDataBindField extends GF_Field
                 // Extract individual attributes instead of adding "attributes" as a field
                 foreach ($value as $attr_key => $attr_value) {
                     if (!is_numeric($attr_key)) {
+                        // Special handling for data_fields - extract individual fields with advanced search paths
+                        if ($attr_key === 'data_fields' && is_array($attr_value)) {
+                            self::extract_additional_info_fields($attr_value, $fields, $schema_info);
+                            continue;
+                        }
+
                         $attr_path = empty($prefix) ? $attr_key : $prefix . '.' . $attr_key;
                         $display_name = self::format_field_display_name_dynamic($attr_path, $attr_value);
                         $fields[$attr_path] = $display_name;
 
                         // Recursively process nested attribute values
                         if (is_array($attr_value) || is_object($attr_value)) {
-                            self::extract_dynamic_fields_recursive($attr_value, $attr_path, $fields);
+                            self::extract_dynamic_fields_recursive($attr_value, $attr_path, $fields, $schema_info);
                         }
                     }
                 }
+                continue;
+            }
+
+            // Special handling for data_fields (additional info)
+            if ($key === 'data_fields' && is_array($value)) {
+                self::extract_additional_info_fields($value, $fields, $schema_info);
                 continue;
             }
 
@@ -1133,7 +1278,83 @@ class GFApiDataBindField extends GF_Field
 
             // Recursively process nested data
             if (is_array($value) || is_object($value)) {
-                self::extract_dynamic_fields_recursive($value, $field_path, $fields);
+                self::extract_dynamic_fields_recursive($value, $field_path, $fields, $schema_info);
+            }
+        }
+    }
+
+    /**
+     * Extract additional info fields (data_fields) with proper advanced search paths.
+     */
+    private static function extract_additional_info_fields($data_fields, &$fields, $schema_info = []): void
+    {
+        if (!is_array($data_fields)) {
+            return;
+        }
+
+        // Extract titles and field_labels from schema_info
+        $schema_titles = $schema_info['titles'] ?? [];
+        $field_labels = $schema_info['field_labels'] ?? [];
+
+        foreach ($data_fields as $field_item) {
+            if (!is_array($field_item)) {
+                continue;
+            }
+
+            // Get schema information
+            $schema_slug = $field_item['schema_slug'] ?? null;
+            $schema_id = $field_item['schema_id'] ?? null;
+            $value_data = $field_item['value'] ?? null;
+
+            if (!$schema_slug && !$schema_id) {
+                continue;
+            }
+
+            // Use schema_slug if available, otherwise use schema_id
+            $schema_key = $schema_slug ?: $schema_id;
+
+            // Get friendly schema title
+            $schema_display_name = $schema_titles[$schema_key] ?? ucfirst(str_replace('_', ' ', $schema_key));
+
+            // Extract individual fields from the value array
+            if (is_array($value_data)) {
+                foreach ($value_data as $field_key => $field_value) {
+                    // Build the advanced search path format: data_fields.{schema_slug}.value.{field_key}
+                    $field_path = "data_fields.{$schema_key}.value.{$field_key}";
+
+                    // Get friendly field label if available
+                    $field_display_name = $field_labels[$schema_key][$field_key] ?? ucfirst(str_replace('_', ' ', $field_key));
+
+                    // Create a friendly display name using schema title and field label
+                    $display_name = $schema_display_name . ' → ' . $field_display_name;
+
+                    // Add type indicator
+                    if (is_string($field_value)) {
+                        $display_name .= ' (Text)';
+                    } elseif (is_numeric($field_value)) {
+                        $display_name .= ' (Number)';
+                    } elseif (is_bool($field_value)) {
+                        $display_name .= ' (Yes/No)';
+                    } elseif (is_array($field_value)) {
+                        $display_name .= ' (List)';
+                    }
+
+                    $fields[$field_path] = $display_name;
+                }
+            } elseif ($value_data !== null) {
+                // Single value (not an array)
+                $field_path = "data_fields.{$schema_key}.value._self";
+                $display_name = $schema_display_name;
+
+                if (is_string($value_data)) {
+                    $display_name .= ' (Text)';
+                } elseif (is_numeric($value_data)) {
+                    $display_name .= ' (Number)';
+                } elseif (is_bool($value_data)) {
+                    $display_name .= ' (Yes/No)';
+                }
+
+                $fields[$field_path] = $display_name;
             }
         }
     }
