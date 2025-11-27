@@ -557,7 +557,8 @@ const WicketGFLiveUpdate = {
         }
 
         // Handle other relationships
-        const relationshipData = payload[relationshipType] || [];
+        const payloadKey = relationshipType === 'web_addresses' ? 'webAddresses' : relationshipType;
+        const relationshipData = payload[payloadKey] || [];
         if (relationshipData.length > 0) {
             const firstItem = relationshipData[0];
             const itemData = firstItem.attributes || firstItem;
@@ -691,7 +692,8 @@ const WicketGFLiveUpdate = {
         }
 
         // Handle other relationships
-        const relationshipData = payload[relationshipType] || [];
+        const orgPayloadKey = relationshipType === 'web_addresses' ? 'webAddresses' : relationshipType;
+        const relationshipData = payload[orgPayloadKey] || [];
         if (relationshipData.length > 0) {
             const firstItem = relationshipData[0];
             const itemData = firstItem.attributes || firstItem;

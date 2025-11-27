@@ -723,9 +723,6 @@ class GFDataBindHiddenField extends GF_Field
                 }
 
                 if (is_array($included_items_array)) {
-                    $logger = wc_get_logger();
-                    $logger->debug('Processing included items for person_addinfo schemas', ['source' => 'wicket-gf', 'count' => count($included_items_array)]);
-
                     foreach ($included_items_array as $item) {
                         $item_arr = is_object($item) ? (array) $item : $item;
 
@@ -736,45 +733,31 @@ class GFDataBindHiddenField extends GF_Field
                                 if ($identifier) {
                                     $title = null;
 
-                                    // Log the full attributes for debugging
-                                    // $logger->debug('Processing schema item', [
-                                    //     'source' => 'wicket-gf',
-                                    //     'identifier' => $identifier,
-                                    //     'attributes_keys' => array_keys($attributes),
-                                    //     'full_attributes' => $attributes // Temporarily add full dump
-                                    // ]);
-
                                     // PRIORITY 1: Try to extract title from ui_schema (most user-friendly)
                                     $ui_schema = $attributes['ui_schema'] ?? null;
                                     if (is_array($ui_schema)) {
                                         if (isset($ui_schema['ui:i18n']['title']['en'])) {
                                             $title = $ui_schema['ui:i18n']['title']['en'];
-                                            // $logger->debug('Found title in ui_schema.ui:i18n.title.en', ['source' => 'wicket-gf', 'title' => $title]);
                                         } elseif (isset($ui_schema['title'])) {
                                             $title = $ui_schema['title'];
-                                            // $logger->debug('Found title in ui_schema.title', ['source' => 'wicket-gf', 'title' => $title]);
                                         } elseif (isset($ui_schema['ui:title'])) {
                                             $title = $ui_schema['ui:title'];
-                                            // $logger->debug('Found title in ui_schema.ui:title', ['source' => 'wicket-gf', 'title' => $title]);
                                         }
                                     }
 
                                     // PRIORITY 2: Try to extract title from attributes directly
                                     if (!$title && isset($attributes['title'])) {
                                         $title = $attributes['title'];
-                                        // $logger->debug('Found title in attributes.title', ['source' => 'wicket-gf', 'title' => $title]);
                                     }
 
                                     // PRIORITY 3: Try to extract title from attributes.name
                                     if (!$title && isset($attributes['name'])) {
                                         $title = $attributes['name'];
-                                        // $logger->debug('Found title in attributes.name', ['source' => 'wicket-gf', 'title' => $title]);
                                     }
 
                                     // PRIORITY 4: Try label field
                                     if (!$title && isset($attributes['label'])) {
                                         $title = $attributes['label'];
-                                        // $logger->debug('Found title in attributes.label', ['source' => 'wicket-gf', 'title' => $title]);
                                     }
 
                                     // PRIORITY 5: Try to extract title from schema definition (fallback only)
@@ -784,10 +767,8 @@ class GFDataBindHiddenField extends GF_Field
                                             if (isset($schema_def['title']) && $schema_def['title'] !== $identifier) {
                                                 // Only use schema title if it's different from the identifier
                                                 $title = $schema_def['title'];
-                                                // $logger->debug('Found title in schema.title', ['source' => 'wicket-gf', 'title' => $title]);
                                             } elseif (isset($schema_def['description'])) {
                                                 $title = $schema_def['description'];
-                                                // $logger->debug('Found title in schema.description', ['source' => 'wicket-gf', 'title' => $title]);
                                             }
                                         }
                                     }
@@ -795,17 +776,13 @@ class GFDataBindHiddenField extends GF_Field
                                     // Enhanced fallback: create better human-readable names from slugs
                                     if (!$title) {
                                         $title = ucwords(str_replace(['_', '-'], ' ', $identifier));
-                                        // $logger->debug('Using fallback title', ['source' => 'wicket-gf', 'title' => $title]);
                                     }
 
                                     $options[$identifier] = $title;
-                                    // $logger->debug('Added schema option', ['source' => 'wicket-gf', 'identifier' => $identifier, 'title' => $title]);
                                 }
                             }
                         }
                     }
-
-                    $logger->debug('Final options for person_addinfo', ['source' => 'wicket-gf', 'options' => $options]);
                 }
             } elseif ($data_source === 'person_profile') {
                 // Check if wicket helper function exists
@@ -832,14 +809,6 @@ class GFDataBindHiddenField extends GF_Field
                     return;
                 }
 
-                $logger = wc_get_logger();
-                $logger->debug('Person data response type: ' . gettype($person_data_response), ['source' => 'wicket-gf']);
-
-                if (is_object($person_data_response)) {
-                    $logger->debug('Person response class: ' . get_class($person_data_response), ['source' => 'wicket-gf']);
-                    $logger->debug('Person response methods: ' . print_r(get_class_methods($person_data_response), true), ['source' => 'wicket-gf']);
-                }
-
                 // Extract person attributes from API response
                 $person_data = null;
                 if (is_object($person_data_response)) {
@@ -862,23 +831,18 @@ class GFDataBindHiddenField extends GF_Field
                 // Add main profile data slug - always available
                 $options['profile_attributes'] = 'Profile Attributes';
 
-                // Check for relationships and add collection options
-                if ($person_data && isset($person_data['relationships'])) {
-                    $relationships = $person_data['relationships'];
+                // Always expose common relationship collections so editors can bind
+                // even if the current person has no records yet.
+                $relationship_mappings = [
+                    'organizations'  => 'Organizations',
+                    'addresses'      => 'Addresses',
+                    'emails'         => 'Emails',
+                    'phones'         => 'Phones',
+                    'web_addresses'  => 'Web Addresses',
+                ];
 
-                    $relationship_mappings = [
-                        'organizations' => 'Organizations',
-                        'addresses' => 'Addresses',
-                        'emails' => 'Emails',
-                        'phones' => 'Phones',
-                        'web_addresses' => 'Web Addresses',
-                    ];
-
-                    foreach ($relationship_mappings as $rel_key => $label) {
-                        if (isset($relationships[$rel_key]['data']) && !empty($relationships[$rel_key]['data'])) {
-                            $options['profile_' . $rel_key] = $label;
-                        }
-                    }
+                foreach ($relationship_mappings as $rel_key => $label) {
+                    $options['profile_' . $rel_key] = $label;
                 }
 
                 // Check for primary address in included data and add primary address option
@@ -1013,28 +977,18 @@ class GFDataBindHiddenField extends GF_Field
                 // Add main profile data slug - always available
                 $options['profile_attributes'] = 'Profile Attributes';
 
-                // If we got a real org response, then detect relationships and primary address
-                if ($org_data_response && is_array($org_data_response) && isset($org_data_response['data']['relationships'])) {
-                    $relationships = $org_data_response['data']['relationships'];
+                // Always expose common organization relationship collections so editors
+                // can bind address/contact/web data even if the selected org currently
+                // has no items yet.
+                $org_relationship_mappings = [
+                    'addresses'      => 'Addresses',
+                    'web_addresses'  => 'Web Addresses',
+                    'emails'         => 'Emails',
+                    'phones'         => 'Phone Numbers',
+                ];
 
-                    $relationship_mappings = [
-                        'addresses' => 'Addresses',
-                        'web_addresses' => 'Web Addresses',
-                        'emails' => 'Emails',
-                        'phones' => 'Phone Numbers',
-                    ];
-
-                    foreach ($relationship_mappings as $rel_key => $label) {
-                        if (isset($relationships[$rel_key]['data']) && !empty($relationships[$rel_key]['data'])) {
-                            $options['profile_' . $rel_key] = $label;
-                        }
-                    }
-                } else {
-                    // No org response (or invalid UUID): present default, non-tenant-specific options
-                    $options['profile_addresses'] = 'Addresses';
-                    $options['profile_web_addresses'] = 'Web Addresses';
-                    $options['profile_emails'] = 'Emails';
-                    $options['profile_phones'] = 'Phone Numbers';
+                foreach ($org_relationship_mappings as $rel_key => $label) {
+                    $options['profile_' . $rel_key] = $label;
                 }
 
                 // If we did get included items, detect primary address and add direct option
@@ -1064,12 +1018,6 @@ class GFDataBindHiddenField extends GF_Field
             }
         } catch (Exception $e) {
             wp_send_json_error('API Error: ' . $e->getMessage());
-
-            return;
-        }
-
-        if (empty($options)) {
-            wp_send_json_error('No schemas found for the selected source.');
 
             return;
         }
