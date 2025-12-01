@@ -52,6 +52,7 @@ class GFDataBindHiddenField extends GF_Field
                 field.liveUpdateOrganizationUuid = '';
                 field.liveUpdateSchemaSlug = '';
                 field.liveUpdateValueKey = '';
+                field.liveUpdateDisplayMode = 'hidden';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -151,6 +152,20 @@ class GFDataBindHiddenField extends GF_Field
                             </option>
                         </select>
                     </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label for="liveUpdateDisplayMode" class="section_label">
+                        <?php esc_html_e('Display Mode', 'wicket-gf'); ?>
+                        <?php gform_tooltip('live_update_display_mode_setting'); ?>
+                    </label>
+                    <select id="liveUpdateDisplayMode" onchange="SetFieldProperty('liveUpdateDisplayMode', this.value);">
+                        <option value="hidden"><?php esc_html_e('Hidden Field', 'wicket-gf'); ?></option>
+                        <option value="readonly"><?php esc_html_e('Read-only Text Field', 'wicket-gf'); ?></option>
+                        <option value="editable"><?php esc_html_e('Editable Text Field', 'wicket-gf'); ?></option>
+                        <option value="static"><?php esc_html_e('Static Text (no form field)', 'wicket-gf'); ?></option>
+                    </select>
                 </div>
             </li>
 
@@ -175,6 +190,7 @@ class GFDataBindHiddenField extends GF_Field
                             $('#liveUpdateEnabled').prop('checked', field.liveUpdateEnabled || false);
                             $('#liveUpdateDataSource').val(field.liveUpdateDataSource || '');
                             $('#liveUpdateOrganizationUuid').val(field.liveUpdateOrganizationUuid || '');
+                            $('#liveUpdateDisplayMode').val(field.liveUpdateDisplayMode || 'hidden');
 
                             // Update the view based on current settings
                             this.refreshView(field);
@@ -374,11 +390,13 @@ class GFDataBindHiddenField extends GF_Field
                             SetFieldProperty('liveUpdateOrganizationUuid', '');
                             SetFieldProperty('liveUpdateSchemaSlug', '');
                             SetFieldProperty('liveUpdateValueKey', '');
+                            SetFieldProperty('liveUpdateDisplayMode', 'hidden');
 
                             $('#liveUpdateDataSource').val('');
                             $('#liveUpdateOrganizationUuid').val('');
                             $('#liveUpdateSchemaSlug').html('<option value="">Select Schema/Data Slug</option>');
                             $('#liveUpdateValueKey').html('<option value="">Select Value Key</option>');
+                            $('#liveUpdateDisplayMode').val('hidden');
 
                             // Force show selectors view
                             $('#liveUpdateSummaryContainer').hide();
@@ -490,7 +508,55 @@ class GFDataBindHiddenField extends GF_Field
             }
         }
 
-        return sprintf("<input name='input_%d' id='%s' type='hidden'%s value='%s'%s />", $id, $field_id, $class_attribute, $input_value, $data_attributes);
+        $display_mode = $this->liveUpdateDisplayMode ?? 'hidden';
+        $css_class = !empty($this->cssClass) ? esc_attr($this->cssClass) : '';
+
+        // Add custom class if present
+        if (!empty($css_class)) {
+            $class_attribute = str_replace("class='", "class='" . $css_class . " ", $class_attribute);
+        }
+
+        switch ($display_mode) {
+            case 'static':
+                return sprintf(
+                    "<div id='%s' %s %s>%s</div>",
+                    $field_id,
+                    $class_attribute,
+                    $data_attributes,
+                    !empty($input_value) ? esc_html($input_value) : '<em>' . esc_html__('No data available', 'wicket-gf') . '</em>'
+                );
+
+            case 'editable':
+                return sprintf(
+                    "<input name='input_%d' id='%s' type='text' %s value='%s' %s />",
+                    $id,
+                    $field_id,
+                    $class_attribute,
+                    $input_value,
+                    $data_attributes
+                );
+
+            case 'readonly':
+                return sprintf(
+                    "<input name='input_%d' id='%s' type='text' readonly %s value='%s' %s />",
+                    $id,
+                    $field_id,
+                    $class_attribute,
+                    $input_value,
+                    $data_attributes
+                );
+
+            case 'hidden':
+            default:
+                return sprintf(
+                    "<input name='input_%d' id='%s' type='hidden'%s value='%s'%s />",
+                    $id,
+                    $field_id,
+                    $class_attribute,
+                    $input_value,
+                    $data_attributes
+                );
+        }
     }
 
     private static function extract_included_items_from_response($api_response): ?array

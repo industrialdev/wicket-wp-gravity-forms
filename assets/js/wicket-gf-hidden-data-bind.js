@@ -728,15 +728,23 @@ const WicketGFLiveUpdate = {
      * Update field value and trigger minimal conditional logic
      */
     updateFieldValue($field, value, source) {
-        const oldValue = $field.val();
         const fieldId = $field.attr('id');
+        const tagName = $field.prop('tagName').toLowerCase();
+        const isInput = tagName === 'input' || tagName === 'select' || tagName === 'textarea';
 
-        // Update the field value
-        $field.val(value);
+        let oldValue;
+        if (isInput) {
+            oldValue = $field.val();
+            $field.val(value);
+        } else {
+            oldValue = $field.text();
+            $field.text(value);
+        }
+
         this.log(`Updated field ${fieldId} from "${oldValue}" to "${value}" (source: ${source})`);
 
         // Only trigger conditional logic if the value actually changed
-        if (oldValue !== value) {
+        if (oldValue !== value && isInput) {
             this.triggerMinimalFormUpdate($field);
         }
     },
