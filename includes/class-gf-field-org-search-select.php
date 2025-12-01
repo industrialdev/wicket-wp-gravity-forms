@@ -29,7 +29,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     <label style="display: block;">Organization Type</label>
                     <input onkeyup="SetFieldProperty('orgss_search_org_type', this.value)" type="text" name="orgss_search_org_type" id="orgss_search_org_type_input" />
                     <p style="margin-top: 2px;margin-bottom: 0px;"><em>If left blank, all organization types will be searchable. If
-                            you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company".</em>
+                            you wish to filter, you'll need to provide the "slug" of the organization type, e.g. "it_company". It's also possible to provide multiple slugs, separated by commas, e.g. "it_company,non_profit".</em>
                     </p>
 
                     <label style="margin-top: 1em;display: block;" for="orgss_display_org_fields">Display Org Fields:</label>
@@ -50,7 +50,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     <label style="margin-top: 1em;display: block;">Org Type When User Creates New Org</label>
                     <input onkeyup="SetFieldProperty('orgss_new_org_type_override', this.value)" type="text" name="orgss_new_org_type_override" id="orgss_new_org_type_override_input" />
                     <p style="margin-top: 2px;"><em>If left blank, the user will be allowed to select the organization type
-                            themselves from the frontend.</em></p>
+                            themselves from the frontend. You can provide one or more organization type slugs, separated by commas, to limit the options available to the user.</em></p>
 
                     <label style="margin-top: 1em;display: block;">Org name singular</label>
                     <input onkeyup="SetFieldProperty('orgss_org_term_singular', this.value)" type="text" name="orgss_org_term_singular" id="orgss_org_term_singular_input" />
