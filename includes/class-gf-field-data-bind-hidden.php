@@ -73,6 +73,19 @@ class GFDataBindHiddenField extends GF_Field
                     <?php gform_tooltip('live_update_enable_setting'); ?>
                 </label>
 
+                <div style="margin-top: 10px; margin-bottom: 10px;">
+                    <label for="liveUpdateDisplayMode" class="section_label">
+                        <?php esc_html_e('Display Mode', 'wicket-gf'); ?>
+                        <?php gform_tooltip('live_update_display_mode_setting'); ?>
+                    </label>
+                    <select id="liveUpdateDisplayMode" onchange="SetFieldProperty('liveUpdateDisplayMode', this.value);">
+                        <option value="hidden"><?php esc_html_e('Hidden Field', 'wicket-gf'); ?></option>
+                        <option value="readonly"><?php esc_html_e('Read-only Text Field', 'wicket-gf'); ?></option>
+                        <option value="editable"><?php esc_html_e('Editable Text Field', 'wicket-gf'); ?></option>
+                        <option value="static"><?php esc_html_e('Static Text (no form field)', 'wicket-gf'); ?></option>
+                    </select>
+                </div>
+
                 <?php // Summary View (initially hidden, shown by JS)?>
                 <div id="liveUpdateSummaryContainer" style="display:none; margin-top: 10px;">
                     <label class="section_label"><?php esc_html_e('Current JS Data Bind Configuration', 'wicket-gf'); ?></label>
@@ -155,18 +168,7 @@ class GFDataBindHiddenField extends GF_Field
                     </div>
                 </div>
 
-                <div style="margin-bottom: 10px;">
-                    <label for="liveUpdateDisplayMode" class="section_label">
-                        <?php esc_html_e('Display Mode', 'wicket-gf'); ?>
-                        <?php gform_tooltip('live_update_display_mode_setting'); ?>
-                    </label>
-                    <select id="liveUpdateDisplayMode" onchange="SetFieldProperty('liveUpdateDisplayMode', this.value);">
-                        <option value="hidden"><?php esc_html_e('Hidden Field', 'wicket-gf'); ?></option>
-                        <option value="readonly"><?php esc_html_e('Read-only Text Field', 'wicket-gf'); ?></option>
-                        <option value="editable"><?php esc_html_e('Editable Text Field', 'wicket-gf'); ?></option>
-                        <option value="static"><?php esc_html_e('Static Text (no form field)', 'wicket-gf'); ?></option>
-                    </select>
-                </div>
+
             </li>
 
             <?php echo ob_get_clean(); ?>
