@@ -64,7 +64,6 @@ class GFDataBindHiddenField extends GF_Field
         if ($position == 25) {
             ?>
             <?php ob_start(); ?>
-
             <li class="wicket_data_bind_setting field_setting" style="display:none;">
                 <input type="checkbox" id="liveUpdateEnabled"
                     onchange="SetFieldProperty('liveUpdateEnabled', this.checked);" />
@@ -165,10 +164,7 @@ class GFDataBindHiddenField extends GF_Field
                             </option>
                         </select>
                     </div>
-                    </div>
                 </div>
-
-
             </li>
 
             <?php echo ob_get_clean(); ?>
@@ -454,7 +450,6 @@ class GFDataBindHiddenField extends GF_Field
                 });
             });
             </script>
-
         <?php
         }
     }
