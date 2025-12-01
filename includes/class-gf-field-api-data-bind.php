@@ -712,7 +712,9 @@ class GFApiDataBindField extends GF_Field
                 });
 
                 // Initial button state update
-                updateBrowseButtonState(field.apiDataSource);
+                var currentField = (typeof GetSelectedField === 'function') ? GetSelectedField() : null;
+                var initialDataSource = (currentField && currentField.apiDataSource) ? currentField.apiDataSource : '';
+                updateBrowseButtonState(initialDataSource);
 
                 function toggleOrganizationUuidField(dataSource) {
                     var $orgUuidSetting = $('.wicket_api_organization_uuid_setting');
