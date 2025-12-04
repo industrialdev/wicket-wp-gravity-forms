@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.2.19
+ * Version:           2.3.0
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -219,8 +219,11 @@ class Wicket_Gf_Main
         // Conditionally enqueue live update script for Wicket Hidden Data Bind fields
         add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_live_update_script'], 10, 2);
 
+        // Conditionally enqueue API Data Bind script for ORGSS binding
+        add_action('gform_enqueue_scripts', [$this, 'conditionally_enqueue_api_data_bind_script'], 10, 2);
+
         // Admin footer script for debugging
-        add_action('admin_footer', [$this, 'output_wicket_event_debugger_script']);
+        add_action('gform_footer_script', [$this, 'output_wicket_event_debugger_script']);
 
         // Add form pre-render hook for pagination sidebar layout and other dynamic features
         add_filter('gform_pre_render', [$this, 'gf_custom_pre_render'], 50, 1);
@@ -575,6 +578,43 @@ class Wicket_Gf_Main
                 true
             );
             self::$live_update_script_enqueued = true;
+        }
+    }
+
+    /**
+     * Conditionally enqueue API Data Bind script for ORGSS binding.
+     *
+     * @param array $form The form object
+     * @param bool $is_ajax Whether this is an AJAX request
+     * @return void
+     */
+    public function conditionally_enqueue_api_data_bind_script($form, $is_ajax): void
+    {
+        if (is_admin()) {
+            return;
+        }
+
+        if (empty($form) || !isset($form['fields']) || !is_array($form['fields'])) {
+            return;
+        }
+
+        // Check if any API Data Bind fields need the frontend script
+        if (GFApiDataBindField::should_enqueue_frontend_js($form)) {
+            $plugin_url = plugin_dir_url(__FILE__);
+
+            wp_enqueue_script(
+                'wicket-gf-api-data-bind',
+                $plugin_url . 'assets/js/wicket-gf-api-data-bind.js',
+                ['jquery', 'gform_gravityforms'],
+                WICKET_WP_GF_VERSION,
+                true
+            );
+
+            // Localize script with AJAX configuration
+            wp_localize_script('wicket-gf-api-data-bind', 'wicketGfApiDataBindConfig', [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('wicket_gf_api_data_bind'),
+            ]);
         }
     }
 

@@ -2,6 +2,151 @@
 
 declare(strict_types=1);
 
+/**
+ * Gravity Forms API Data Bind Field
+ *
+ * This field type provides live binding between Gravity Forms fields and Wicket API data.
+ *
+ * Current Implementation:
+ * - Client-side JavaScript handles ORGSS field binding for multi-step forms
+ * - Uses sessionStorage to persist organization selections across form steps
+ * - Real-time field updates when organization is selected
+ * - Backwards compatible with static UUID configuration
+ *
+ * ALTERNATIVE SERVER-SIDE APPROACHES (for future reference):
+ *
+ * Option 1: Server-Side Field Pre-Population
+ * -----------------------------------------
+ * Use Gravity Forms gform_field_value filter to pre-populate the field on step load:
+ *
+ * add_filter('gform_field_value', 'populate_api_data_bind_field', 10, 3);
+ *
+ * function populate_api_data_bind_field($value, $field, $form) {
+ *     if ($field->type !== 'wicket_api_data_bind') {
+ *         return $value;
+ *     }
+ *
+ *     // Check if we have stored org selection from previous step
+ *     $stored_selection = get_transient('gform_org_selection_' . $form['id']);
+ *     if ($stored_selection) {
+ *         // Reuse the field's API fetching logic
+ *         $api_field = new GFApiDataBindField();
+ *         $api_field->apiDataSource = 'organization';
+ *         $api_field->apiFieldPath = $field->apiFieldPath;
+ *         return $api_field->fetch_value_from_api_by_uuid($stored_selection);
+ *     }
+ *
+ *     return $value;
+ * }
+ *
+ * Benefits:
+ * - No JavaScript dependency
+ * - Field values are part of initial form HTML
+ * - Better for SEO and accessibility
+ * - Values survive page refresh
+ *
+ * Drawbacks:
+ * - Requires server-side state management (transients/session)
+ * - More complex implementation
+ * - Can't update in real-time after page load
+ *
+ * Option 2: Hidden Field Injection
+ * -------------------------------
+ * Create a hidden field when ORGSS selection happens and inject it into form submission:
+ *
+ * add_action('gform_pre_submission', 'inject_org_data_hidden_field');
+ *
+ * function inject_org_data_hidden_field($form) {
+ *     foreach ($form['fields'] as $field) {
+ *         if ($field->type === 'wicket_api_data_bind' &&
+ *             ($field->orgUuidSource ?? 'static') === 'orgss_field') {
+ *
+ *             $org_uuid = $_POST['input_' . $field->orgssFieldId] ?? '';
+ *             if (!empty($org_uuid)) {
+ *                 // Create hidden input field with the API data
+ *                 $_POST['input_' . $field->id] = fetch_org_data_for_field($org_uuid, $field);
+ *             }
+ *         }
+ *     }
+ * }
+ *
+ * Benefits:
+ * - Clean separation between display and submission
+ * - No client-side JavaScript required for value setting
+ * - Values are part of official form submission
+ *
+ * Drawbacks:
+ * - Only works on form submission, not real-time display
+ * - Conditional logic won't work until form is submitted
+ * - More complex hook management
+ *
+ * Option 3: Enhanced AJAX Endpoint with Caching
+ * --------------------------------------------
+ * Enhance the existing AJAX endpoint with server-side caching:
+ *
+ * public static function ajax_fetch_value_for_live_update() {
+ *     check_ajax_referer('wicket_gf_api_data_bind', 'nonce');
+ *
+ *     $org_uuid = sanitize_text_field(wp_unslash($_POST['org_uuid'] ?? ''));
+ *     $field_path = sanitize_text_field(wp_unslash($_POST['field_path'] ?? ''));
+ *     $cache_key = "wicket_org_data_{$org_uuid}_" . md5($field_path);
+ *
+ *     // Check cache first
+ *     $cached_value = wp_cache_get($cache_key, 'wicket_org_data');
+ *     if ($cached_value !== false) {
+ *         wp_send_json_success($cached_value);
+ *         return;
+ *     }
+ *
+ *     // Fetch fresh data
+ *     $org_data = wicket_get_organization($org_uuid);
+ *     if (!$org_data || is_wp_error($org_data)) {
+ *         wp_send_json_error('Failed to fetch organization data');
+ *         return;
+ *     }
+ *
+ *     $temp_field = new self();
+ *     $value = $temp_field->extract_field_value($org_data, $field_path);
+ *
+ *     // Cache for 15 minutes
+ *     wp_cache_set($cache_key, $value, 'wicket_org_data', 15 * MINUTE_IN_SECONDS);
+ *
+ *     wp_send_json_success($value);
+ * }
+ *
+ * Benefits:
+ * - Improved performance for repeated requests
+ * - Reduces API calls to Wicket
+ * - Maintains current client-side approach
+ * - Easy to implement
+ *
+ * Drawbacks:
+ * - Still requires JavaScript
+ * - Cache invalidation complexity
+ * - Stale data if organization changes during cache period
+ *
+ * Option 4: Hybrid Approach with Gravity Forms Hooks
+ * --------------------------------------------------
+ * Combine server-side population with client-side updates:
+ *
+ * // Server-side: Pre-populate on form load
+ * add_filter('gform_field_value', 'populate_api_data_bind_field', 10, 3);
+ *
+ * // Client-side: Update when org changes (current implementation)
+ * // Keep existing JavaScript for real-time updates
+ *
+ * Benefits:
+ * - Best of both worlds
+ * - Graceful degradation if JavaScript fails
+ * - Initial page load shows correct values
+ * - Real-time updates still work
+ *
+ * Drawbacks:
+ * - Most complex implementation
+ * - Requires maintaining both server and client code
+ * - Potential for code duplication
+ */
+
 class GFApiDataBindField extends GF_Field
 {
     public string $type = 'wicket_api_data_bind';
@@ -41,6 +186,7 @@ class GFApiDataBindField extends GF_Field
             'rules_setting',
             'wicket_api_data_source_setting',
             'wicket_api_organization_uuid_setting',
+            'wicket_api_orgss_binding_setting',
             'wicket_api_field_mapping_setting',
             'wicket_api_display_mode_setting',
             'wicket_api_fallback_value_setting',
@@ -57,6 +203,9 @@ class GFApiDataBindField extends GF_Field
                 field.apiDisplayMode = 'hidden';
                 field.apiFallbackValue = '';
                 field.apiOrganizationUuid = '';
+                field.orgUuidSource = 'static';
+                field.orgssFieldId = '';
+                field.liveUpdateEnabled = false;
                 field.isRequired = false;
                 field.visibility = 'visible';
             }",
@@ -75,62 +224,108 @@ class GFApiDataBindField extends GF_Field
         $field_id = sprintf('input_%d_%d', $form['id'], $this->id);
 
         // Get fetched value from API if configured
-        if (empty($value) && !empty($this->apiDataSource) && !empty($this->apiFieldPath)) {
+        // Skip server-side fetch if using ORGSS binding (JavaScript will handle it)
+        $org_uuid_source = $this->orgUuidSource ?? 'static';
+        $live_update_enabled = $this->liveUpdateEnabled ?? false;
+        $should_skip_server_fetch = ($org_uuid_source === 'orgss_field' && $live_update_enabled);
+
+        if (empty($value) && !empty($this->apiDataSource) && !empty($this->apiFieldPath) && !$should_skip_server_fetch) {
             $value = $this->fetch_value_from_api();
         }
 
         $input_value = esc_attr($value);
         $placeholder = !empty($this->apiFallbackValue) ? esc_attr($this->apiFallbackValue) : '';
 
-        return $this->get_field_input_by_display_mode($id, $field_id, $input_value, $placeholder);
+        return $this->get_field_input_by_display_mode($id, $field_id, $input_value, $placeholder, $form);
     }
 
     /**
      * Render field input based on display mode.
      */
-    private function get_field_input_by_display_mode($id, $field_id, $value, $placeholder): string
+    private function get_field_input_by_display_mode($id, $field_id, $value, $placeholder, $form): string
     {
         $display_mode = $this->apiDisplayMode ?? 'hidden';
         $css_class = !empty($this->cssClass) ? esc_attr($this->cssClass) : '';
 
+        // Get data attributes for ORGSS binding
+        $data_attributes = $this->build_data_attributes($form);
+
+        // Add target class if data attributes are present
+        if (!empty($data_attributes)) {
+            $css_class .= ' wicket-gf-api-data-bind-target';
+        }
+
         switch ($display_mode) {
             case 'hidden':
                 return sprintf(
-                    "<input name='input_%d' id='%s' type='hidden' value='%s' class='%s' />",
+                    "<input name='input_%d' id='%s' type='hidden' value='%s' class='%s'%s />",
                     $id,
                     $field_id,
                     $value,
-                    esc_attr($css_class)
+                    $css_class,
+                    $data_attributes
                 );
 
             case 'static':
                 return sprintf(
-                    "<div class='wicket-api-data-bind-static %s'>%s</div>",
-                    esc_attr($css_class),
+                    "<div id='%s' class='wicket-api-data-bind-static %s'%s>%s</div>",
+                    $field_id,
+                    $css_class,
+                    $data_attributes,
                     !empty($value) ? esc_html($value) : '<em>' . esc_html__('No data available', 'wicket-gf') . '</em>'
                 );
 
             case 'editable':
                 return sprintf(
-                    "<input name='input_%d' id='%s' type='text' class='large textfield %s' value='%s' placeholder='%s' />",
+                    "<input name='input_%d' id='%s' type='text' class='large textfield %s' value='%s' placeholder='%s'%s />",
                     $id,
                     $field_id,
-                    esc_attr($css_class),
+                    $css_class,
                     $value,
-                    $placeholder
+                    $placeholder,
+                    $data_attributes
                 );
 
             case 'readonly':
             default:
                 return sprintf(
-                    "<input name='input_%d' id='%s' type='text' class='large textfield %s' value='%s' placeholder='%s' readonly />",
+                    "<input name='input_%d' id='%s' type='text' class='large textfield %s' value='%s' placeholder='%s' readonly%s />",
                     $id,
                     $field_id,
-                    esc_attr($css_class),
+                    $css_class,
                     $value,
-                    $placeholder
+                    $placeholder,
+                    $data_attributes
                 );
         }
+    }
+
+    /**
+     * Build data attributes for frontend JavaScript binding.
+     *
+     * @param array $form The form object
+     * @return string HTML data attributes string
+     */
+    private function build_data_attributes($form): string
+    {
+        // Only add data attributes if ORGSS binding is enabled
+        $org_uuid_source = $this->orgUuidSource ?? 'static';
+        $live_update_enabled = $this->liveUpdateEnabled ?? false;
+
+        if ($org_uuid_source !== 'orgss_field' || !$live_update_enabled) {
+            return '';
+        }
+
+        // Build data attributes string (no class attribute here - handled in get_field_input_by_display_mode)
+        $attributes = ' data-api-bind-enabled="true"';
+        $attributes .= ' data-api-bind-data-source="' . esc_attr($this->apiDataSource ?? '') . '"';
+        $attributes .= ' data-api-bind-field-path="' . esc_attr($this->apiFieldPath ?? '') . '"';
+        $attributes .= ' data-api-bind-orgss-field-id="' . esc_attr($this->orgssFieldId ?? '') . '"';
+        $attributes .= ' data-api-bind-display-mode="' . esc_attr($this->apiDisplayMode ?? 'hidden') . '"';
+        $attributes .= ' data-api-bind-fallback="' . esc_attr($this->apiFallbackValue ?? '') . '"';
+        $attributes .= ' data-api-bind-form-id="' . esc_attr($form['id']) . '"';
+
+        return $attributes;
     }
 
     /**
@@ -550,6 +745,23 @@ class GFApiDataBindField extends GF_Field
                     </option>
                 </select>
             </li>
+
+            <!-- Organization UUID Source - Only shown when Organization is selected -->
+            <li class="wicket_api_orgss_binding_setting field_setting" style="display:none;">
+                <label for="orgUuidSource" class="section_label">
+                    <?php esc_html_e('Organization UUID Source', 'wicket-gf'); ?>
+                    <?php gform_tooltip('org_uuid_source_setting'); ?>
+                </label>
+                <select id="orgUuidSource">
+                    <option value="static"><?php esc_html_e('Static UUID', 'wicket-gf'); ?></option>
+                    <option value="orgss_field"><?php esc_html_e('Bind to ORGSS Field', 'wicket-gf'); ?></option>
+                </select>
+                <p class="instruction">
+                    <?php esc_html_e('Choose whether to use a static organization UUID or bind to an ORGSS field selection.', 'wicket-gf'); ?>
+                </p>
+            </li>
+
+            <!-- Static Organization UUID - Shown when UUID Source is "static" -->
             <li class="wicket_api_organization_uuid_setting field_setting" style="display:none;">
                 <label for="apiOrganizationUuid" class="section_label">
                     <?php esc_html_e('Organization UUID', 'wicket-gf'); ?>
@@ -560,6 +772,20 @@ class GFApiDataBindField extends GF_Field
                     onkeyup="SetFieldProperty('apiOrganizationUuid', this.value);" />
                 <p class="instruction">
                     <?php esc_html_e('Enter an organization UUID to fetch data from.', 'wicket-gf'); ?>
+                </p>
+            </li>
+
+            <!-- ORGSS Field Selector - Shown when UUID Source is "orgss_field" -->
+            <li class="wicket_api_orgss_field_selector_setting field_setting" style="display:none;">
+                <label for="orgssFieldId" class="section_label">
+                    <?php esc_html_e('Select ORGSS Field', 'wicket-gf'); ?>
+                    <?php gform_tooltip('orgss_field_selector_setting'); ?>
+                </label>
+                <select id="orgssFieldId" class="fieldwidth-3">
+                    <option value=""><?php esc_html_e('Select an ORGSS field...', 'wicket-gf'); ?></option>
+                </select>
+                <p class="instruction" id="orgssFieldNotice">
+                    <?php esc_html_e('Select which ORGSS field this field should bind to. The field will automatically update when an organization is selected.', 'wicket-gf'); ?>
                 </p>
             </li>
 
@@ -657,11 +883,30 @@ class GFApiDataBindField extends GF_Field
                     $('#apiDisplayMode').val(field.apiDisplayMode || 'readonly');
                     $('#apiFallbackValue').val(field.apiFallbackValue || '');
 
+                    // Load new ORGSS binding settings
+                    var orgUuidSource = field.orgUuidSource || 'static';
+                    $('#orgUuidSource').val(orgUuidSource);
+
+                    // Automatically set liveUpdateEnabled based on UUID source
+                    // (No UI for this setting - it's automatic)
+                    if (orgUuidSource === 'orgss_field') {
+                        field.liveUpdateEnabled = true;
+                    } else {
+                        field.liveUpdateEnabled = false;
+                    }
+
                     // Show/hide organization UUID field based on data source
                     toggleOrganizationUuidField(field.apiDataSource);
 
                     // Show field examples for data source
                     updateFieldExamples(field.apiDataSource);
+
+                    // IMPORTANT: Populate ORGSS field dropdown FIRST, then set the value
+                    populateOrgssFieldDropdown();
+                    $('#orgssFieldId').val(field.orgssFieldId || '');
+
+                    // Handle binding UI visibility
+                    toggleOrgssBindingUI(field.orgUuidSource || 'static');
 
                     // Validate configuration
                     validateFieldConfiguration(field);
@@ -711,17 +956,50 @@ class GFApiDataBindField extends GF_Field
                     validateCurrentConfiguration();
                 });
 
+                // Handle UUID source change
+                $('#orgUuidSource').off('change.api-data-bind').on('change.api-data-bind', function() {
+                    var uuidSource = this.value;
+                    SetFieldProperty('orgUuidSource', uuidSource);
+
+                    // Automatically enable/disable live updates based on UUID source
+                    if (uuidSource === 'orgss_field') {
+                        SetFieldProperty('liveUpdateEnabled', true);
+                    } else {
+                        SetFieldProperty('liveUpdateEnabled', false);
+                    }
+
+                    toggleOrgssBindingUI(uuidSource);
+                    var dataSource = $('#apiDataSource').val();
+                    updateBrowseButtonState(dataSource);
+                    validateCurrentConfiguration();
+                });
+
+                // Handle ORGSS field selection change
+                $('#orgssFieldId').off('change.api-data-bind').on('change.api-data-bind', function() {
+                    SetFieldProperty('orgssFieldId', this.value);
+                    validateCurrentConfiguration();
+                });
+
                 // Initial button state update
                 var currentField = (typeof GetSelectedField === 'function') ? GetSelectedField() : null;
                 var initialDataSource = (currentField && currentField.apiDataSource) ? currentField.apiDataSource : '';
                 updateBrowseButtonState(initialDataSource);
 
                 function toggleOrganizationUuidField(dataSource) {
-                    var $orgUuidSetting = $('.wicket_api_organization_uuid_setting');
+                    var $orgUuidSourceSetting = $('.wicket_api_orgss_binding_setting');
+
                     if (dataSource === 'organization') {
-                        $orgUuidSetting.show();
+                        // Show the UUID Source selector
+                        $orgUuidSourceSetting.show();
+
+                        // Then show/hide the appropriate sub-fields based on current UUID source
+                        var currentUuidSource = $('#orgUuidSource').val() || 'static';
+                        toggleOrgssBindingUI(currentUuidSource);
                     } else {
-                        $orgUuidSetting.hide();
+                        // Hide all organization-related fields
+                        $orgUuidSourceSetting.hide();
+                        $('.wicket_api_organization_uuid_setting').hide();
+                        $('.wicket_api_orgss_field_selector_setting').hide();
                     }
                 }
 
@@ -756,10 +1034,12 @@ class GFApiDataBindField extends GF_Field
                     var dataSource = $('#apiDataSource').val();
                     var fieldPath = $('#apiFieldPath').val();
                     var orgUuid = $('#apiOrganizationUuid').val();
+                    var orgUuidSource = $('#orgUuidSource').val();
+                    var orgssFieldId = $('#orgssFieldId').val();
                     var $statusDiv = $('.wicket-api-status');
                     var $message = $statusDiv.find('.status-message');
 
-                    var validation = validateConfiguration(dataSource, fieldPath, orgUuid);
+                    var validation = validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId);
 
                     if (validation.valid) {
                         $statusDiv.removeClass('error warning').addClass('success').css('background-color', '#d4edda').css('border', '1px solid #c3e6cb').css('color', '#155724').show();
@@ -781,7 +1061,7 @@ class GFApiDataBindField extends GF_Field
                     validateCurrentConfiguration();
                 }
 
-                function validateConfiguration(dataSource, fieldPath, orgUuid) {
+                function validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId) {
                     if (!dataSource) {
                         return { valid: false, message: '<?php esc_html_e('Please select a data source.', 'wicket-gf'); ?>' };
                     }
@@ -790,12 +1070,27 @@ class GFApiDataBindField extends GF_Field
                         return { valid: false, message: '<?php esc_html_e('Please enter a field path.', 'wicket-gf'); ?>' };
                     }
 
-                    if (dataSource === 'organization' && !orgUuid) {
-                        return { valid: false, message: '<?php esc_html_e('Organization UUID is required for organization data source.', 'wicket-gf'); ?>' };
-                    }
+                    if (dataSource === 'organization') {
+                        // Check UUID source
+                        if (!orgUuidSource) {
+                            orgUuidSource = 'static'; // Default
+                        }
 
-                    if (dataSource === 'organization' && orgUuid && !isValidUuid(orgUuid)) {
-                        return { valid: false, message: '<?php esc_html_e('Invalid Organization UUID format.', 'wicket-gf'); ?>' };
+                        if (orgUuidSource === 'static') {
+                            // Static UUID validation
+                            if (!orgUuid) {
+                                return { valid: false, message: '<?php esc_html_e('Organization UUID is required when using static UUID source.', 'wicket-gf'); ?>' };
+                            }
+
+                            if (!isValidUuid(orgUuid)) {
+                                return { valid: false, message: '<?php esc_html_e('Invalid Organization UUID format.', 'wicket-gf'); ?>' };
+                            }
+                        } else if (orgUuidSource === 'orgss_field') {
+                            // ORGSS field binding validation
+                            if (!orgssFieldId) {
+                                return { valid: false, message: '<?php esc_html_e('Please select an ORGSS field to bind to.', 'wicket-gf'); ?>' };
+                            }
+                        }
                     }
 
                     return { valid: true, message: '<?php esc_html_e('Configuration is valid.', 'wicket-gf'); ?>' };
@@ -978,7 +1273,15 @@ class GFApiDataBindField extends GF_Field
                     }
 
                     if (dataSource === 'organization') {
+                        var orgUuidSource = $('#orgUuidSource').val() || 'static';
                         var orgUuid = $('#apiOrganizationUuid').val();
+
+                        // For ORGSS binding, we can still allow browse if they provide a sample UUID
+                        if (orgUuidSource === 'orgss_field' && !orgUuid) {
+                            $browseBtn.prop('disabled', true);
+                            $browseBtn.text('<?php esc_html_e('Enter Sample UUID to Browse', 'wicket-gf'); ?>');
+                            return;
+                        }
 
                         if (!orgUuid) {
                             $browseBtn.prop('disabled', true);
@@ -1001,10 +1304,164 @@ class GFApiDataBindField extends GF_Field
                     $browseBtn.prop('disabled', true);
                     $browseBtn.text('<?php esc_html_e('Use Custom Field Path', 'wicket-gf'); ?>');
                 }
+
+                /**
+                 * Toggle ORGSS binding UI elements based on UUID source
+                 */
+                function toggleOrgssBindingUI(source) {
+                    var $staticUuidSetting = $('.wicket_api_organization_uuid_setting');
+                    var $orgssFieldSelector = $('.wicket_api_orgss_field_selector_setting');
+                    var $browseBtn = $('#useFieldDropdownBtn');
+
+                    if (source === 'orgss_field') {
+                        // Hide static UUID and browse button, show ORGSS selector
+                        $staticUuidSetting.hide();
+                        $orgssFieldSelector.show();
+                        $browseBtn.hide();
+                    } else {
+                        // Show static UUID and browse button, hide ORGSS selector
+                        $staticUuidSetting.show();
+                        $orgssFieldSelector.hide();
+                        $browseBtn.show();
+                    }
+                }
+
+                /**
+                 * Populate ORGSS field dropdown with available ORGSS fields in the form
+                 */
+                function populateOrgssFieldDropdown() {
+                    var $dropdown = $('#orgssFieldId');
+                    var $notice = $('#orgssFieldNotice');
+
+                    // Clear existing options except the first one
+                    $dropdown.find('option:not(:first)').remove();
+
+                    // Get current form
+                    var form = (typeof window.form !== 'undefined') ? window.form : null;
+                    if (!form || !form.fields) {
+                        $notice.html('<span style="color: #d63638;"><?php esc_html_e('Unable to load form fields.', 'wicket-gf'); ?></span>');
+                        return;
+                    }
+
+                    // Find all ORGSS fields
+                    var orgssFields = [];
+                    for (var i = 0; i < form.fields.length; i++) {
+                        var field = form.fields[i];
+                        if (field.type === 'wicket_org_search_select') {
+                            orgssFields.push({
+                                id: field.id,
+                                label: field.label || ('Field ' + field.id)
+                            });
+                        }
+                    }
+
+                    if (orgssFields.length === 0) {
+                        $notice.html('<span style="color: #d63638;"><?php esc_html_e('No ORGSS fields found in this form. Please add an ORGSS field first.', 'wicket-gf'); ?></span>');
+                        return;
+                    }
+
+                    // Populate dropdown with ORGSS fields
+                    orgssFields.forEach(function(field) {
+                        $dropdown.append(
+                            $('<option></option>')
+                                .attr('value', field.id)
+                                .text(field.label + ' (ID: ' + field.id + ')')
+                        );
+                    });
+
+                    $notice.html('<?php esc_html_e('Select which ORGSS field this field should bind to.', 'wicket-gf'); ?>');
+                }
             });
             </script>
 
         <?php
+        }
+    }
+
+    /**
+     * Check if frontend JavaScript should be enqueued for this form.
+     *
+     * @param array $form The Gravity Forms form object
+     * @return bool True if JS should be enqueued, false otherwise
+     */
+    public static function should_enqueue_frontend_js($form): bool
+    {
+        if (empty($form['fields']) || !is_array($form['fields'])) {
+            return false;
+        }
+
+        foreach ($form['fields'] as $field) {
+            // Check if this is an API Data Bind field with ORGSS binding enabled
+            if ($field->type === 'wicket_api_data_bind') {
+                $org_uuid_source = $field->orgUuidSource ?? 'static';
+                $live_update_enabled = $field->liveUpdateEnabled ?? false;
+
+                if ($org_uuid_source === 'orgss_field' && $live_update_enabled) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * AJAX handler for live update - fetch organization data for a specific field path.
+     *
+     * This handler is called from the frontend JavaScript when an ORGSS field selection is made.
+     * It fetches organization data and extracts the value for the requested field path.
+     *
+     * @return void Sends JSON response
+     */
+    public static function ajax_fetch_value_for_live_update()
+    {
+        // Verify nonce for security
+        check_ajax_referer('wicket_gf_api_data_bind', 'nonce');
+
+        // Get and sanitize parameters
+        $org_uuid = isset($_POST['org_uuid']) ? sanitize_text_field(wp_unslash($_POST['org_uuid'])) : '';
+        $field_path = isset($_POST['field_path']) ? sanitize_text_field(wp_unslash($_POST['field_path'])) : '';
+
+        // Validate required parameters
+        if (empty($org_uuid)) {
+            wp_send_json_error('Missing organization UUID');
+            return;
+        }
+
+        if (empty($field_path)) {
+            wp_send_json_error('Missing field path');
+            return;
+        }
+
+        // Validate UUID format (RFC 4122)
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $org_uuid)) {
+            wp_send_json_error('Invalid UUID format');
+            return;
+        }
+
+        // Check if Wicket API is available
+        if (!function_exists('wicket_get_organization')) {
+            wp_send_json_error('Wicket API not available');
+            return;
+        }
+
+        try {
+            // Fetch organization data
+            $org_data = wicket_get_organization($org_uuid);
+
+            if (!$org_data || is_wp_error($org_data)) {
+                wp_send_json_error('Failed to fetch organization data');
+                return;
+            }
+
+            // Create a temporary instance to leverage existing extraction logic
+            $temp_field = new self();
+            $value = $temp_field->extract_field_value($org_data, $field_path);
+
+            // Return the extracted value
+            wp_send_json_success($value);
+        } catch (Exception $e) {
+            wp_send_json_error('Error: ' . $e->getMessage());
         }
     }
 
@@ -1415,3 +1872,5 @@ class GFApiDataBindField extends GF_Field
 
 // Register AJAX handlers
 add_action('wp_ajax_gf_wicket_get_api_data_fields', ['GFApiDataBindField', 'ajax_get_api_data_fields']);
+add_action('wp_ajax_gf_wicket_api_data_bind_fetch_value', ['GFApiDataBindField', 'ajax_fetch_value_for_live_update']);
+add_action('wp_ajax_nopriv_gf_wicket_api_data_bind_fetch_value', ['GFApiDataBindField', 'ajax_fetch_value_for_live_update']);
