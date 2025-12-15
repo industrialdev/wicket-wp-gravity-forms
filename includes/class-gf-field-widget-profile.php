@@ -54,6 +54,7 @@ class GFWicketFieldWidgetProfile extends GF_Field
             $component_args = [
                 'classes'                   => [],
                 'user_info_data_field_name' => $user_info_field_name,
+                'hidden_fields'             => ['personType'],
             ];
 
             if (isset($this->org_uuid)) {
@@ -149,7 +150,7 @@ class GFWicketFieldWidgetProfile extends GF_Field
     }
 
     /**
-     * Override empty value detection to check component and legacy field names
+     * Override empty value detection to check component and legacy field names.
      */
     public function is_value_submission_empty($form_id)
     {
@@ -163,6 +164,7 @@ class GFWicketFieldWidgetProfile extends GF_Field
         }
 
         $value = rgpost($legacy);
+
         return empty($value);
     }
 
@@ -171,20 +173,20 @@ class GFWicketFieldWidgetProfile extends GF_Field
     {
         // If value is empty or malformed, fall back to current logged-in user
         if (empty($value)) {
-          $user_id = wicket_current_person_uuid();
-        } else {
-          $value_array = json_decode($value);
-          if (!isset($value_array->attributes->uuid)) {
-            // Fallback to current logged-in user if JSON is malformed
             $user_id = wicket_current_person_uuid();
-          } else {
-            $user_id = $value_array->attributes->uuid;
-          }
+        } else {
+            $value_array = json_decode($value);
+            if (!isset($value_array->attributes->uuid)) {
+                // Fallback to current logged-in user if JSON is malformed
+                $user_id = wicket_current_person_uuid();
+            } else {
+                $user_id = $value_array->attributes->uuid;
+            }
         }
 
         // Final fallback - if no user ID found, use empty string
         if (empty($user_id)) {
-          return '';
+            return '';
         }
 
         $wicket_settings = get_wicket_settings();
