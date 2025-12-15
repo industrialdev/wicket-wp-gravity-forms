@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Gravity Forms API Data Bind Field
+ * Gravity Forms API Data Bind Field.
  *
  * This field type provides live binding between Gravity Forms fields and Wicket API data.
  *
@@ -146,7 +146,6 @@ declare(strict_types=1);
  * - Requires maintaining both server and client code
  * - Potential for code duplication
  */
-
 class GFApiDataBindField extends GF_Field
 {
     public string $type = 'wicket_api_data_bind';
@@ -390,9 +389,9 @@ class GFApiDataBindField extends GF_Field
      */
     private function is_wicket_api_available(): bool
     {
-        return function_exists('wicket_current_person_uuid') &&
-               function_exists('wicket_get_person_by_id') &&
-               function_exists('wicket_get_organization');
+        return function_exists('wicket_current_person_uuid')
+               && function_exists('wicket_get_person_by_id')
+               && function_exists('wicket_get_organization');
     }
 
     /**
@@ -499,6 +498,7 @@ class GFApiDataBindField extends GF_Field
 
                 if ($data_fields_array) {
                     $result = $this->extract_data_field_value($data_fields_array, $field_path, $part);
+
                     return $result ?? '';
                 }
 
@@ -624,7 +624,7 @@ class GFApiDataBindField extends GF_Field
 
     /**
      * Extract value from data_fields (additional info).
-     * Supports advanced search path format: data_fields.{schema_slug}.value.{field_key}
+     * Supports advanced search path format: data_fields.{schema_slug}.value.{field_key}.
      */
     private function extract_data_field_value($data_fields, $full_field_path, $current_part): ?string
     {
@@ -1425,23 +1425,27 @@ class GFApiDataBindField extends GF_Field
         // Validate required parameters
         if (empty($org_uuid)) {
             wp_send_json_error('Missing organization UUID');
+
             return;
         }
 
         if (empty($field_path)) {
             wp_send_json_error('Missing field path');
+
             return;
         }
 
         // Validate UUID format (RFC 4122)
         if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $org_uuid)) {
             wp_send_json_error('Invalid UUID format');
+
             return;
         }
 
         // Check if Wicket API is available
         if (!function_exists('wicket_get_organization')) {
             wp_send_json_error('Wicket API not available');
+
             return;
         }
 
@@ -1451,6 +1455,7 @@ class GFApiDataBindField extends GF_Field
 
             if (!$org_data || is_wp_error($org_data)) {
                 wp_send_json_error('Failed to fetch organization data');
+
                 return;
             }
 
@@ -1556,7 +1561,7 @@ class GFApiDataBindField extends GF_Field
     {
         $schema_info = [
             'titles' => [],
-            'field_labels' => []
+            'field_labels' => [],
         ];
 
         if (!is_array($data) || !isset($data['included'])) {
@@ -1576,11 +1581,11 @@ class GFApiDataBindField extends GF_Field
             }
 
             // Extract title from ui_schema (ui:i18n → title → en)
-            $title = $ui_schema['ui:i18n']['title']['en'] ??
-                     $ui_schema['ui:i18n']['title']['fr'] ??
-                     $ui_schema['ui:i18n']['Title']['En'] ??
-                     $ui_schema['title'] ??
-                     null;
+            $title = $ui_schema['ui:i18n']['title']['en']
+                     ?? $ui_schema['ui:i18n']['title']['fr']
+                     ?? $ui_schema['ui:i18n']['Title']['En']
+                     ?? $ui_schema['title']
+                     ?? null;
 
             if ($title) {
                 $schema_info['titles'][$slug] = $title;
@@ -1595,11 +1600,11 @@ class GFApiDataBindField extends GF_Field
                 }
 
                 // Extract field label (ui:i18n → label → en)
-                $field_label = $field_config['ui:i18n']['label']['en'] ??
-                               $field_config['ui:i18n']['label']['fr'] ??
-                               $field_config['ui:i18n']['Label']['En'] ??
-                               $field_config['label'] ??
-                               null;
+                $field_label = $field_config['ui:i18n']['label']['en']
+                               ?? $field_config['ui:i18n']['label']['fr']
+                               ?? $field_config['ui:i18n']['Label']['En']
+                               ?? $field_config['label']
+                               ?? null;
 
                 if ($field_label) {
                     $schema_info['field_labels'][$slug][$field_key] = $field_label;
@@ -1635,9 +1640,9 @@ class GFApiDataBindField extends GF_Field
 
                         // Skip schema-related included items
                         $type_lower = strtolower($item_type);
-                        if (strpos($type_lower, 'schema') !== false ||
-                            strpos($type_lower, 'json_schema') !== false ||
-                            strpos($type_lower, 'ui_schema') !== false) {
+                        if (strpos($type_lower, 'schema') !== false
+                            || strpos($type_lower, 'json_schema') !== false
+                            || strpos($type_lower, 'ui_schema') !== false) {
                             continue;
                         }
 
@@ -1680,14 +1685,14 @@ class GFApiDataBindField extends GF_Field
             $path_lower = strtolower($field_path);
 
             // Check both the key and the full path for schema-related terms
-            if (strpos($key_lower, 'ui:i18n') !== false ||
-                strpos($key_lower, 'ui_schema') !== false ||
-                strpos($key_lower, 'json_schema') !== false ||
-                strpos($path_lower, 'json_schemas') !== false ||
-                strpos($path_lower, 'ui_schemas') !== false ||
-                strpos($path_lower, 'schema.') !== false ||
-                strpos($path_lower, '.schema.') !== false ||
-                (strpos($key_lower, 'schema') !== false && strpos($key_lower, 'ui') !== false)) {
+            if (strpos($key_lower, 'ui:i18n') !== false
+                || strpos($key_lower, 'ui_schema') !== false
+                || strpos($key_lower, 'json_schema') !== false
+                || strpos($path_lower, 'json_schemas') !== false
+                || strpos($path_lower, 'ui_schemas') !== false
+                || strpos($path_lower, 'schema.') !== false
+                || strpos($path_lower, '.schema.') !== false
+                || (strpos($key_lower, 'schema') !== false && strpos($key_lower, 'ui') !== false)) {
                 continue;
             }
 

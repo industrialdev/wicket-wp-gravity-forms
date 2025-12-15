@@ -99,9 +99,9 @@ class GFWicket_Consent_Field_Extension
         foreach ($form['fields'] as $field) {
             // Check if this is a consent field with our extension enabled
             if (
-                $field->type === 'consent' &&
-                isset($field->wicketConsentExtensionEnabled) &&
-                $field->wicketConsentExtensionEnabled === true
+                $field->type === 'consent'
+                && isset($field->wicketConsentExtensionEnabled)
+                && $field->wicketConsentExtensionEnabled === true
             ) {
 
                 // Get the field value from the entry - try both methods for consent fields

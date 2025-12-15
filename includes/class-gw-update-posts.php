@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Gravity Wiz // Gravity Forms // Update Posts.
  *
@@ -126,8 +127,8 @@ class GW_Update_Posts
         }
 
         if (
-            (!is_array($this->_args['post_date']) && !empty($this->_args['post_date'])) ||
-                rgars($this->_args, 'post_date/date')
+            (!is_array($this->_args['post_date']) && !empty($this->_args['post_date']))
+                || rgars($this->_args, 'post_date/date')
         ) {
             $new_date_time = $this->get_post_date($entry, $form);
             if ($new_date_time) {

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Handles nonce timeout issues and form session management
  * for Wicket Gravity Forms plugin.

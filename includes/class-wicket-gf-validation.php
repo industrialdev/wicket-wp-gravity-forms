@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Wicket Organization Validation Class.
  */
@@ -203,8 +204,6 @@ class Wicket_Gf_Validation
             return $result;
         }
 
-
-
         // For multi-step forms, we shouldn't require this field to have a value on step progression
         $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
         $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
@@ -232,6 +231,7 @@ class Wicket_Gf_Validation
 
             $result['is_valid'] = true;
             $result['message'] = '';
+
             return $result;
         }
 

@@ -510,7 +510,7 @@ class GFDataBindHiddenField extends GF_Field
 
         // Add custom class if present
         if (!empty($css_class)) {
-            $class_attribute = str_replace("class='", "class='" . $css_class . " ", $class_attribute);
+            $class_attribute = str_replace("class='", "class='" . $css_class . ' ', $class_attribute);
         }
 
         switch ($display_mode) {

@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 
 class GP_Google_Sheets_GPPA_Object_Type_Google_Sheet extends GPPA_Object_Type
 {
-    const ROW_NUMBER_ID = 'Row Number';
+    public const ROW_NUMBER_ID = 'Row Number';
 
     public $sheet_values_runtime_cache;
 
