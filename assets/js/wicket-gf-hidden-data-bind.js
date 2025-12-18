@@ -772,7 +772,10 @@ const WicketGFLiveUpdate = {
         if (typeof gform !== 'undefined') {
             // Use the standard GF input change event - this is what GF expects
             if (gform.doAction) {
-                gform.doAction('gform_input_change', $field[0], $field.val(), '');
+                const fieldHtmlId = $field.attr('id') || '';
+                const numericIdParts = fieldHtmlId.split('_').filter(part => /^\d+(\.\d+)?$/.test(part));
+                const inputId = numericIdParts.length >= 2 ? numericIdParts[1] : '';
+                gform.doAction('gform_input_change', $field[0], formId, inputId);
             }
 
             // Trigger a simple field change event
