@@ -12,10 +12,17 @@
   ],
   "type": "wordpress-plugin",
   "require": {
-    "php": ">=8.0"
+    "php": ">=8.2"
   },
   "require-dev": {
-    "friendsofphp/php-cs-fixer": "^3.64"
+    "brain/monkey": "^2.6",
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "phpunit/phpunit": "^11.0"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WicketGF\\Tests\\": "tests/unit/"
+    }
   },
   "scripts": {
     "post-install-cmd": [
@@ -30,6 +37,9 @@
       "@php ./.ci/version-bump.php",
       "@cs:fix"
     ],
-    "cs:fix": "@php -r \"system(PHP_OS_FAMILY === 'Windows' ? './.ci/php.exe ./.ci/php-cs-fixer.phar fix' : (PHP_OS_FAMILY === 'Darwin' ? './.ci/php-macos ./.ci/php-cs-fixer.phar fix' : './.ci/php-linux ./.ci/php-cs-fixer.phar fix'));\""
+    "cs:fix": "@php -r \"system(PHP_OS_FAMILY === 'Windows' ? './.ci/php.exe ./.ci/php-cs-fixer.phar fix' : (PHP_OS_FAMILY === 'Darwin' ? './.ci/php-macos ./.ci/php-cs-fixer.phar fix' : './.ci/php-linux ./.ci/php-cs-fixer.phar fix'));\"",
+    "test": "phpunit",
+    "test:unit": "phpunit --testsuite unit",
+    "test:coverage": "phpunit --coverage-html coverage"
   }
 }
