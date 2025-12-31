@@ -36,4 +36,16 @@ if (!defined('YEAR_IN_SECONDS')) {
     define('YEAR_IN_SECONDS', 31536000);
 }
 
+// Define Wicket GF plugin version
+if (!defined('WICKET_WP_GF_VERSION')) {
+    define('WICKET_WP_GF_VERSION', '2.3.3');
+}
+
+// Mock WordPress classes
+if (!class_exists('WP_Widget')) {
+    class WP_Widget {
+        public function __construct($id_base = '', $name = '', $widget_options = [], $control_options = []) {}
+    }
+}
+
 require_once dirname(__DIR__) . '/vendor/autoload.php';
