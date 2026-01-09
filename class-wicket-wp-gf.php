@@ -38,7 +38,9 @@ if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', g
     add_action('admin_notices', 'wicket_gf_admin_notice');
 }
 
-define('WICKET_WP_GF_VERSION', get_plugin_data(plugin_dir_path(__FILE__))['Version']);
+if (!defined('WICKET_WP_GF_VERSION')) {
+    define('WICKET_WP_GF_VERSION', get_plugin_data(plugin_dir_path(__FILE__))['Version']);
+}
 
 /**
  * The main Wicket Gravity Forms class.

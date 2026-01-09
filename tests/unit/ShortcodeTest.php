@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace WicketGF\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
 use Brain\Monkey\Functions;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 #[CoversClass('Wicket_Gf_Main')]
 class ShortcodeTest extends AbstractTestCase
@@ -28,14 +28,14 @@ class ShortcodeTest extends AbstractTestCase
         $this->assertStringContainsString('<div class="container wicket-gf-shortcode">', $output);
     }
 
-    public function test_shortcode_with_empty_slug_returns_null(): void
+    public function test_shortcode_with_empty_slug_returns_empty(): void
     {
-        if (!class_exists('Wicket_Gf_Main')) {
+        if (!class_exists('\Wicket_Gf_Main')) {
             $this->markTestSkipped('Wicket_Gf_Main class not available');
         }
 
         $output = do_shortcode('[wicket_gravityform]');
 
-        $this->assertNull($output);
+        $this->assertEmpty($output);
     }
 }

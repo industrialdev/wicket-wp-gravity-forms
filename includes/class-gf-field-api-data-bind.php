@@ -148,7 +148,7 @@ declare(strict_types=1);
  */
 class GFApiDataBindField extends GF_Field
 {
-    public string $type = 'wicket_api_data_bind';
+    public $type = 'wicket_api_data_bind';
 
     public function get_form_editor_field_title(): string
     {

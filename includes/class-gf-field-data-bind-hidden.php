@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 class GFDataBindHiddenField extends GF_Field
 {
-    public string $type = 'wicket_data_hidden';
+    public $type = 'wicket_data_hidden';
 
     public function get_form_editor_field_title(): string
     {

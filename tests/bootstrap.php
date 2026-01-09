@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PHPUnit Bootstrap File.
  *
@@ -43,9 +44,55 @@ if (!defined('WICKET_WP_GF_VERSION')) {
 
 // Mock WordPress classes
 if (!class_exists('WP_Widget')) {
-    class WP_Widget {
+    class WP_Widget
+    {
         public function __construct($id_base = '', $name = '', $widget_options = [], $control_options = []) {}
     }
 }
 
+if (!class_exists('GF_Field')) {
+
+    class GF_Field {
+
+        public $id;
+
+        public $type;
+
+        public $label;
+
+        public $isRequired;
+
+        public $errorMessage;
+
+        public $cssClass;
+
+        public function __construct($data = []) {
+
+            if (is_array($data)) {
+
+                foreach ($data as $key => $value) {
+
+                    $this->$key = $value;
+
+                }
+
+            }
+
+        }
+
+        public function get_form_editor_field_title() { return ''; }
+
+        public function get_form_editor_button() { return []; }
+
+        public function get_form_editor_field_settings() { return []; }
+
+        public function get_field_css_class() { return ''; }
+
+    }
+
+}
+
 require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+// Plugin files will be loaded in AbstractTestCase::setUp() after Brain Monkey is initialized
+// This ensures WordPress functions are properly mocked before plugin code is executed
