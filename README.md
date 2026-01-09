@@ -68,20 +68,38 @@ POST /wp-json/wicket-gf/v1/resync-member-fields
 composer install
 ```
 
+### ⚠️ IMPORTANT: Before Tagging a New Version
+
+**Always run `composer production` before tagging a new version.** This command:
+- Removes development dependencies
+- Optimizes autoloader for production
+- Generates a clean build without dev packages
+
+```bash
+composer production
+```
+
+Without this step, the plugin will include unnecessary dev dependencies in the release.
+
 ### Running Tests
+
+The plugin uses **PEST** and **PHPUnit** for testing.
 
 ```bash
 # Run all tests
 composer test
 
+# Run unit tests only
+composer test:unit
+
 # Run tests with coverage report
 composer test:coverage
 
-# Run specific test file
-./vendor/bin/phpunit tests/unit/WicketGfMainTest.php
+# Run browser tests
+composer test:browser
 
-# Run tests from tests/ directory
-cd tests && ../vendor/bin/phpunit unit/
+# Run specific test file
+./vendor/bin/pest tests/unit/WicketGfMainTest.php
 ```
 
 ### Writing New Tests
@@ -137,10 +155,24 @@ tests/
 
 ```bash
 # Check code style
-composer cs:fix --dry-run --diff
+composer lint
 
 # Fix code style automatically
-composer cs:fix
+composer format
+```
+
+### Available Composer Scripts
+
+```bash
+composer production       # Build for production (remove dev deps, optimize autoload)
+composer test            # Run all tests
+composer test:unit       # Run unit tests only
+composer test:coverage   # Run tests with HTML coverage report
+composer test:browser    # Run browser tests
+composer lint            # Check code style
+composer format          # Fix code style
+composer check           # Run lint + test
+composer version-bump    # Bump plugin version
 ```
 
 ### Available Fields

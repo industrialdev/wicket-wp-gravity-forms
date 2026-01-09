@@ -27,6 +27,7 @@
     }
   },
   "scripts": {
+    "production": "composer dump-autoload --optimize --no-dev",
     "version-bump": [
       "@php ./.ci/version-bump.php",
       "@cs:fix"
