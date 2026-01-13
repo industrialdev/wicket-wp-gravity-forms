@@ -99,7 +99,13 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     <br />
 
                     <div id="orgss_active_membership_alert_wrapper" style="margin-left:10px;margin-bottom: 10px;display: none;">
-                        <label style="margin-top: 1em;display: block;">Active Membership Alert Title</label>
+                        <h4 style="margin: 1em 0 0.5em; padding: 0.5em 0; border-bottom: 1px solid #ddd; font-size: 1.1em; font-weight: 600;">Active Membership Messages</h4>
+
+                        <div style="margin-bottom: 1.5em;">
+                            <strong style="display: block; margin-bottom: 0.5em;">Base Message (Optional)</strong>
+                            <p style="margin: 0 0 1em; color: #666; font-size: 0.95em;"><em>Default message shown when seat-based messaging is disabled or unavailable.</em></p>
+
+                            <label style="margin-top: 1em;display: block;">Active Membership Alert Title</label>
                         <input onkeyup="SetFieldProperty('orgss_active_membership_alert_title', this.value)" type="text" name="orgss_active_membership_alert_title" id="orgss_active_membership_alert_title_input" />
 
                         <label style="margin-top: 1em;display: block;">Active Membership Alert Body</label>
@@ -143,6 +149,139 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         <input onchange="SetFieldProperty('orgss_active_membership_alert_button_2_new_tab', this.checked)" type="checkbox" id="orgss_active_membership_alert_button_2_new_tab" class="orgss_active_membership_alert_button_2_new_tab">
                         <label for="orgss_active_membership_alert_button_2_new_tab" class="inline">Open Button 2 in New Tab?</label>
 
+                        <hr style="margin: 1.25em 0;">
+
+                        <input onchange="SetFieldProperty('orgss_active_membership_notify_enabled', this.checked)" type="checkbox" id="orgss_active_membership_notify_enabled" class="orgss_active_membership_notify_enabled">
+                        <label for="orgss_active_membership_notify_enabled" class="inline">Email org owner when proceeding with organization?</label>
+                        <p style="margin: 0.5em 0 1em;"><em>When enabled, proceeding with the organization sends an email to the org owner.</em></p>
+
+                        <div id="orgss_active_membership_notify_fields" style="display:none;">
+                            <label style="margin-top: 1em;display: block;">Notify Email Subject</label>
+                            <input onkeyup="SetFieldProperty('orgss_active_membership_notify_email_subject', this.value)" type="text" name="orgss_active_membership_notify_email_subject" id="orgss_active_membership_notify_email_subject_input" />
+
+                            <label style="margin-top: 1em;display: block;">Notify Email Body</label>
+                            <textarea onkeyup="SetFieldProperty('orgss_active_membership_notify_email_body', this.value)" name="orgss_active_membership_notify_email_body" id="orgss_active_membership_notify_email_body_input"></textarea>
+                            <p style="margin-top: 2px;"><em>Use %1$s to insert the requesting member's full name. Use \\n for line breaks.</em></p>
+                        </div>
+                        </div>
+
+                        <hr style="margin: 1.5em 0;">
+
+                        <input onchange="SetFieldProperty('orgss_active_membership_seat_messaging_enabled', this.checked)" type="checkbox" id="orgss_active_membership_seat_messaging_enabled" class="orgss_active_membership_seat_messaging_enabled">
+                        <label for="orgss_active_membership_seat_messaging_enabled" class="inline">Enable seat-based messaging?</label>
+                        <p style="margin: 0.5em 0 1em;"><em>When enabled, the modal will switch between two configurable messages depending on whether the org has available seats.</em></p>
+
+                        <div id="orgss_active_membership_seat_messaging_wrapper" style="margin-left:10px; display:none;">
+                            <div style="margin-bottom: 1.5em; padding: 1em; background: #f9f9f9; border-left: 3px solid #4CAF50;">
+                                <strong style="display: block; margin-bottom: 0.5em; color: #2e7d32;">Message 1: Seats Available</strong>
+                                <p style="margin: 0 0 1em; color: #666; font-size: 0.95em;"><em>Displayed when the organization has an active membership with remaining seats.</em></p>
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Alert Title</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_title', this.value)" type="text" name="orgss_active_membership_seat_available_alert_title" id="orgss_active_membership_seat_available_alert_title_input" />
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Alert Body</label>
+                                <textarea onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_body', this.value)" name="orgss_active_membership_seat_available_alert_body" id="orgss_active_membership_seat_available_alert_body_input"></textarea>
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 1 Text</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_button_1_text', this.value)" type="text" name="orgss_active_membership_seat_available_alert_button_1_text" id="orgss_active_membership_seat_available_alert_button_1_text_input" />
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 1 URL</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_button_1_url', this.value)" type="text" name="orgss_active_membership_seat_available_alert_button_1_url" id="orgss_active_membership_seat_available_alert_button_1_url_input" />
+                                <p style="margin-top: 2px;"><em>Use PROCEED to allow selection, BUTTON to trigger backend handling, or provide a URL.</em></p>
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 1 Style</label>
+                                <select name="orgss_active_membership_seat_available_alert_button_1_style" id="orgss_active_membership_seat_available_alert_button_1_style_select" onchange="SetFieldProperty('orgss_active_membership_seat_available_alert_button_1_style', this.value)" style="margin-bottom: 1em;">
+                                    <option value="primary" selected>Primary</option>
+                                    <option value="secondary">Secondary</option>
+                                    <option value="ghost">Ghost</option>
+                                </select>
+
+                                <input onchange="SetFieldProperty('orgss_active_membership_seat_available_alert_button_1_new_tab', this.checked)" type="checkbox" id="orgss_active_membership_seat_available_alert_button_1_new_tab" class="orgss_active_membership_seat_available_alert_button_1_new_tab">
+                                <label for="orgss_active_membership_seat_available_alert_button_1_new_tab" class="inline">Open Button 1 in New Tab?</label>
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 2 Text</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_button_2_text', this.value)" type="text" name="orgss_active_membership_seat_available_alert_button_2_text" id="orgss_active_membership_seat_available_alert_button_2_text_input" />
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 2 URL</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_available_alert_button_2_url', this.value)" type="text" name="orgss_active_membership_seat_available_alert_button_2_url" id="orgss_active_membership_seat_available_alert_button_2_url_input" />
+                                <p style="margin-top: 2px;"><em>Use PROCEED to allow selection, BUTTON to trigger backend handling, or provide a second URL.</em></p>
+
+                                <label style="margin-top: 1em;display: block;">Available Seats Button 2 Style</label>
+                                <select name="orgss_active_membership_seat_available_alert_button_2_style" id="orgss_active_membership_seat_available_alert_button_2_style_select" onchange="SetFieldProperty('orgss_active_membership_seat_available_alert_button_2_style', this.value)" style="margin-bottom: 1em;">
+                                    <option value="primary" selected>Primary</option>
+                                    <option value="secondary">Secondary</option>
+                                    <option value="ghost">Ghost</option>
+                                </select>
+
+                                <input onchange="SetFieldProperty('orgss_active_membership_seat_available_alert_button_2_new_tab', this.checked)" type="checkbox" id="orgss_active_membership_seat_available_alert_button_2_new_tab" class="orgss_active_membership_seat_available_alert_button_2_new_tab">
+                                <label for="orgss_active_membership_seat_available_alert_button_2_new_tab" class="inline">Open Button 2 in New Tab?</label>
+
+                            </div>
+
+                            <hr style="margin: 1.5em 0;">
+
+                            <div style="margin-bottom: 1.5em; padding: 1em; background: #fff3e0; border-left: 3px solid #ff9800;">
+                                <strong style="display: block; margin-bottom: 0.5em; color: #e65100;">Message 2: No Seats Available</strong>
+                                <p style="margin: 0 0 1em; color: #666; font-size: 0.95em;"><em>Displayed when the organization has an active membership but no available seats.</em></p>
+
+                                <label style="margin-top: 1em;display: block;">Unavailable Seats Alert Title</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_title', this.value)" type="text" name="orgss_active_membership_seat_unavailable_alert_title" id="orgss_active_membership_seat_unavailable_alert_title_input" />
+
+                                <label style="margin-top: 1em;display: block;">Unavailable Seats Alert Body</label>
+                                <textarea onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_body', this.value)" name="orgss_active_membership_seat_unavailable_alert_body" id="orgss_active_membership_seat_unavailable_alert_body_input"></textarea>
+
+                                <label style="margin-top: 1em;display: block;">Unavailable Seats Button 1 Text</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_1_text', this.value)" type="text" name="orgss_active_membership_seat_unavailable_alert_button_1_text" id="orgss_active_membership_seat_unavailable_alert_button_1_text_input" />
+
+                                <label style="margin-top: 1em;display: block;">Unavailable Seats Button 1 URL</label>
+                                <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_1_url', this.value)" type="text" name="orgss_active_membership_seat_unavailable_alert_button_1_url" id="orgss_active_membership_seat_unavailable_alert_button_1_url_input" />
+                                <p style="margin-top: 2px;"><em>Use PROCEED to allow selection, BUTTON to trigger backend handling, or provide a URL.</em></p>
+
+                                <label style="margin-top: 1em;display: block;">Unavailable Seats Button 1 Style</label>
+                                <select name="orgss_active_membership_seat_unavailable_alert_button_1_style" id="orgss_active_membership_seat_unavailable_alert_button_1_style_select" onchange="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_1_style', this.value)" style="margin-bottom: 1em;">
+                                    <option value="primary" selected>Primary</option>
+                                    <option value="secondary">Secondary</option>
+                                    <option value="ghost">Ghost</option>
+                                </select>
+
+                                <input onchange="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_1_new_tab', this.checked)" type="checkbox" id="orgss_active_membership_seat_unavailable_alert_button_1_new_tab" class="orgss_active_membership_seat_unavailable_alert_button_1_new_tab">
+                                <label for="orgss_active_membership_seat_unavailable_alert_button_1_new_tab" class="inline">Open Button 1 in New Tab?</label>
+
+                                <hr style="margin: 1.25em 0;">
+
+                                <input onchange="SetFieldProperty('orgss_active_membership_seat_unavailable_notify_enabled', this.checked)" type="checkbox" id="orgss_active_membership_seat_unavailable_notify_enabled" class="orgss_active_membership_seat_unavailable_notify_enabled">
+                                <label for="orgss_active_membership_seat_unavailable_notify_enabled" class="inline">Use "Notify your account manager" button?</label>
+                                <p style="margin: 0.5em 0 1em;"><em>When enabled, the second button sends an email to the org owner instead of using a manual link.</em></p>
+
+                                <div id="orgss_active_membership_seat_unavailable_notify_fields" style="display:none;">
+                                    <label style="margin-top: 1em;display: block;">Notify Email Subject</label>
+                                    <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_notify_email_subject', this.value)" type="text" name="orgss_active_membership_seat_unavailable_notify_email_subject" id="orgss_active_membership_seat_unavailable_notify_email_subject_input" />
+
+                                    <label style="margin-top: 1em;display: block;">Notify Email Body</label>
+                                    <textarea onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_notify_email_body', this.value)" name="orgss_active_membership_seat_unavailable_notify_email_body" id="orgss_active_membership_seat_unavailable_notify_email_body_input"></textarea>
+                                    <p style="margin-top: 2px;"><em>Use %1$s to insert the requesting member's full name. Use \\n for line breaks.</em></p>
+                                </div>
+
+                                <div id="orgss_active_membership_seat_unavailable_button_2_fields">
+                                    <label style="margin-top: 1em;display: block;">Unavailable Seats Button 2 Text</label>
+                                    <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_2_text', this.value)" type="text" name="orgss_active_membership_seat_unavailable_alert_button_2_text" id="orgss_active_membership_seat_unavailable_alert_button_2_text_input" />
+
+                                    <label style="margin-top: 1em;display: block;">Unavailable Seats Button 2 URL</label>
+                                    <input onkeyup="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_2_url', this.value)" type="text" name="orgss_active_membership_seat_unavailable_alert_button_2_url" id="orgss_active_membership_seat_unavailable_alert_button_2_url_input" />
+                                    <p style="margin-top: 2px;"><em>Use PROCEED to allow selection, BUTTON to trigger backend handling, or provide a second URL.</em></p>
+
+                                    <label style="margin-top: 1em;display: block;">Unavailable Seats Button 2 Style</label>
+                                    <select name="orgss_active_membership_seat_unavailable_alert_button_2_style" id="orgss_active_membership_seat_unavailable_alert_button_2_style_select" onchange="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_2_style', this.value)" style="margin-bottom: 1em;">
+                                        <option value="primary" selected>Primary</option>
+                                        <option value="secondary">Secondary</option>
+                                        <option value="ghost">Ghost</option>
+                                    </select>
+
+                                    <input onchange="SetFieldProperty('orgss_active_membership_seat_unavailable_alert_button_2_new_tab', this.checked)" type="checkbox" id="orgss_active_membership_seat_unavailable_alert_button_2_new_tab" class="orgss_active_membership_seat_unavailable_alert_button_2_new_tab">
+                                    <label for="orgss_active_membership_seat_unavailable_alert_button_2_new_tab" class="inline">Open Button 2 in New Tab?</label>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
 
@@ -177,6 +316,36 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     // Only initialize for our field type
                     if (field.type !== 'wicket_org_search_select') {
                         return;
+                    }
+
+                    var activeMembershipNotifyDefaults = {
+                        subject: 'Roster update notification',
+                        body: 'Hello,\n\n%1$s has been added to your organization roster.\n\nNo action is needed unless %1$s is not an employee. In that case, you can access the roster management tool and remove them.\n\nIf %1$s is an employee, they can now access member benefits.'
+                    };
+
+                    var seatMessagingDefaults = {
+                        availableTitle: 'Seats available for this organization',
+                        availableBody: 'This organization has an active membership with open seats. You can proceed now or review the helpful links below.',
+                        availableButton1Text: 'Select this organization',
+                        availableButton1Url: 'PROCEED',
+                        unavailableTitle: 'No seats remaining for this organization',
+                        unavailableBody: 'All seats for this organization are already assigned. Remove an existing assignment or contact support to continue.',
+                        unavailableButton1Text: 'Close',
+                        unavailableButton1Url: 'BUTTON',
+                        unavailableButton1Style: 'secondary',
+                        unavailableNotifyEmailSubject: 'Roster update request',
+                        unavailableNotifyEmailBody: 'Hello,\n\n%1$s would like to be added to your organization roster.\n\nYou can update your roster online and remove a customer to make room for %1$s, or contact support to increase the number of seats on your roster.'
+                    };
+
+                    function ensureFieldDefault(fieldObj, propName, defaultValue) {
+                        var currentValue = fieldObj[propName];
+                        if (currentValue === undefined || currentValue === null || currentValue === '') {
+                            fieldObj[propName] = defaultValue;
+                            SetFieldProperty(propName, defaultValue);
+                            return defaultValue;
+                        }
+
+                        return currentValue;
                     }
 
                                         // Set up the conditional display for Organizations vs Groups mode
@@ -228,6 +397,61 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     $('#orgss_active_membership_alert_button_2_url_input').val(field.orgss_active_membership_alert_button_2_url || '');
                     $('#orgss_active_membership_alert_button_2_style_select').val(field.orgss_active_membership_alert_button_2_style || 'primary');
                     $('#orgss_active_membership_alert_button_2_new_tab').prop('checked', field.orgss_active_membership_alert_button_2_new_tab || false);
+                    $('#orgss_active_membership_notify_enabled').prop('checked', field.orgss_active_membership_notify_enabled || false);
+                    $('#orgss_active_membership_notify_email_subject_input').val(
+                        ensureFieldDefault(field, 'orgss_active_membership_notify_email_subject', activeMembershipNotifyDefaults.subject)
+                    );
+                    $('#orgss_active_membership_notify_email_body_input').val(
+                        ensureFieldDefault(field, 'orgss_active_membership_notify_email_body', activeMembershipNotifyDefaults.body)
+                    );
+                    $('#orgss_active_membership_seat_messaging_enabled').prop('checked', field.orgss_active_membership_seat_messaging_enabled || false);
+
+                    var seatAvailableTitle = ensureFieldDefault(field, 'orgss_active_membership_seat_available_alert_title', seatMessagingDefaults.availableTitle);
+                    $('#orgss_active_membership_seat_available_alert_title_input').val(seatAvailableTitle);
+
+                    var seatAvailableBody = ensureFieldDefault(field, 'orgss_active_membership_seat_available_alert_body', seatMessagingDefaults.availableBody);
+                    $('#orgss_active_membership_seat_available_alert_body_input').val(seatAvailableBody);
+
+                    var seatAvailableButtonOneText = ensureFieldDefault(field, 'orgss_active_membership_seat_available_alert_button_1_text', seatMessagingDefaults.availableButton1Text);
+                    $('#orgss_active_membership_seat_available_alert_button_1_text_input').val(seatAvailableButtonOneText);
+
+                    var seatAvailableButtonOneUrl = ensureFieldDefault(field, 'orgss_active_membership_seat_available_alert_button_1_url', seatMessagingDefaults.availableButton1Url);
+                    $('#orgss_active_membership_seat_available_alert_button_1_url_input').val(seatAvailableButtonOneUrl);
+
+                    $('#orgss_active_membership_seat_available_alert_button_1_style_select').val(field.orgss_active_membership_seat_available_alert_button_1_style || 'primary');
+                    $('#orgss_active_membership_seat_available_alert_button_1_new_tab').prop('checked', field.orgss_active_membership_seat_available_alert_button_1_new_tab || false);
+                    $('#orgss_active_membership_seat_available_alert_button_2_text_input').val(field.orgss_active_membership_seat_available_alert_button_2_text || '');
+                    $('#orgss_active_membership_seat_available_alert_button_2_url_input').val(field.orgss_active_membership_seat_available_alert_button_2_url || '');
+                    $('#orgss_active_membership_seat_available_alert_button_2_style_select').val(field.orgss_active_membership_seat_available_alert_button_2_style || 'primary');
+                    $('#orgss_active_membership_seat_available_alert_button_2_new_tab').prop('checked', field.orgss_active_membership_seat_available_alert_button_2_new_tab || false);
+
+                    var seatUnavailableTitle = ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_alert_title', seatMessagingDefaults.unavailableTitle);
+                    $('#orgss_active_membership_seat_unavailable_alert_title_input').val(seatUnavailableTitle);
+
+                    var seatUnavailableBody = ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_alert_body', seatMessagingDefaults.unavailableBody);
+                    $('#orgss_active_membership_seat_unavailable_alert_body_input').val(seatUnavailableBody);
+
+                    var seatUnavailableButtonOneText = ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_alert_button_1_text', seatMessagingDefaults.unavailableButton1Text);
+                    $('#orgss_active_membership_seat_unavailable_alert_button_1_text_input').val(seatUnavailableButtonOneText);
+
+                    var seatUnavailableButtonOneUrl = ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_alert_button_1_url', seatMessagingDefaults.unavailableButton1Url);
+                    $('#orgss_active_membership_seat_unavailable_alert_button_1_url_input').val(seatUnavailableButtonOneUrl);
+
+                    var seatUnavailableButtonOneStyle = ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_alert_button_1_style', seatMessagingDefaults.unavailableButton1Style);
+                    $('#orgss_active_membership_seat_unavailable_alert_button_1_style_select').val(seatUnavailableButtonOneStyle || 'secondary');
+
+                    $('#orgss_active_membership_seat_unavailable_alert_button_1_new_tab').prop('checked', field.orgss_active_membership_seat_unavailable_alert_button_1_new_tab || false);
+                    $('#orgss_active_membership_seat_unavailable_alert_button_2_text_input').val(field.orgss_active_membership_seat_unavailable_alert_button_2_text || '');
+                    $('#orgss_active_membership_seat_unavailable_alert_button_2_url_input').val(field.orgss_active_membership_seat_unavailable_alert_button_2_url || '');
+                    $('#orgss_active_membership_seat_unavailable_alert_button_2_style_select').val(field.orgss_active_membership_seat_unavailable_alert_button_2_style || 'primary');
+                    $('#orgss_active_membership_seat_unavailable_alert_button_2_new_tab').prop('checked', field.orgss_active_membership_seat_unavailable_alert_button_2_new_tab || false);
+                    $('#orgss_active_membership_seat_unavailable_notify_enabled').prop('checked', field.orgss_active_membership_seat_unavailable_notify_enabled || false);
+                    $('#orgss_active_membership_seat_unavailable_notify_email_subject_input').val(
+                        ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_notify_email_subject', seatMessagingDefaults.unavailableNotifyEmailSubject)
+                    );
+                    $('#orgss_active_membership_seat_unavailable_notify_email_body_input').val(
+                        ensureFieldDefault(field, 'orgss_active_membership_seat_unavailable_notify_email_body', seatMessagingDefaults.unavailableNotifyEmailBody)
+                    );
 
                     // Set initial state based on field's current value
                     var currentMode = field.orgss_search_mode || 'org';
@@ -239,8 +463,40 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         var isChecked = $('#orgss_disable_selecting_orgs_with_active_membership').is(':checked');
                         if (isChecked) {
                             $('#orgss_active_membership_alert_wrapper').show();
+                            updateSeatMessagingDisplay();
                         } else {
                             $('#orgss_active_membership_alert_wrapper').hide();
+                            $('#orgss_active_membership_seat_messaging_wrapper').hide();
+                        }
+                    }
+
+                    function updateSeatMessagingDisplay() {
+                        var seatMessagingEnabled = $('#orgss_active_membership_seat_messaging_enabled').is(':checked');
+                        var disableActiveSelection = $('#orgss_disable_selecting_orgs_with_active_membership').is(':checked');
+                        if (seatMessagingEnabled && disableActiveSelection) {
+                            $('#orgss_active_membership_seat_messaging_wrapper').show();
+                        } else {
+                            $('#orgss_active_membership_seat_messaging_wrapper').hide();
+                        }
+                    }
+
+                    function updateUnavailableNotifyDisplay() {
+                        var notifyEnabled = $('#orgss_active_membership_seat_unavailable_notify_enabled').is(':checked');
+                        if (notifyEnabled) {
+                            $('#orgss_active_membership_seat_unavailable_button_2_fields').hide();
+                            $('#orgss_active_membership_seat_unavailable_notify_fields').show();
+                        } else {
+                            $('#orgss_active_membership_seat_unavailable_button_2_fields').show();
+                            $('#orgss_active_membership_seat_unavailable_notify_fields').hide();
+                        }
+                    }
+
+                    function updateActiveMembershipNotifyDisplay() {
+                        var notifyEnabled = $('#orgss_active_membership_notify_enabled').is(':checked');
+                        if (notifyEnabled) {
+                            $('#orgss_active_membership_notify_fields').show();
+                        } else {
+                            $('#orgss_active_membership_notify_fields').hide();
                         }
                     }
 
@@ -249,12 +505,24 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     $('#orgss_disable_selecting_orgs_with_active_membership').off('change.wicket-orgss-alert').on('change.wicket-orgss-alert', function() {
                         updateActiveMembershipDisplay();
                     });
+                    $('#orgss_active_membership_seat_messaging_enabled').off('change.wicket-orgss-seat').on('change.wicket-orgss-seat', function() {
+                        updateSeatMessagingDisplay();
+                    });
+                    $('#orgss_active_membership_seat_unavailable_notify_enabled').off('change.wicket-orgss-notify').on('change.wicket-orgss-notify', function() {
+                        updateUnavailableNotifyDisplay();
+                    });
+                    $('#orgss_active_membership_notify_enabled').off('change.wicket-orgss-base-notify').on('change.wicket-orgss-base-notify', function() {
+                        updateActiveMembershipNotifyDisplay();
+                    });
 
                     // Handle dropdown change
                     orgssSearchModeSelect.off('change.wicket-orgss').on('change.wicket-orgss', function() {
                         var selectedMode = $(this).val();
                         updateModeDisplay(selectedMode);
                     });
+
+                    updateActiveMembershipNotifyDisplay();
+                    updateUnavailableNotifyDisplay();
                 });
             });
             </script>
@@ -339,6 +607,33 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 field.orgss_active_membership_alert_button_2_url = '';
                 field.orgss_active_membership_alert_button_2_style = 'primary';
                 field.orgss_active_membership_alert_button_2_new_tab = false;
+                field.orgss_active_membership_notify_enabled = false;
+                field.orgss_active_membership_notify_email_subject = 'Roster update notification';
+                field.orgss_active_membership_notify_email_body = 'Hello,\\n\\n%%1$s has been added to your organization roster.\\n\\nNo action is needed unless %%1$s is not an employee. In that case, you can access the roster management tool and remove them.\\n\\nIf %%1$s is an employee, they can now access member benefits.';
+                field.orgss_active_membership_seat_messaging_enabled = false;
+                field.orgss_active_membership_seat_available_alert_title = 'Seats available for this organization';
+                field.orgss_active_membership_seat_available_alert_body = 'This organization has an active membership with open seats. You can proceed now or review the helpful links below.';
+                field.orgss_active_membership_seat_available_alert_button_1_text = 'Select this organization';
+                field.orgss_active_membership_seat_available_alert_button_1_url = 'PROCEED';
+                field.orgss_active_membership_seat_available_alert_button_1_style = 'primary';
+                field.orgss_active_membership_seat_available_alert_button_1_new_tab = false;
+                field.orgss_active_membership_seat_available_alert_button_2_text = '';
+                field.orgss_active_membership_seat_available_alert_button_2_url = '';
+                field.orgss_active_membership_seat_available_alert_button_2_style = 'primary';
+                field.orgss_active_membership_seat_available_alert_button_2_new_tab = false;
+                field.orgss_active_membership_seat_unavailable_alert_title = 'No seats remaining for this organization';
+                field.orgss_active_membership_seat_unavailable_alert_body = 'All seats for this organization are already assigned. Remove an existing assignment or contact support to continue.';
+                field.orgss_active_membership_seat_unavailable_alert_button_1_text = 'Close';
+                field.orgss_active_membership_seat_unavailable_alert_button_1_url = 'BUTTON';
+                field.orgss_active_membership_seat_unavailable_alert_button_1_style = 'secondary';
+                field.orgss_active_membership_seat_unavailable_alert_button_1_new_tab = false;
+                field.orgss_active_membership_seat_unavailable_alert_button_2_text = '';
+                field.orgss_active_membership_seat_unavailable_alert_button_2_url = '';
+                field.orgss_active_membership_seat_unavailable_alert_button_2_style = 'primary';
+                field.orgss_active_membership_seat_unavailable_alert_button_2_new_tab = false;
+                field.orgss_active_membership_seat_unavailable_notify_enabled = false;
+                field.orgss_active_membership_seat_unavailable_notify_email_subject = 'Roster update request';
+                field.orgss_active_membership_seat_unavailable_notify_email_body = 'Hello,\\n\\n%%1$s would like to be added to your organization roster.\\n\\nYou can update your roster online and remove a customer to make room for %%1$s, or contact support to increase the number of seats on your roster.';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -411,6 +706,33 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         $orgss_active_membership_alert_button_2_url = '';
         $orgss_active_membership_alert_button_2_style = '';
         $orgss_active_membership_alert_button_2_new_tab = false;
+        $orgss_active_membership_notify_enabled = false;
+        $orgss_active_membership_notify_email_subject = '';
+        $orgss_active_membership_notify_email_body = '';
+        $orgss_active_membership_seat_messaging_enabled = false;
+        $orgss_active_membership_seat_available_alert_title = '';
+        $orgss_active_membership_seat_available_alert_body = '';
+        $orgss_active_membership_seat_available_alert_button_1_text = '';
+        $orgss_active_membership_seat_available_alert_button_1_url = '';
+        $orgss_active_membership_seat_available_alert_button_1_style = '';
+        $orgss_active_membership_seat_available_alert_button_1_new_tab = false;
+        $orgss_active_membership_seat_available_alert_button_2_text = '';
+        $orgss_active_membership_seat_available_alert_button_2_url = '';
+        $orgss_active_membership_seat_available_alert_button_2_style = '';
+        $orgss_active_membership_seat_available_alert_button_2_new_tab = false;
+        $orgss_active_membership_seat_unavailable_alert_title = '';
+        $orgss_active_membership_seat_unavailable_alert_body = '';
+        $orgss_active_membership_seat_unavailable_alert_button_1_text = '';
+        $orgss_active_membership_seat_unavailable_alert_button_1_url = '';
+        $orgss_active_membership_seat_unavailable_alert_button_1_style = '';
+        $orgss_active_membership_seat_unavailable_alert_button_1_new_tab = false;
+        $orgss_active_membership_seat_unavailable_alert_button_2_text = '';
+        $orgss_active_membership_seat_unavailable_alert_button_2_url = '';
+        $orgss_active_membership_seat_unavailable_alert_button_2_style = '';
+        $orgss_active_membership_seat_unavailable_alert_button_2_new_tab = false;
+        $orgss_active_membership_seat_unavailable_notify_enabled = false;
+        $orgss_active_membership_seat_unavailable_notify_email_subject = '';
+        $orgss_active_membership_seat_unavailable_notify_email_body = '';
 
         // Extract field settings
         foreach ($form['fields'] as $field) {
@@ -480,6 +802,87 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         if (isset($field->orgss_active_membership_alert_button_2_new_tab)) {
                             $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
                         }
+                        if (isset($field->orgss_active_membership_notify_enabled)) {
+                            $orgss_active_membership_notify_enabled = $field->orgss_active_membership_notify_enabled;
+                        }
+                        if (isset($field->orgss_active_membership_notify_email_subject)) {
+                            $orgss_active_membership_notify_email_subject = $field->orgss_active_membership_notify_email_subject;
+                        }
+                        if (isset($field->orgss_active_membership_notify_email_body)) {
+                            $orgss_active_membership_notify_email_body = $field->orgss_active_membership_notify_email_body;
+                        }
+                        if (isset($field->orgss_active_membership_seat_messaging_enabled)) {
+                            $orgss_active_membership_seat_messaging_enabled = $field->orgss_active_membership_seat_messaging_enabled;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_title)) {
+                            $orgss_active_membership_seat_available_alert_title = $field->orgss_active_membership_seat_available_alert_title;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_body)) {
+                            $orgss_active_membership_seat_available_alert_body = $field->orgss_active_membership_seat_available_alert_body;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_text)) {
+                            $orgss_active_membership_seat_available_alert_button_1_text = $field->orgss_active_membership_seat_available_alert_button_1_text;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_url)) {
+                            $orgss_active_membership_seat_available_alert_button_1_url = $field->orgss_active_membership_seat_available_alert_button_1_url;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_style)) {
+                            $orgss_active_membership_seat_available_alert_button_1_style = $field->orgss_active_membership_seat_available_alert_button_1_style;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_new_tab)) {
+                            $orgss_active_membership_seat_available_alert_button_1_new_tab = $field->orgss_active_membership_seat_available_alert_button_1_new_tab;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_text)) {
+                            $orgss_active_membership_seat_available_alert_button_2_text = $field->orgss_active_membership_seat_available_alert_button_2_text;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_url)) {
+                            $orgss_active_membership_seat_available_alert_button_2_url = $field->orgss_active_membership_seat_available_alert_button_2_url;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_style)) {
+                            $orgss_active_membership_seat_available_alert_button_2_style = $field->orgss_active_membership_seat_available_alert_button_2_style;
+                        }
+                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_new_tab)) {
+                            $orgss_active_membership_seat_available_alert_button_2_new_tab = $field->orgss_active_membership_seat_available_alert_button_2_new_tab;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_title)) {
+                            $orgss_active_membership_seat_unavailable_alert_title = $field->orgss_active_membership_seat_unavailable_alert_title;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_body)) {
+                            $orgss_active_membership_seat_unavailable_alert_body = $field->orgss_active_membership_seat_unavailable_alert_body;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_text)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_1_text = $field->orgss_active_membership_seat_unavailable_alert_button_1_text;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_url)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_1_url = $field->orgss_active_membership_seat_unavailable_alert_button_1_url;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_style)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_1_style = $field->orgss_active_membership_seat_unavailable_alert_button_1_style;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_1_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_text)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_2_text = $field->orgss_active_membership_seat_unavailable_alert_button_2_text;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_url)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_2_url = $field->orgss_active_membership_seat_unavailable_alert_button_2_url;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_style)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_2_style = $field->orgss_active_membership_seat_unavailable_alert_button_2_style;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab)) {
+                            $orgss_active_membership_seat_unavailable_alert_button_2_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_notify_enabled)) {
+                            $orgss_active_membership_seat_unavailable_notify_enabled = $field->orgss_active_membership_seat_unavailable_notify_enabled;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_notify_email_subject)) {
+                            $orgss_active_membership_seat_unavailable_notify_email_subject = $field->orgss_active_membership_seat_unavailable_notify_email_subject;
+                        }
+                        if (isset($field->orgss_active_membership_seat_unavailable_notify_email_body)) {
+                            $orgss_active_membership_seat_unavailable_notify_email_body = $field->orgss_active_membership_seat_unavailable_notify_email_body;
+                        }
                         if (isset($field->orgss_grant_roster_man_on_purchase)) {
                             $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
                         }
@@ -536,6 +939,33 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 'active_membership_alert_button_2_url'          => $orgss_active_membership_alert_button_2_url,
                 'active_membership_alert_button_2_style'        => $orgss_active_membership_alert_button_2_style,
                 'active_membership_alert_button_2_new_tab'      => $orgss_active_membership_alert_button_2_new_tab,
+                'active_membership_notify_enabled'             => $orgss_active_membership_notify_enabled,
+                'active_membership_notify_email_subject'       => $orgss_active_membership_notify_email_subject,
+                'active_membership_notify_email_body'          => $orgss_active_membership_notify_email_body,
+                'active_membership_seat_messaging_enabled'      => $orgss_active_membership_seat_messaging_enabled,
+                'active_membership_seat_available_alert_title'  => $orgss_active_membership_seat_available_alert_title,
+                'active_membership_seat_available_alert_body'   => $orgss_active_membership_seat_available_alert_body,
+                'active_membership_seat_available_alert_button_1_text' => $orgss_active_membership_seat_available_alert_button_1_text,
+                'active_membership_seat_available_alert_button_1_url' => $orgss_active_membership_seat_available_alert_button_1_url,
+                'active_membership_seat_available_alert_button_1_style' => $orgss_active_membership_seat_available_alert_button_1_style,
+                'active_membership_seat_available_alert_button_1_new_tab' => $orgss_active_membership_seat_available_alert_button_1_new_tab,
+                'active_membership_seat_available_alert_button_2_text' => $orgss_active_membership_seat_available_alert_button_2_text,
+                'active_membership_seat_available_alert_button_2_url' => $orgss_active_membership_seat_available_alert_button_2_url,
+                'active_membership_seat_available_alert_button_2_style' => $orgss_active_membership_seat_available_alert_button_2_style,
+                'active_membership_seat_available_alert_button_2_new_tab' => $orgss_active_membership_seat_available_alert_button_2_new_tab,
+                'active_membership_seat_unavailable_alert_title' => $orgss_active_membership_seat_unavailable_alert_title,
+                'active_membership_seat_unavailable_alert_body' => $orgss_active_membership_seat_unavailable_alert_body,
+                'active_membership_seat_unavailable_alert_button_1_text' => $orgss_active_membership_seat_unavailable_alert_button_1_text,
+                'active_membership_seat_unavailable_alert_button_1_url' => $orgss_active_membership_seat_unavailable_alert_button_1_url,
+                'active_membership_seat_unavailable_alert_button_1_style' => $orgss_active_membership_seat_unavailable_alert_button_1_style,
+                'active_membership_seat_unavailable_alert_button_1_new_tab' => $orgss_active_membership_seat_unavailable_alert_button_1_new_tab,
+                'active_membership_seat_unavailable_alert_button_2_text' => $orgss_active_membership_seat_unavailable_alert_button_2_text,
+                'active_membership_seat_unavailable_alert_button_2_url' => $orgss_active_membership_seat_unavailable_alert_button_2_url,
+                'active_membership_seat_unavailable_alert_button_2_style' => $orgss_active_membership_seat_unavailable_alert_button_2_style,
+                'active_membership_seat_unavailable_alert_button_2_new_tab' => $orgss_active_membership_seat_unavailable_alert_button_2_new_tab,
+                'active_membership_seat_unavailable_notify_enabled' => $orgss_active_membership_seat_unavailable_notify_enabled,
+                'active_membership_seat_unavailable_notify_email_subject' => $orgss_active_membership_seat_unavailable_notify_email_subject,
+                'active_membership_seat_unavailable_notify_email_body' => $orgss_active_membership_seat_unavailable_notify_email_body,
                 'grant_roster_man_on_purchase'                  => $grant_roster_man_on_purchase,
                 'grant_org_editor_on_select'                    => $orgss_grant_org_editor_on_select,
                 'grant_org_editor_on_purchase'                  => $orgss_grant_org_editor_on_purchase,
