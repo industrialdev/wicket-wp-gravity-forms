@@ -363,7 +363,7 @@ jQuery(document).ready(function($) {
                     $this->validation_message = !empty($this->errorMessage)
                         ? $this->errorMessage
                         /* translators: Message displayed when person profile is incomplete */
-                        : __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+                        : __('Please fill out all required fields in your profile.', 'wicket_gf');
                 }
             }
 
@@ -381,7 +381,7 @@ jQuery(document).ready(function($) {
             $this->failed_validation = true;
             $this->validation_message = !empty($this->errorMessage)
                 ? $this->errorMessage
-                : __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+                : __('Please fill out all required fields in your profile.', 'wicket_gf');
 
             return;
         }
@@ -403,7 +403,7 @@ jQuery(document).ready(function($) {
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
                 } else {
-                    $this->validation_message = __('Please complete all required fields in the profile.', 'wicket_gf');
+                    $this->validation_message = __('Please fill out all required fields in your profile.', 'wicket_gf');
                 }
 
                 return;
@@ -416,24 +416,11 @@ jQuery(document).ready(function($) {
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
                 } else {
-                    $this->validation_message = __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+                    $this->validation_message = __('Please fill out all required fields in your profile.', 'wicket_gf');
                 }
 
                 return;
             }
-        }
-
-        // Fallback enforcement when widget isn't requiring specific types: ensure at least one of each resource
-        $has_addresses = isset($value_array['addresses']) && is_array($value_array['addresses']) && count($value_array['addresses']) > 0;
-        $has_emails = isset($value_array['emails']) && is_array($value_array['emails']) && count($value_array['emails']) > 0;
-        $has_phones = isset($value_array['phones']) && is_array($value_array['phones']) && count($value_array['phones']) > 0;
-        if (!$has_addresses || !$has_emails || !$has_phones) {
-            $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage)
-                ? $this->errorMessage
-                : _x('Please ensure the profile has at least one address, email, and phone.', 'Validation message for profile', 'wicket_gf');
-
-            return;
         }
 
     }
