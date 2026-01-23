@@ -52,9 +52,10 @@ class GFWicketFieldWidgetProfile extends GF_Field
             // Default component args with filter for extensibility
             $user_info_field_name = 'wicket_user_info_data_' . $id;
             $component_args = [
-                'classes'                   => [],
-                'user_info_data_field_name' => $user_info_field_name,
-                'hidden_fields'             => ['personType'],
+                'classes'                    => [],
+                'user_info_data_field_name'  => $user_info_field_name,
+                'hidden_fields'              => ['personType'],
+                'validation_data_field_name' => 'input_' . $this->id . '_validation',
             ];
 
             if (isset($this->org_uuid)) {
@@ -202,22 +203,124 @@ class GFWicketFieldWidgetProfile extends GF_Field
         $logger->debug('Profile Individual Widget validate called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
         $logger->debug('Profile Individual Widget validate value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
 
+        // Gate validation by user action: only on Next or final submit
+        $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
+        $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
+        $next_clicked = rgpost('gform_save') === '1' || (rgpost('gform_next_button') !== null);
+
+        $on_next = ($target_page > $current_page && $next_clicked);
+        $on_submit = ($target_page == 0); // GF uses 0 when submitting the form
+
+        if (!$on_next && !$on_submit) {
+            // Do not validate on initial load or unrelated actions
+            return;
+        }
+
+        // If this is a multi-step form and we're on final submit, skip validation for this field
+        $is_multi_step = false;
+        if (!empty($form['fields']) && is_array($form['fields'])) {
+            foreach ($form['fields'] as $f) {
+                if ((is_object($f) && isset($f->type) && $f->type === 'page') || (is_array($f) && isset($f['type']) && $f['type'] === 'page')) {
+                    $is_multi_step = true;
+                    break;
+                }
+            }
+        }
+        if ($on_submit && $is_multi_step) {
+            return;
+        }
+
+        $field_id = $this->id ?? null;
+        $validation_flag = $field_id !== null ? rgpost('input_' . $field_id . '_validation') : null;
+
+        if ($on_next) {
+            // On Next, rely on hidden flag; double-check JSON only if flag is false
+            $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+            if ($flag_false) {
+                $is_incomplete = true;
+                if (!empty($value)) {
+                    $value_array = json_decode($value, true);
+                    $value_array = is_array($value_array) ? $value_array : [];
+                    $fields_incomplete = isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
+                    $resources_incomplete = isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
+                    $is_incomplete = ($fields_incomplete || $resources_incomplete);
+                }
+                if ($is_incomplete) {
+                    $this->failed_validation = true;
+                    $this->validation_message = !empty($this->errorMessage)
+                        ? $this->errorMessage
+                        /* translators: Message displayed when person profile is incomplete */
+                        : __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+                }
+            }
+
+            // If flag true or missing, allow progression
+            return;
+        }
+
+        // On final submission, perform checks but avoid false blocking when field isn't on this page
         $value_array = json_decode($value, true);
-        $logger->debug('Profile Individual Widget JSON decode result: ' . var_export($value_array, true), ['source' => 'gravityforms-state-debug']);
+        $value_array = is_array($value_array) ? $value_array : [];
+
+        // If the hidden flag is posted and explicitly false, block; if it's absent, don't use it to block
+        $flag_false_submit = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+        if ($validation_flag !== null && $flag_false_submit) {
+            $this->failed_validation = true;
+            $this->validation_message = !empty($this->errorMessage)
+                ? $this->errorMessage
+                : __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+
+            return;
+        }
+
+        // If the hidden flag is explicitly true, allow submit (authoritative success from the widget)
+        $flag_true_submit = ($validation_flag === true || $validation_flag === 'true' || $validation_flag === '1');
+        if ($flag_true_submit) {
+            return;
+        }
+
+        // If there is no JSON payload at all, allow submit (field likely not present on this page / no new data)
+        if (empty($value_array)) {
+            return;
+        }
 
         if (isset($value_array['incompleteRequiredFields'])) {
-            $logger->debug('Profile Individual Widget incompleteRequiredFields count: ' . count($value_array['incompleteRequiredFields']), ['source' => 'gravityforms-state-debug']);
             if (count($value_array['incompleteRequiredFields']) > 0) {
-                $logger->debug('Profile Individual Widget failing validation due to incomplete required fields', ['source' => 'gravityforms-state-debug']);
                 $this->failed_validation = true;
                 if (!empty($this->errorMessage)) {
                     $this->validation_message = $this->errorMessage;
+                } else {
+                    $this->validation_message = __('Please complete all required fields in the profile.', 'wicket_gf');
                 }
-            } else {
-                $logger->debug('Profile Individual Widget no incomplete required fields, validation passed', ['source' => 'gravityforms-state-debug']);
+
+                return;
             }
-        } else {
-            $logger->debug('Profile Individual Widget no incompleteRequiredFields key found', ['source' => 'gravityforms-state-debug']);
+        }
+
+        if (isset($value_array['incompleteRequiredResources'])) {
+            if (count($value_array['incompleteRequiredResources']) > 0) {
+                $this->failed_validation = true;
+                if (!empty($this->errorMessage)) {
+                    $this->validation_message = $this->errorMessage;
+                } else {
+                    $this->validation_message = __('Please ensure the profile has at least one address, email, and phone.', 'wicket_gf');
+                }
+
+                return;
+            }
+        }
+
+        // Fallback enforcement when widget isn't requiring specific types: ensure at least one of each resource
+        $has_addresses = isset($value_array['addresses']) && is_array($value_array['addresses']) && count($value_array['addresses']) > 0;
+        $has_emails = isset($value_array['emails']) && is_array($value_array['emails']) && count($value_array['emails']) > 0;
+        $has_phones = isset($value_array['phones']) && is_array($value_array['phones']) && count($value_array['phones']) > 0;
+        if (!$has_addresses || !$has_emails || !$has_phones) {
+            $this->failed_validation = true;
+            $this->validation_message = !empty($this->errorMessage)
+                ? $this->errorMessage
+                : _x('Please ensure the profile has at least one address, email, and phone.', 'Validation message for profile', 'wicket_gf');
+
+            return;
         }
 
     }

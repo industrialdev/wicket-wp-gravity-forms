@@ -17,7 +17,6 @@ class Wicket_Gf_Validation
     public function __construct()
     {
         add_filter('gform_validation', [$this, 'validate_org_profile']);
-        add_filter('gform_field_validation', [$this, 'validate_profile_individual_widget_field'], 10, 4);
     }
 
     /**
@@ -187,69 +186,5 @@ class Wicket_Gf_Validation
         $logger->debug('Org validation: Final validation result: ' . var_export($validation_result['is_valid'], true), ['source' => 'gravityforms-state-debug']);
 
         return $validation_result;
-    }
-
-    /**
-     * Validate profile individual widget field during multi-step form progression.
-     *
-     * @param array $result The current validation result.
-     * @param string $value The field value.
-     * @param array $form The form object.
-     * @param object $field The field object.
-     * @return array Updated validation result.
-     */
-    public function validate_profile_individual_widget_field($result, $value, $form, $field)
-    {
-        if ($field->type !== 'wicket_widget_profile_individual') {
-            return $result;
-        }
-
-        // For multi-step forms, we shouldn't require this field to have a value on step progression
-        $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
-        $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
-
-        if ($target_page > $current_page) {
-            $result['is_valid'] = true;
-            $result['message'] = '';
-
-            return $result;
-        }
-
-        // Detect if form is multi-step (has page fields)
-        $is_multi_step = false;
-        if (!empty($form['fields']) && is_array($form['fields'])) {
-            foreach ($form['fields'] as $f) {
-                if ((is_object($f) && isset($f->type) && $f->type === 'page') || (is_array($f) && isset($f['type']) && $f['type'] === 'page')) {
-                    $is_multi_step = true;
-                    break;
-                }
-            }
-        }
-
-        // If multi-step and on final submit, skip validation entirely (handled earlier on its page)
-        if ($is_multi_step && $target_page == 0) {
-
-            $result['is_valid'] = true;
-            $result['message'] = '';
-
-            return $result;
-        }
-
-        // For final submission, only validate if the field is actually required and has incomplete data
-        if (!empty($value)) {
-            $value_array = json_decode($value, true);
-            if (isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0) {
-                $result['is_valid'] = false;
-                $result['message'] = !empty($field->errorMessage) ? $field->errorMessage : 'Please complete all required fields in your profile.';
-            } else {
-                $result['is_valid'] = true;
-                $result['message'] = '';
-            }
-        } else {
-            $result['is_valid'] = true;
-            $result['message'] = '';
-        }
-
-        return $result;
     }
 }
