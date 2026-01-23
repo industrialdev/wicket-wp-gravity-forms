@@ -3,6 +3,7 @@
 class GFWicketFieldWidgetProfile extends GF_Field
 {
     public $type = 'wicket_widget_profile_individual';
+    public $wwidget_profile_required_resources = '';
 
     /**
      * Initialize the widget field and enqueue validation scripts.
@@ -11,6 +12,34 @@ class GFWicketFieldWidgetProfile extends GF_Field
     {
         // Enqueue validation scripts when this widget is used
         add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
+    }
+
+    // Ensure new fields have sane defaults server-side
+    public function get_default_properties()
+    {
+        $defaults = parent::get_default_properties();
+        $defaults['wwidget_profile_required_resources'] = '';
+
+        return $defaults;
+    }
+
+    // Sanitize and enforce defaults when the form is saved in the editor
+    public function sanitize_settings()
+    {
+        parent::sanitize_settings();
+
+        // Required resources: keep as a raw string (brace/quote content) but strip tags; set default if empty
+        $default_required = '';
+        if (empty($this->wwidget_profile_required_resources)) {
+            $this->wwidget_profile_required_resources = $default_required;
+        } else {
+            $raw = (string) $this->wwidget_profile_required_resources;
+            // Remove any tags while preserving braces/quotes
+            $this->wwidget_profile_required_resources = wp_kses_post($raw);
+            if ($this->wwidget_profile_required_resources === '') {
+                $this->wwidget_profile_required_resources = $default_required;
+            }
+        }
     }
 
     public function get_form_editor_field_title()
@@ -36,7 +65,88 @@ class GFWicketFieldWidgetProfile extends GF_Field
             'error_message_setting',
             'css_class_setting',
             'conditional_logic_field_setting',
+            'wicket_widget_profile_setting',
         ];
+    }
+
+    public function get_form_editor_inline_script_on_page_render(): string
+    {
+        return sprintf(
+            "function SetDefaultValues_%s(field) {
+                field.label = '%s';
+                field.wwidget_profile_required_resources = '';
+            }",
+            $this->type,
+            esc_js($this->get_form_editor_field_title())
+        );
+    }
+
+
+    public static function custom_settings($position, $form_id)
+    {
+        //create settings on position 25 (right after Field Label)
+        if ($position == 25) {
+            ob_start(); ?>
+
+<li class="wicket_widget_profile_setting field_setting" style="display:none;">
+    <div>
+        <label>Required Resources:</label>
+        <textarea id="wwidget_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_profile_required_resources', this.value)" type="text" ></textarea>
+        <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"], webAddresses: "website" }</em></p>
+        <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
+    </div>
+</li>
+
+<script type='text/javascript'>
+// Use jQuery-based GF editor events for reliability (matches working field patterns)
+jQuery(document).ready(function($) {
+    var defaultRequired = '';
+
+    // When settings panel loads for a field
+    $(document).on('gform_load_field_settings', function(event, field) {
+        if (field.type !== 'wicket_widget_profile_individual') {
+            return;
+        }
+
+        // Populate inputs
+
+        if (!field.wwidget_profile_required_resources) {
+            field.wwidget_profile_required_resources = defaultRequired;
+            SetFieldProperty('wwidget_profile_required_resources', defaultRequired);
+        }
+        $('#wwidget_profile_required_resources_input').val(field.wwidget_profile_required_resources || '');
+
+        // Bind once: keep model in sync as user types
+        var rrSel = '#wwidget_profile_required_resources_input';
+        if (!$(rrSel).data('bound')) {
+            $(rrSel).on('input.wicket-profile change.wicket-profile', function() {
+                SetFieldProperty('wwidget_profile_required_resources', this.value);
+            }).data('bound', true);
+        }
+    });
+
+    // When a new field is added to the form
+    $(document).on('gform_field_added', function(event, field) {
+        if (field.type !== 'wicket_widget_profile_individual') {
+            return;
+        }
+        field.label = 'Wicket Widget: Individual Profile';
+        if (!field.wwidget_profile_required_resources) {
+            field.wwidget_profile_required_resources = defaultRequired;
+            SetFieldProperty('wwidget_profile_required_resources', defaultRequired);
+        }
+    });
+});
+</script>
+
+<?php
+            echo ob_get_clean();
+        }
+    }
+
+    public static function editor_script()
+    {
+        // JavaScript now embedded in custom_settings method for better integration
     }
 
     // Render the field
@@ -51,11 +161,14 @@ class GFWicketFieldWidgetProfile extends GF_Field
         if (component_exists('widget-profile-individual')) {
             // Default component args with filter for extensibility
             $user_info_field_name = 'wicket_user_info_data_' . $id;
+            $profile_required_resources = $this->wwidget_profile_required_resources ?? '';
+
             $component_args = [
                 'classes'                    => [],
                 'user_info_data_field_name'  => $user_info_field_name,
                 'hidden_fields'              => ['personType'],
                 'validation_data_field_name' => 'input_' . $this->id . '_validation',
+                'profile_required_resources' => $profile_required_resources,
             ];
 
             if (isset($this->org_uuid)) {
