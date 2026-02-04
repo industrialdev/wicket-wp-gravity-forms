@@ -52,8 +52,8 @@ if (!class_exists('WP_Widget')) {
 
 if (!class_exists('GF_Field')) {
 
-    class GF_Field {
-
+    class GF_Field
+    {
         public $id;
 
         public $type;
@@ -66,7 +66,8 @@ if (!class_exists('GF_Field')) {
 
         public $cssClass;
 
-        public function __construct($data = []) {
+        public function __construct($data = [])
+        {
 
             if (is_array($data)) {
 
@@ -80,14 +81,25 @@ if (!class_exists('GF_Field')) {
 
         }
 
-        public function get_form_editor_field_title() { return ''; }
+        public function get_form_editor_field_title()
+        {
+            return '';
+        }
 
-        public function get_form_editor_button() { return []; }
+        public function get_form_editor_button()
+        {
+            return [];
+        }
 
-        public function get_form_editor_field_settings() { return []; }
+        public function get_form_editor_field_settings()
+        {
+            return [];
+        }
 
-        public function get_field_css_class() { return ''; }
-
+        public function get_field_css_class()
+        {
+            return '';
+        }
     }
 
 }

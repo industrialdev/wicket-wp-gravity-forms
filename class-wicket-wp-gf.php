@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.7
+ * Version:           2.3.8
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -112,6 +112,9 @@ class Wicket_Gf_Main
 
         // Hook for shortcode
         add_shortcode('wicket_gravityform', [$this, 'shortcode']);
+
+        // Prevent WCS subscription metabox fatals by using safe callbacks
+        add_action('add_meta_boxes', [$this, 'override_subscription_metabox_callbacks_on_add'], 1000, 2);
 
         // Initialize Wicket Org Validation
         $Wicket_Gf_Validation = new Wicket_Gf_Validation();
@@ -242,6 +245,145 @@ class Wicket_Gf_Main
             false,
             dirname(plugin_basename(__FILE__)) . '/languages'
         );
+    }
+
+    /**
+     * Override WCS metabox callbacks after all meta boxes are registered.
+     *
+     * @param string               $post_type The post type being edited.
+     * @param WP_Post|WC_Order|null $post      The post object.
+     * @return void
+     */
+    public function override_subscription_metabox_callbacks_on_add($post_type, $post)
+    {
+        $screen_id = function_exists('wcs_get_page_screen_id') ? wcs_get_page_screen_id('shop_subscription') : 'shop_subscription';
+        if ($post_type !== 'shop_subscription' && $post_type !== $screen_id) {
+            return;
+        }
+
+        $this->override_subscription_metabox_callbacks($screen_id);
+    }
+
+    /**
+     * Replace WCS metabox callbacks with safe wrappers to avoid fatals.
+     *
+     * @param string $screen_id The screen ID to update.
+     * @return void
+     */
+    private function override_subscription_metabox_callbacks($screen_id)
+    {
+        global $wp_meta_boxes;
+
+        if (!isset($wp_meta_boxes) || !is_array($wp_meta_boxes)) {
+            return;
+        }
+
+        $targets = [$screen_id, 'shop_subscription'];
+        $map = [
+            'woocommerce-subscription-schedule' => [$this, 'safe_subscription_schedule_metabox'],
+            'woocommerce-subscription-data' => [$this, 'safe_subscription_data_metabox'],
+        ];
+
+        foreach ($targets as $target) {
+            if (!isset($wp_meta_boxes[$target]) || !is_array($wp_meta_boxes[$target])) {
+                continue;
+            }
+            foreach ($wp_meta_boxes[$target] as $context => $priorities) {
+                if (!is_array($priorities)) {
+                    continue;
+                }
+                foreach ($priorities as $priority => $boxes) {
+                    if (!is_array($boxes)) {
+                        continue;
+                    }
+                    foreach ($map as $id => $callback) {
+                        if (isset($wp_meta_boxes[$target][$context][$priority][$id])) {
+                            $wp_meta_boxes[$target][$context][$priority][$id]['callback'] = $callback;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Safe wrapper for the subscription schedule metabox.
+     *
+     * @param WP_Post|WC_Subscription $post The current post object.
+     * @return void
+     */
+    public function safe_subscription_schedule_metabox($post)
+    {
+        if (!function_exists('wcs_get_subscription')) {
+            return;
+        }
+
+        $subscription = null;
+
+        if ($post instanceof WC_Subscription) {
+            $subscription = $post;
+        } elseif (is_object($post) && !empty($post->ID)) {
+            if (isset($post->post_type) && $post->post_type !== 'shop_subscription') {
+                $subscription = null;
+            } else {
+                $subscription = wcs_get_subscription($post->ID);
+            }
+        } elseif (is_numeric($post)) {
+            $subscription = wcs_get_subscription(absint($post));
+        }
+
+        if (!$subscription) {
+            $fallback_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+            if ($fallback_id) {
+                $subscription = wcs_get_subscription($fallback_id);
+            }
+        }
+
+        if ($subscription) {
+            $GLOBALS['the_subscription'] = $subscription;
+            $GLOBALS['post'] = get_post($subscription->get_id());
+            WCS_Meta_Box_Schedule::output($subscription);
+        }
+    }
+
+    /**
+     * Safe wrapper for the subscription data metabox.
+     *
+     * @param WP_Post|WC_Subscription $post The current post object.
+     * @return void
+     */
+    public function safe_subscription_data_metabox($post)
+    {
+        if (!function_exists('wcs_get_subscription')) {
+            return;
+        }
+
+        $subscription = null;
+
+        if ($post instanceof WC_Subscription) {
+            $subscription = $post;
+        } elseif (is_object($post) && !empty($post->ID)) {
+            if (isset($post->post_type) && $post->post_type !== 'shop_subscription') {
+                $subscription = null;
+            } else {
+                $subscription = wcs_get_subscription($post->ID);
+            }
+        } elseif (is_numeric($post)) {
+            $subscription = wcs_get_subscription(absint($post));
+        }
+
+        if (!$subscription) {
+            $fallback_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+            if ($fallback_id) {
+                $subscription = wcs_get_subscription($fallback_id);
+            }
+        }
+
+        if ($subscription) {
+            $GLOBALS['the_subscription'] = $subscription;
+            $GLOBALS['post'] = get_post($subscription->get_id());
+            WCS_Meta_Box_Subscription_Data::output($subscription);
+        }
     }
 
     /**

@@ -81,7 +81,6 @@ class GFWicketFieldWidgetProfile extends GF_Field
         );
     }
 
-
     public static function custom_settings($position, $form_id)
     {
         //create settings on position 25 (right after Field Label)

@@ -28,25 +28,28 @@ abstract class AbstractTestCase extends PHPUnitTestCase
             'esc_attr',
             'esc_url',
             'esc_url_raw',
-            'apply_filters' => function($tag, $value) { return $value; },
-            'get_option' => function($option, $default = false) {
+            'apply_filters' => function ($tag, $value) { return $value; },
+            'get_option' => function ($option, $default = false) {
                 if ($option === 'active_plugins') {
                     return ['gravityforms/gravityforms.php'];
                 }
+
                 return $default;
             },
             'plugins_url' => '',
-            'plugin_dir_path' => function($file) { return dirname($file) . '/'; },
-            'plugin_basename' => function($file) { return basename(dirname($file)) . '/' . basename($file); },
+            'plugin_dir_path' => function ($file) { return dirname($file) . '/'; },
+            'plugin_basename' => function ($file) { return basename(dirname($file)) . '/' . basename($file); },
             'get_plugin_data' => ['Version' => '2.3.3'],
-            'add_shortcode' => function($tag, $callback) use (&$shortcodes) {
+            'add_shortcode' => function ($tag, $callback) use (&$shortcodes) {
                 $shortcodes[$tag] = $callback;
+
                 return true;
             },
-            'do_shortcode' => function($content) use (&$shortcodes) {
+            'do_shortcode' => function ($content) use (&$shortcodes) {
                 // Simple shortcode parser
                 $pattern = '/\[(\w+)([^\]]*)\]/';
-                return preg_replace_callback($pattern, function($matches) use (&$shortcodes) {
+
+                return preg_replace_callback($pattern, function ($matches) use (&$shortcodes) {
                     $tag = $matches[1];
                     $attrs_string = trim($matches[2]);
 
@@ -62,6 +65,7 @@ abstract class AbstractTestCase extends PHPUnitTestCase
                     if (isset($shortcodes[$tag])) {
                         $callback = $shortcodes[$tag];
                         $result = call_user_func($callback, $attrs);
+
                         // Preserve null returns (convert to empty string for regex)
                         return $result === null ? '' : $result;
                     }
@@ -69,16 +73,17 @@ abstract class AbstractTestCase extends PHPUnitTestCase
                     return $matches[0]; // Return unchanged if not registered
                 }, $content);
             },
-            'shortcode_exists' => function($tag) use (&$shortcodes) {
+            'shortcode_exists' => function ($tag) use (&$shortcodes) {
                 return isset($shortcodes[$tag]);
             },
-            'shortcode_atts' => function($defaults, $atts) {
+            'shortcode_atts' => function ($defaults, $atts) {
                 if (!is_array($atts)) {
                     return $defaults;
                 }
+
                 return array_merge($defaults, $atts);
             },
-            'wp_kses_post' => function($text) { return $text; },
+            'wp_kses_post' => function ($text) { return $text; },
             'load_plugin_textdomain' => null,
         ]);
 
