@@ -68,8 +68,9 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
                 <div id="ai_org_uuid_wrapper" style="display: none;">
                     <label>Org UUID:</label>
-                    <input id="ai_org_uuid_input" onkeyup="SetFieldProperty('wwidget_ai_org_uuid', this.value)" type="text" placeholder="1234-5678-9100" />
-                    <p style="margin-top: 2px;"><em>Tip: if using a multi-page form, and a field on a previous page will get populated with the org UUID, you can simply enter that field ID here instead.</em></p>
+                    <input id="ai_org_uuid_input" onkeyup="SetFieldProperty('wwidget_ai_org_uuid', this.value)" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                    <p style="margin-top: 2px;"><em>Enter the organization's UUID (recommended). Numeric field IDs are legacy and discouraged.</em></p>
+                    <p id="ai_org_uuid_warning" style="margin-top: 2px; color: #b32d2e; display: none;"><em>Please enter a UUID, not a numeric field ID.</em></p>
                 </div>
 
                 <label>Additional Info Schemas:</label>
@@ -111,6 +112,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                             // Set values for form elements
                             $('#ai_type_selector').val(field.wwidget_ai_type || 'people');
                             $('#ai_org_uuid_input').val(field.wwidget_ai_org_uuid || '');
+                            this.toggleUuidWarning(field.wwidget_ai_org_uuid || '');
                             $('#ai_use_slugs').prop('checked', field.wwidget_ai_use_slugs || false);
 
                             // Always render schemas after loading field settings
@@ -126,6 +128,16 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                                 orgUuidWrapper.hide();
                             }
                         },
+
+            toggleUuidWarning: function(value) {
+                var warning = $('#ai_org_uuid_warning');
+                if (!warning.length) {
+                    return;
+                }
+                var trimmed = (value || '').toString().trim();
+                var isNumeric = trimmed !== '' && !isNaN(trimmed);
+                warning.toggle(isNumeric);
+            },
 
             addNewSchemaGrouping: function() {
                 this.schemaArray.push([]);
@@ -305,6 +317,11 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
                         window.WicketGF.AdditionalInfo.updateAiType(this.value);
                     });
 
+                    // Warn if org UUID looks like a numeric field ID
+                    $('#ai_org_uuid_input').off('input.wicket-ai-uuid change.wicket-ai-uuid').on('input.wicket-ai-uuid change.wicket-ai-uuid', function() {
+                        window.WicketGF.AdditionalInfo.toggleUuidWarning(this.value);
+                    });
+
                     // Set up add schema button handler
                     $('#ai_add_schema_button').off('click.wicket-ai').on('click.wicket-ai', function(e) {
                         e.preventDefault();
@@ -389,6 +406,15 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         // On multi-page forms, the pre-render hook runs too late. We need to get the UUID directly from POST.
         $current_page = GFFormDisplay::get_current_page($form['id']);
         if ($current_page > 1) {
+            // If admin stored a field ID in org_uuid, attempt to resolve from POST
+            if (is_numeric($org_uuid)) {
+                $field_id = (int) $org_uuid;
+                $field_name = 'input_' . $field_id;
+                if (!empty($_POST[$field_name])) {
+                    $org_uuid = sanitize_text_field($_POST[$field_name]);
+                }
+            }
+
             // Find the org_uuid from the POST data of the previous page
             foreach ($form['fields'] as $field) {
                 if ($field->type == 'wicket_org_search_select') {
