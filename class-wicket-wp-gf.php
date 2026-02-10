@@ -1082,3 +1082,67 @@ add_action(
 // General Helpers
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
 require_once plugin_dir_path(__FILE__) . 'includes/tweaks.php';
+
+/**
+ * Test cleanup endpoint for browser tests.
+ * Only available in development/staging environments.
+ *
+ * Visit: /wicket-test-cleanup/ (while logged in)
+ * This removes all org connections for the current user.
+ */
+add_action('init', function () {
+    // Only enable in development/staging
+    if (!defined('WP_ENV') || !in_array(WP_ENV, ['development', 'staging'], true)) {
+        return;
+    }
+
+    add_rewrite_rule('^wicket-test-cleanup/?$', 'index.php?wicket_test_cleanup=1', 'top');
+    add_filter('query_vars', function ($vars) {
+        $vars[] = 'wicket_test_cleanup';
+        return $vars;
+    });
+});
+
+add_action('template_redirect', function () {
+    // Only enable in development/staging
+    if (!defined('WP_ENV') || !in_array(WP_ENV, ['development', 'staging'], true)) {
+        return;
+    }
+
+    if (!get_query_var('wicket_test_cleanup')) {
+        return;
+    }
+
+    // Require login
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'Authentication required'], 401);
+        exit;
+    }
+
+    // Remove all org connections for the current user
+    $removed = 0;
+
+    if (function_exists('wicket_get_person_connections') && function_exists('wicket_remove_connection')) {
+        $connections = wicket_get_person_connections();
+
+        if (is_array($connections) && isset($connections['data'])) {
+            foreach ($connections['data'] as $connection) {
+                $connectionType = $connection['attributes']['connection_type'] ?? '';
+
+                // Only remove person_to_organization connections
+                if ($connectionType === 'person_to_organization') {
+                    $connectionId = $connection['id'] ?? '';
+                    if ($connectionId !== '' && wicket_remove_connection($connectionId)) {
+                        $removed++;
+                    }
+                }
+            }
+        }
+    }
+
+    wp_send_json_success([
+        'message' => "Removed {$removed} org connection(s)",
+        'removed' => $removed,
+    ]);
+    exit;
+});
