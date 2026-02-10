@@ -18,19 +18,19 @@ describe('logged in', function () {
     describe('orgss scenario 1', function () {
 
         it('shows the org search select', function () {
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->assertPresent('.gfield--input-type-wicket_org_search_select');
         });
 
         it('shows no orgs found', function () {
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->type('input[x-model="searchBox"]', 'non-existing-org')
                 ->click('.component-org-search-select__search-button')
                 ->assertSee('Sorry, no organizations match your search');
         });
 
         it('returns search results', function () {
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->clear('input[x-model="searchBox"]')
                 ->fill('input[x-model="searchBox"]', 'Test Org')
                 ->click('.component-org-search-select__search-button')
@@ -41,7 +41,7 @@ describe('logged in', function () {
         });
 
         it('clears search results', function () {
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->type('input[x-model="searchBox"]', 'Test Org')
                 ->click('.component-org-search-select__search-button')
                 ->wait(1)
@@ -52,7 +52,7 @@ describe('logged in', function () {
         });
 
         it('selects an org from search results', function () {
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->clear('input[x-model="searchBox"]')
                 ->type('input[x-model="searchBox"]', 'Org')
                 ->click('.component-org-search-select__search-button')
@@ -67,7 +67,7 @@ describe('logged in', function () {
         it('creates a new org from search results', function () {
             $random_org_name = 'Newly Created Org ' . uniqid();
         
-            loginAndVisit(wicket_browser_base_url() . orgss_scenario_1_path())
+            loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->clear('input[x-model="searchBox"]')
                 ->type('input[x-model="searchBox"]', 'Non Existing Org')
                 ->click('.component-org-search-select__search-button')
