@@ -1,53 +1,56 @@
 {
-  "name": "industrialdev/wicket-wp-gravity-forms",
-  "description": "Wicket Gravity Forms Plugin",
-  "version": "2.3.9",
-  "keywords": ["wordpress", "plugin"],
-  "homepage": "https://github.com/industrialdev/wicket-wp-gravity-forms",
-  "authors": [
-    {
-      "name": "Wicket Inc.",
-      "homepage": "https://wicket.io"
-    }
-  ],
-  "type": "wordpress-plugin",
-  "require": {
-    "php": ">=8.2"
-  },
-  "require-dev": {
-    "brain/monkey": "^2",
-    "friendsofphp/php-cs-fixer": "^3",
-    "pestphp/pest": "^4",
-    "pestphp/pest-plugin-browser": "^4",
-    "phpunit/phpunit": "^12"
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "WicketGF\\Tests\\": "tests/unit/"
-    }
-  },
-  "scripts": {
-    "production": "rm -rf vendor && composer install --no-dev --optimize-autoloader",
-    "setup-hooks": "mkdir -p .git/hooks && cp .ci/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo 'Git hooks installed to .git/hooks/pre-push'",
-    "version-bump": [
-      "@php ./.ci/version-bump.php",
-      "@cs:fix"
+    "name": "industrialdev/wicket-wp-gravity-forms",
+    "description": "Wicket Gravity Forms Plugin",
+    "version": "2.3.9",
+    "keywords": [
+        "wordpress",
+        "plugin"
     ],
-    "test": "pest",
-    "test:unit": "pest --testsuite unit",
-    "test:coverage": "pest --coverage-html coverage",
-    "test:browser": "sh -lc 'if [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${WICKET_BROWSER_BASE_URL:=https://localhost}\"; export WICKET_BROWSER_BASE_URL; ./vendor/bin/pest --testsuite browser'",
-    "lint": "php-cs-fixer fix --dry-run --diff",
-    "format": "php-cs-fixer fix",
-    "check": [
-        "@lint",
-        "@test"
+    "homepage": "https://github.com/industrialdev/wicket-wp-gravity-forms",
+    "authors": [
+        {
+            "name": "Wicket Inc.",
+            "homepage": "https://wicket.io"
+        }
     ],
-    "cs:fix": "php-cs-fixer fix"
-  },
-  "config": {
-    "allow-plugins": {
-      "pestphp/pest-plugin": true
+    "type": "wordpress-plugin",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "brain/monkey": "^2",
+        "friendsofphp/php-cs-fixer": "^3",
+        "pestphp/pest": "^4",
+        "pestphp/pest-plugin-browser": "^4",
+        "phpunit/phpunit": "^12"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WicketGF\\Tests\\": "tests/unit/"
+        }
+    },
+    "scripts": {
+        "production": "rm -rf vendor && composer install --no-dev --optimize-autoloader",
+        "setup-hooks": "mkdir -p .git/hooks && cp .ci/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo 'Git hooks installed to .git/hooks/pre-push'",
+        "version-bump": [
+            "@php ./.ci/version-bump.php",
+            "@cs:fix"
+        ],
+        "test": "pest",
+        "test:unit": "pest --testsuite unit",
+        "test:coverage": "pest --coverage-html coverage",
+        "test:browser": "sh -lc 'if [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${WICKET_BROWSER_BASE_URL:=https://localhost}\"; export WICKET_BROWSER_BASE_URL; ./vendor/bin/pest --testsuite browser'",
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "format": "php-cs-fixer fix",
+        "check": [
+            "@lint",
+            "@test"
+        ],
+        "cs:fix": "php-cs-fixer fix"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     }
-  }
 }
