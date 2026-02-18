@@ -36,7 +36,7 @@
             "@php ./.ci/version-bump.php",
             "@cs:fix"
         ],
-        "test": "pest",
+        "test": "[ -f vendor/bin/pest ] || composer update && pest",
         "test:unit": "pest --testsuite unit",
         "test:coverage": "pest --coverage-html coverage",
         "test:browser": "sh -lc 'if [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${WICKET_BROWSER_BASE_URL:=https://localhost}\"; export WICKET_BROWSER_BASE_URL; ./vendor/bin/pest --testsuite browser'",
