@@ -139,25 +139,16 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
             // ['uuid_in' => $autocomplete_person_uuids,
             // 'connections_organization_uuid_eq' => $org_id]
 
-            // The parent filter groups that represent OR conditions
+            $groups = [];
+            $i = 0; // global index into $filter_special_values across all groups
+
+            // Each parent filter group represents an OR condition
             foreach ($args['filter_groups'] as $parent_filter_group) {
+                $group = ['m' => 'and']; // conditions within a group are ANDed
 
-                // TODO: Handle parent OR conditions by sending multiple Wicket queries with those
-                // groups of filters, and then combining them before returning (likely with a nested array)
-
-                // The child filter groups that represent AND conditions
-                $i = 0;
+                // Each child filter group represents an AND condition within the parent
                 foreach ($parent_filter_group as $child_filter_group) {
-                    //for( $i = 0; $i < count( $parent_filter_group ); $i++ ) {
-                    //$child_filter_group = $parent_filter_group[$i];
-
-                    // Value
                     $value = $filter_special_values[$i]['filter_value'];
-                    // $value = $child_filter_group['value'];
-                    // if( str_contains( $child_filter_group['value'], 'gf_custom' ) ) {
-                    // 	$value_array = explode( ':', $child_filter_group['value'] );
-                    // 	$value = $value_array[1];
-                    // }
 
                     // Property, and adjust any one-off properties
                     $property = $child_filter_group['property'];
@@ -167,35 +158,49 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 
                     // Add filters
                     if ($child_filter_group['operator'] == 'contains') {
-                        $filters[$property . '_cont'] = $value;
+                        $group[$property . '_cont'] = $value;
                     } elseif ($child_filter_group['operator'] == 'is') {
-                        $filters[$property . '_eq'] = $value;
+                        $group[$property . '_eq'] = $value;
                     } elseif ($child_filter_group['operator'] == 'isnot') {
-                        $filters[$property . '_not_eq'] = $value;
+                        $group[$property . '_not_eq'] = $value;
                     } elseif ($child_filter_group['operator'] == 'does_not_contain') {
-                        $filters[$property . '_not_cont'] = $value;
+                        $group[$property . '_not_cont'] = $value;
                     } elseif ($child_filter_group['operator'] == 'starts_with') {
-                        $filters[$property . '_start'] = $value;
+                        $group[$property . '_start'] = $value;
                     } elseif ($child_filter_group['operator'] == 'ends_with') {
-                        $filters[$property . '_end'] = $value;
+                        $group[$property . '_end'] = $value;
                     } elseif ($child_filter_group['operator'] == 'like') {
-                        $filters[$property . '_matches'] = $value;
+                        $group[$property . '_matches'] = $value;
                     } elseif ($child_filter_group['operator'] == 'is_in') {
-                        $filters[$property . '_in'] = $value;
+                        $group[$property . '_in'] = $value;
                     } elseif ($child_filter_group['operator'] == 'is_not_in') {
-                        $filters[$property . '_not_in'] = $value;
+                        $group[$property . '_not_in'] = $value;
                     } elseif ($child_filter_group['operator'] == '>') {
-                        $filters[$property . '_gt'] = $value;
+                        $group[$property . '_gt'] = $value;
                     } elseif ($child_filter_group['operator'] == '>=') {
-                        $filters[$property . '_gteq'] = $value;
+                        $group[$property . '_gteq'] = $value;
                     } elseif ($child_filter_group['operator'] == '<') {
-                        $filters[$property . '_lt'] = $value;
+                        $group[$property . '_lt'] = $value;
                     } elseif ($child_filter_group['operator'] == '<=') {
-                        $filters[$property . '_lteq'] = $value;
+                        $group[$property . '_lteq'] = $value;
                     }
 
                     $i++;
                 }  // end foreach( $parent_filter_group as $child_filter_group )
+
+                $groups[] = $group;
+            }
+
+            if (count($groups) === 1) {
+                // Single group: flat AND filters, no grouping needed
+                $filters = $groups[0];
+                unset($filters['m']);
+            } else {
+                // Multiple groups: OR between groups, AND within each group
+                $filters = [
+                    'm' => 'or',
+                    'g' => $groups,
+                ];
             }
         }
 
