@@ -373,13 +373,18 @@ const WicketGFLiveUpdate = {
 
         // Process all wicket fields on all forms
         const $allFields = jQuery('.wicket-gf-hidden-data-bind-target');
-        this.log(`Found ${$allFields.length} total wicket fields to process`);
+        const payloadContext = this.determinePayloadContext(event);
+        const $scopedFields = $allFields.filter((index, element) =>
+            this.fieldMatchesPayloadContext(jQuery(element), payloadContext)
+        );
 
-        if ($allFields.length === 0) {
+        this.log(`Found ${$allFields.length} total wicket fields; scoped to ${$scopedFields.length} for context: ${payloadContext}`);
+
+        if ($scopedFields.length === 0) {
             this.log(`No wicket fields found on page`);
+            return;
         }
-
-        $allFields.each((index, element) => {
+        $scopedFields.each((index, element) => {
             const $field = jQuery(element);
 
             // Skip fields disabled by conditional logic, but NOT HTML hidden inputs
@@ -573,6 +578,50 @@ const WicketGFLiveUpdate = {
         }
 
         return undefined;
+    },
+
+    /**
+     * Derive payload context (person vs organization) from the event and its detail payload
+     */
+    determinePayloadContext(event) {
+        const detail = event?.detail || {};
+        const eventType = (event?.type || '').toLowerCase();
+        const resourceType = detail?.resource?.type || detail?.type;
+
+        if (resourceType === 'organizations') return 'organization_profile';
+        if (resourceType === 'people' || resourceType === 'person') return 'person_profile';
+
+        if (eventType.includes('org')) return 'organization_profile';
+        if (eventType.includes('addinfo')) return 'person_addinfo';
+        if (eventType.includes('person') || eventType.includes('ind')) return 'person_profile';
+        if (eventType.includes('prefs')) return 'person_profile';
+        if (eventType.includes('wicket_org_selected')) return 'organization';
+
+        return 'unknown';
+    },
+
+    /**
+     * Only update fields whose configured data source matches the payload context
+     */
+    fieldMatchesPayloadContext($field, payloadContext) {
+        if (!payloadContext || payloadContext === 'unknown') {
+            return true; // backward compatible: process everything when we cannot infer context
+        }
+
+        const dataSource = ($field.data('hidden-data-bind-data-source') || '').toString();
+
+        switch (payloadContext) {
+            case 'person_addinfo':
+                return dataSource === 'person_addinfo';
+            case 'person_profile':
+                return dataSource === 'person_profile' || dataSource === 'person_addinfo';
+            case 'organization_profile':
+                return dataSource === 'organization_profile';
+            case 'organization':
+                return dataSource === 'organization' || dataSource === 'organization_profile';
+            default:
+                return true;
+        }
     },
 
     /**
