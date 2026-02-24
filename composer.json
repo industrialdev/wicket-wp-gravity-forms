@@ -30,20 +30,21 @@
         }
     },
     "scripts": {
-        "production": "rm -rf vendor && composer install --no-dev --optimize-autoloader",
+        "production": "[ -x vendor/bin/php-cs-fixer ] || composer install && composer cs:fix && rm -rf vendor && composer update --no-dev && composer install --no-dev --optimize-autoloader",
         "setup-hooks": "mkdir -p .git/hooks && cp .ci/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo 'Git hooks installed to .git/hooks/pre-push'",
         "version-bump": [
             "@php ./.ci/version-bump.php",
             "@cs:fix"
         ],
-        "test": "[ -x vendor/bin/pest ] || composer install && ./vendor/bin/pest",
+        "test": "[ -x vendor/bin/pest ] || composer install && ./vendor/bin/pest --testsuite unit",
         "test:unit": "pest --testsuite unit",
-        "test:coverage": "pest --coverage-html coverage",
+        "test:coverage": "pest --testsuite unit --coverage-html coverage",
         "test:browser": "sh -lc 'if [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${WICKET_BROWSER_BASE_URL:=https://localhost}\"; export WICKET_BROWSER_BASE_URL; ./vendor/bin/pest --testsuite browser'",
-        "lint": "php-cs-fixer fix --dry-run --diff",
-        "format": "php-cs-fixer fix",
+        "test:frontend": "@test:browser",
+        "cs:lint": "php-cs-fixer fix --dry-run --diff",
+        "cs:format": "php-cs-fixer fix",
         "check": [
-            "@lint",
+            "@cs:lint",
             "@test"
         ],
         "cs:fix": "php-cs-fixer fix"
