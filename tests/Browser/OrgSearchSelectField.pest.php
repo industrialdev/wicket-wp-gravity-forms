@@ -66,7 +66,7 @@ describe('logged in', function () {
 
         it('creates a new org from search results', function () {
             $random_org_name = 'Newly Created Org ' . uniqid();
-        
+
             loginAndCleanup(wicket_browser_base_url() . orgss_scenario_1_path())
                 ->clear('input[x-model="searchBox"]')
                 ->type('input[x-model="searchBox"]', 'Non Existing Org')

@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.11
+ * Version:           2.3.13
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -232,6 +232,9 @@ class Wicket_Gf_Main
 
         // Add form pre-render hook for pagination sidebar layout and other dynamic features
         add_filter('gform_pre_render', [$this, 'gf_custom_pre_render'], 50, 1);
+
+        // Support dynamic population parameter: user_mdp_tags
+        add_filter('gform_field_value_user_mdp_tags', [$this, 'populate_user_mdp_tags_dynamic_parameter']);
     }
 
     /**
@@ -838,6 +841,10 @@ class Wicket_Gf_Main
             GFApiDataBindField::custom_settings($position, $form_id);
         }
 
+        if (class_exists('GFWicketFieldUserMdpTags')) {
+            GFWicketFieldUserMdpTags::custom_settings($position, $form_id);
+        }
+
         if (class_exists('GFWicketFieldWidgetProfile')) {
             GFWicketFieldWidgetProfile::custom_settings($position, $form_id);
         }
@@ -874,6 +881,10 @@ class Wicket_Gf_Main
 
         if (class_exists('GFDataBindHiddenField')) {
             GFDataBindHiddenField::editor_script();
+        }
+
+        if (class_exists('GFWicketFieldUserMdpTags')) {
+            GFWicketFieldUserMdpTags::editor_script();
         }
 
         if (class_exists('GFWicketFieldWidgetProfileOrg')) {
@@ -935,6 +946,32 @@ class Wicket_Gf_Main
     public function gf_change_user_name($value)
     {
         return $value;
+    }
+
+    /**
+     * Dynamic population callback for Gravity Forms parameter "user_mdp_tags".
+     *
+     * Default source: combined.
+     * Override via filter:
+     * add_filter('wicket_gf_user_mdp_tags_default_source', fn() => 'combined');
+     *
+     * @param string $value
+     * @return string
+     */
+    public function populate_user_mdp_tags_dynamic_parameter($value = ''): string
+    {
+        if (!class_exists('GFWicketFieldUserMdpTags')) {
+            return '';
+        }
+
+        $default_source = apply_filters('wicket_gf_user_mdp_tags_default_source', 'combined');
+        $allowed_sources = ['segment_tags', 'tags', 'combined'];
+
+        if (!in_array($default_source, $allowed_sources, true)) {
+            $default_source = 'combined';
+        }
+
+        return GFWicketFieldUserMdpTags::get_user_tags_by_source((string) $default_source);
     }
 
     public static function update_kses_tags($allowedposttags)
@@ -1083,7 +1120,7 @@ add_action(
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
 require_once plugin_dir_path(__FILE__) . 'includes/tweaks.php';
 
-/**
+/*
  * Test cleanup endpoint for browser tests.
  * Only available in development/staging environments.
  *
@@ -1099,6 +1136,7 @@ add_action('init', function () {
     add_rewrite_rule('^wicket-test-cleanup/?$', 'index.php?wicket_test_cleanup=1', 'top');
     add_filter('query_vars', function ($vars) {
         $vars[] = 'wicket_test_cleanup';
+
         return $vars;
     });
 });

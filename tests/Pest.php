@@ -11,6 +11,7 @@ declare(strict_types=1);
 function orgss_scenario_1_path(): string
 {
     $path = getenv('WICKET_BROWSER_ORGSS_SCENARIO_1_PATH') ?: '/orgss-scenario-1/';
+
     return $path;
 }
 
@@ -49,13 +50,13 @@ function loginAndVisit(string $targetUrl)
         ->type('#password', $password)
         ->assertScript(
             <<<'JS'
-            (() => {
-                const form = document.querySelector('#fm1');
-                if (!form) return false;
-                form.submit();
-                return true;
-            })()
-            JS,
+                (() => {
+                    const form = document.querySelector('#fm1');
+                    if (!form) return false;
+                    form.submit();
+                    return true;
+                })()
+                JS,
             true
         )
         ->wait(5)
@@ -83,13 +84,13 @@ function loginAndCleanup(string $targetUrl)
         ->type('#password', $password)
         ->assertScript(
             <<<'JS'
-            (() => {
-                const form = document.querySelector('#fm1');
-                if (!form) return false;
-                form.submit();
-                return true;
-            })()
-            JS,
+                (() => {
+                    const form = document.querySelector('#fm1');
+                    if (!form) return false;
+                    form.submit();
+                    return true;
+                })()
+                JS,
             true
         )
         ->wait(5)
