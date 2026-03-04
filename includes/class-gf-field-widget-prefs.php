@@ -119,6 +119,7 @@ class GFWicketFieldWidgetPrefs extends GF_Field
                 'hide_comm_prefs'              => $hide_comm_prefs,
                 // Provide a unique hidden field name so component doesn't write to input_{id}
                 'preferences_data_field_name'  => 'wicket_prefs_data_' . $id,
+                'validation_data_field_name'   => 'input_' . $id . '_validation',
             ], true);
 
             $component_output = ob_get_clean();
