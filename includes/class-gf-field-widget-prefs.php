@@ -64,48 +64,17 @@ class GFWicketFieldWidgetPrefs extends GF_Field
 </li>
 
 <script type='text/javascript'>
-window.WicketGF = window.WicketGF || {};
-window.WicketGF.Prefs = window.WicketGF.Prefs || {
-    init: function() {
-        const self = this;
-
-        // Handle field settings load
-        gform.addAction('gform_load_field_settings', function(field) {
-            if (field.type === 'wicket_widget_prefs') {
-                self.loadFieldSettings(field);
-        }
-        });
-
-        // Handle field properties
-        gform.addAction('gform_editor_js_set_field_properties', function(field) {
-            if (field.type === 'wicket_widget_prefs') {
-                field.label = 'Wicket Widget: Person Preferences';
-                field.wwidget_prefs_hide_comm = field.wwidget_prefs_hide_comm || false;
+    // Embed JavaScript directly in field settings to avoid gform_editor_js conflicts
+    jQuery(document).ready(function($) {
+        // Use the official Gravity Forms API to wait for field settings to load
+        $(document).on('gform_load_field_settings', function(event, field) {
+            // Only initialize for our field type
+            if (field.type !== 'wicket_widget_prefs') {
+                return;
             }
+            $('#wwidget_prefs_hide_comm').prop('checked', field.wwidget_prefs_hide_comm || false);
         });
-
-        // Allow field to be added
-        gform.addFilter('gform_form_editor_can_field_be_added', function(canAdd, fieldType) {
-            if (fieldType === 'wicket_widget_prefs') {
-            return true;
-        }
-        return canAdd;
-            });
-        },
-
-        loadFieldSettings: function(field) {
-        const hideCommCheckbox = document.getElementById('wwidget_prefs_hide_comm');
-        if (hideCommCheckbox) {
-            hideCommCheckbox.checked = field.wwidget_prefs_hide_comm || false;
-        }
-    }
-};
-
-// Initialize if not already done
-if (!window.WicketGF.Prefs.initialized) {
-    window.WicketGF.Prefs.init();
-    window.WicketGF.Prefs.initialized = true;
-}
+    });
 </script>
 
 <?php
