@@ -656,6 +656,54 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         return false;
     }
 
+    private function should_debug_form($form_id)
+    {
+        return (int) $form_id === 6;
+    }
+
+    private function summarize_debug_value($value)
+    {
+        if (is_array($value) || is_object($value)) {
+            $value = wp_json_encode($value);
+        }
+
+        if (!is_string($value)) {
+            $value = (string) $value;
+        }
+
+        $length = strlen($value);
+
+        return [
+            'length' => $length,
+            'sha1' => $length > 0 ? sha1($value) : '',
+            'preview' => $length > 0 ? substr($value, 0, 200) : '',
+        ];
+    }
+
+    private function orgss_debug_log($form_id, $event, $context = [])
+    {
+        if (!$this->should_debug_form($form_id) || !function_exists('wc_get_logger')) {
+            return;
+        }
+
+        $safe_form_id = (int) $form_id;
+        $logger = wc_get_logger();
+        $base_context = [
+            'event' => $event,
+            'form_id' => $safe_form_id,
+            'field_id' => (int) $this->id,
+            'request_method' => $_SERVER['REQUEST_METHOD'] ?? '',
+            'gform_source_page' => function_exists('rgpost') ? rgpost('gform_source_page_number') : null,
+            'gform_target_page' => function_exists('rgpost') ? rgpost('gform_target_page_number') : null,
+            'is_submit' => function_exists('rgpost') ? rgpost('is_submit_' . $safe_form_id) : null,
+        ];
+
+        $logger->debug(
+            'ORGSS GF debug: ' . $event . ' CONTEXT: ' . wp_json_encode(array_merge($base_context, $context)),
+            ['source' => 'wicket-gf-orgss-debug']
+        );
+    }
+
     /**
      * Define the field input for the form editor and front end.
      */
@@ -670,6 +718,12 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
         $field_id = (int) $this->id;
         $form_id = (int) $form['id'];
+        $posted_value = function_exists('rgpost') ? rgpost('input_' . $field_id) : null;
+
+        $this->orgss_debug_log($form_id, 'get_field_input.enter', [
+            'value_summary' => $this->summarize_debug_value($value),
+            'posted_value_summary' => $this->summarize_debug_value($posted_value),
+        ]);
 
         // Use only standard GF naming convention
         $input_name = 'input_' . $field_id;
@@ -994,6 +1048,14 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 : '';
 
             $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+            $this->orgss_debug_log($form_id, 'get_field_input.rendered', [
+                'search_mode' => $search_mode,
+                'relationship_mode' => $relationship_mode,
+                'relationship_type_upon_org_creation' => $relationship_type_upon_org_creation,
+                'disable_org_creation' => $disable_org_creation,
+                'hide_select_buttons' => $orgss_hide_select_buttons,
+                'hide_remove_buttons' => $orgss_hide_remove_buttons,
+            ]);
 
             return apply_filters('wicket_gf_org_search_select_html_output', $html_output, $this, $form);
         } else {
@@ -1016,12 +1078,19 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
     {
         // Use only the standard GF field name
         $field_name = 'input_' . $this->id;
+        $form_id = isset($this->formId) ? (int) $this->formId : 0;
 
         if ($get_from_post_global_var) {
             $value = rgpost($field_name);
         } else {
             $value = $field_values[$field_name] ?? '';
         }
+
+        $this->orgss_debug_log($form_id, 'get_value_submission', [
+            'from_post' => (bool) $get_from_post_global_var,
+            'field_name' => $field_name,
+            'value_summary' => $this->summarize_debug_value($value),
+        ]);
 
         return $value;
     }
@@ -1040,8 +1109,15 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         // Use only the standard GF field name
         $field_name = 'input_' . $this->id;
         $value = rgpost($field_name);
+        $is_empty = empty($value);
 
-        return empty($value);
+        $this->orgss_debug_log($form_id, 'is_value_submission_empty', [
+            'field_name' => $field_name,
+            'is_empty' => $is_empty,
+            'value_summary' => $this->summarize_debug_value($value),
+        ]);
+
+        return $is_empty;
     }
 
     public function get_conditional_logic_event($event)
@@ -1119,6 +1195,8 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
      */
     public function validate($value, $form)
     {
+        $form_id = (int) $form['id'];
+
         // Basic validation - check if required field has value
         if ($this->isRequired && empty($value)) {
             $this->failed_validation = true;
@@ -1140,6 +1218,13 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 }
             }
         }
+
+        $this->orgss_debug_log($form_id, 'validate.complete', [
+            'is_required' => (bool) $this->isRequired,
+            'failed_validation' => (bool) $this->failed_validation,
+            'value_summary' => $this->summarize_debug_value($value),
+            'validation_message' => (string) ($this->validation_message ?? ''),
+        ]);
     }
 
     /**
