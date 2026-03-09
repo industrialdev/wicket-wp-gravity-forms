@@ -161,6 +161,7 @@ jQuery(document).ready(function($) {
             // Default component args with filter for extensibility
             $user_info_field_name = 'wicket_user_info_data_' . $id;
             $profile_required_resources = $this->wwidget_profile_required_resources ?? '';
+            $person_id = $this->get_user_mdp_uuid(rgar($entry, 'created_by')) ?? '';
 
             $component_args = [
                 'classes'                    => [],
@@ -168,6 +169,7 @@ jQuery(document).ready(function($) {
                 'hidden_fields'              => ['personType'],
                 'validation_data_field_name' => 'input_' . $this->id . '_validation',
                 'profile_required_resources' => $profile_required_resources,
+                'person_id'                  => $person_id,
             ];
 
             if (isset($this->org_uuid)) {
@@ -422,6 +424,25 @@ jQuery(document).ready(function($) {
             }
         }
 
+    }
+
+    /**
+     * Helper function to get the current user's MDP UUID, if available.
+     * Returns null if the user is not logged in or if their user_login is not a valid UUID.
+     * This is used to associate the profile widget with the correct person in Wicket.
+     * @param int $user_id The WordPress user ID to check for a corresponding MDP UUID.
+     * @return string|null The MDP UUID if available, or null if not.
+     */
+    private function get_user_mdp_uuid($user_id)
+    {
+        if ($user_id > 0) {
+            $user_info = get_userdata($user_id);
+            if ($user_info && isset($user_info->user_login) && isValidUuid($user_info->user_login)) {
+                return $user_info->user_login;
+            }
+        }
+
+        return null;
     }
 }
 
