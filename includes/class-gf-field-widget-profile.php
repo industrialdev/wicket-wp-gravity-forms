@@ -288,7 +288,8 @@ jQuery(document).ready(function($) {
     {
         // If value is empty or malformed, fall back to current logged-in user
         if (empty($value)) {
-            $user_id = wicket_current_person_uuid();
+            // Default to submitted value, falling back to current user if not present or malformed
+            $user_id = $this->get_user_mdp_uuid(rgar($lead, 'created_by')) ?? wicket_current_person_uuid();;
         } else {
             $value_array = json_decode($value);
             if (!isset($value_array->attributes->uuid)) {
