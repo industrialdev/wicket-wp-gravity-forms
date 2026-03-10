@@ -110,6 +110,8 @@ class GFWicketFieldWidgetPrefs extends GF_Field
             }
         }
 
+        $person_id = $this->get_user_mdp_uuid(rgar($entry, 'created_by')) ?? '';
+
         if (component_exists('widget-prefs-person')) {
             // Adding extra ob_start/clean since the component was jumping the gun for some reason
             ob_start();
@@ -119,6 +121,7 @@ class GFWicketFieldWidgetPrefs extends GF_Field
                 'hide_comm_prefs'              => $hide_comm_prefs,
                 // Provide a unique hidden field name so component doesn't write to input_{id}
                 'preferences_data_field_name'  => 'wicket_prefs_data_' . $id,
+                'person_id'                    => $person_id,
             ], true);
 
             $component_output = ob_get_clean();
@@ -134,7 +137,7 @@ class GFWicketFieldWidgetPrefs extends GF_Field
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
     {
         $value_array = json_decode($value);
-        $user_id = wicket_current_person_uuid();
+        $user_id = $this->get_user_mdp_uuid(rgar($lead, 'created_by')) ?? '';
         $wicket_settings = get_wicket_settings();
 
         $link_to_user_profile = $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/preferences';
@@ -189,6 +192,25 @@ class GFWicketFieldWidgetPrefs extends GF_Field
                 'debugMode' => defined('WP_ENV') && WP_ENV === 'development',
             ]
         );
+    }
+
+    /**
+     * Helper function to get the current user's MDP UUID, if available.
+     * Returns null if the user is not logged in or if their user_login is not a valid UUID.
+     * This is used to associate the profile widget with the correct person in Wicket.
+     * @param int $user_id The WordPress user ID to check for a corresponding MDP UUID.
+     * @return string|null The MDP UUID if available, or null if not.
+     */
+    private function get_user_mdp_uuid($user_id)
+    {
+        if ($user_id > 0) {
+            $user_info = get_userdata($user_id);
+            if ($user_info && isset($user_info->user_login) && isValidUuid($user_info->user_login)) {
+                return $user_info->user_login;
+            }
+        }
+
+        return null;
     }
 }
 
