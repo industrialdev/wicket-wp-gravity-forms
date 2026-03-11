@@ -47,6 +47,9 @@ if (!defined('WICKET_WP_GF_VERSION')) {
  */
 class Wicket_Gf_Main
 {
+    private const CONFIRMATION_TYPE_SELF_REDIRECT = 'self_redirect';
+    private const CONFIRMATION_FIELD_SELF_QUERY_STRING = 'wicket_self_query_string';
+
     /**
      * Plugin instance.
      * @var Wicket_Gf_Main|null
@@ -217,6 +220,9 @@ class Wicket_Gf_Main
         add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
         add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
         add_filter('gform_entry_detail_meta_boxes', ['Wicket_Gf_Admin', 'register_meta_box'], 10, 3);
+        add_filter('gform_confirmation_settings_fields', [$this, 'extend_confirmation_settings_fields'], 10, 3);
+        add_filter('gform_pre_confirmation_save', [$this, 'save_self_redirect_confirmation'], 10, 3);
+        add_filter('gform_confirmation', [$this, 'handle_self_redirect_confirmation'], 10, 4);
 
         // Register scripts for conditional logic
         $this->register_conditional_logic_scripts();
@@ -1013,6 +1019,127 @@ class Wicket_Gf_Main
         return $allowedposttags;
     }
 
+    /**
+     * Extend Gravity Forms confirmation settings with a self redirect option.
+     *
+     * @param array $fields
+     * @param array $confirmation
+     * @param array $form
+     * @return array
+     */
+    public function extend_confirmation_settings_fields(array $fields, array $confirmation, array $form): array
+    {
+        unset($confirmation, $form);
+
+        foreach ($fields as &$section) {
+            if (empty($section['fields']) || !is_array($section['fields'])) {
+                continue;
+            }
+
+            $insert_index = null;
+
+            foreach ($section['fields'] as $index => &$field) {
+                if (($field['name'] ?? '') === 'type' && !empty($field['choices']) && is_array($field['choices'])) {
+                    $field['choices'][] = [
+                        'label' => __('Same URL (with params)', 'wicket-gf'),
+                        'value' => self::CONFIRMATION_TYPE_SELF_REDIRECT,
+                    ];
+                }
+
+                if (($field['name'] ?? '') === 'queryString') {
+                    $insert_index = $index + 1;
+                }
+            }
+            unset($field);
+
+            if ($insert_index === null) {
+                continue;
+            }
+
+            array_splice($section['fields'], $insert_index, 0, [[
+                'name' => self::CONFIRMATION_FIELD_SELF_QUERY_STRING,
+                'type' => 'text',
+                'label' => __('Additional Query String Params', 'wicket-gf'),
+                'class' => 'merge-tag-support mt-position-right mt-hide_all_fields mt-option-url',
+                'tooltip' => gform_tooltip('form_redirect_querystring', null, true),
+                'dependency' => [
+                    'live' => true,
+                    'operator' => 'ALL',
+                    'fields' => [
+                        [
+                            'field' => 'type',
+                            'values' => [self::CONFIRMATION_TYPE_SELF_REDIRECT],
+                        ],
+                    ],
+                ],
+                'description' => esc_html__('Optional. Example: updated=1&tab=profile&email={Email:2}', 'wicket-gf'),
+            ]]);
+
+            break;
+        }
+        unset($section);
+
+        return $fields;
+    }
+
+    /**
+     * Preserve the custom confirmation type on save.
+     *
+     * @param array $confirmation
+     * @param array $form
+     * @param bool $is_new_confirmation
+     * @return array
+     */
+    public function save_self_redirect_confirmation(array $confirmation, array $form, bool $is_new_confirmation): array
+    {
+        unset($form, $is_new_confirmation);
+
+        $selected_type = sanitize_text_field((string) rgpost('_gform_setting_type'));
+        if ($selected_type !== self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+            return $confirmation;
+        }
+
+        $confirmation['type'] = self::CONFIRMATION_TYPE_SELF_REDIRECT;
+        $confirmation[self::CONFIRMATION_FIELD_SELF_QUERY_STRING] = sanitize_text_field((string) rgpost(self::CONFIRMATION_FIELD_SELF_QUERY_STRING));
+
+        return $confirmation;
+    }
+
+    /**
+     * Handle runtime redirect for the self redirect confirmation type.
+     *
+     * @param string|array $confirmation
+     * @param array $form
+     * @param array $entry
+     * @param bool $ajax
+     * @return string|array
+     */
+    public function handle_self_redirect_confirmation($confirmation, array $form, array $entry, bool $ajax)
+    {
+        unset($ajax);
+
+        $active_confirmation = rgar($form, 'confirmation');
+        if (!is_array($active_confirmation) || rgar($active_confirmation, 'type') !== self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+            return $confirmation;
+        }
+
+        $source_url = rgar($entry, 'source_url');
+        if (empty($source_url)) {
+            $source_url = GFFormsModel::get_current_page_url();
+        }
+
+        if (empty($source_url)) {
+            return $confirmation;
+        }
+
+        $active_confirmation['url'] = $source_url;
+        $active_confirmation['queryString'] = rgar($active_confirmation, self::CONFIRMATION_FIELD_SELF_QUERY_STRING, '');
+
+        return [
+            'redirect' => GFFormDisplay::get_confirmation_url($active_confirmation, $form, $entry),
+        ];
+    }
+
     public static function shortcode($atts)
     {
         // override default attributes with user attributes
@@ -1120,7 +1247,7 @@ add_action(
 require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
 require_once plugin_dir_path(__FILE__) . 'includes/tweaks.php';
 
-/*
+/**
  * Test cleanup endpoint for browser tests.
  * Only available in development/staging environments.
  *
