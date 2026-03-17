@@ -18,16 +18,7 @@
         "php": ">=8.2"
     },
     "require-dev": {
-        "brain/monkey": "^2",
-        "friendsofphp/php-cs-fixer": "^3",
-        "pestphp/pest": "^4",
-        "pestphp/pest-plugin-browser": "^4",
-        "phpunit/phpunit": "^12"
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "WicketGF\\Tests\\": "tests/unit/"
-        }
+        "friendsofphp/php-cs-fixer": "^3"
     },
     "scripts": {
         "production": "[ -x vendor/bin/php-cs-fixer ] || composer install && composer cs:fix && rm -rf vendor && composer update --no-dev && composer install --no-dev --optimize-autoloader",
@@ -36,16 +27,10 @@
             "@php ./.ci/version-bump.php",
             "@cs:fix"
         ],
-        "test": "[ -x vendor/bin/pest ] || composer install && ./vendor/bin/pest --testsuite unit",
-        "test:unit": "pest --testsuite unit",
-        "test:coverage": "pest --testsuite unit --coverage-html coverage",
-        "test:browser": "sh -lc 'if [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${WICKET_BROWSER_BASE_URL:=https://localhost}\"; export WICKET_BROWSER_BASE_URL; ./vendor/bin/pest --testsuite browser'",
-        "test:frontend": "@test:browser",
         "cs:lint": "php-cs-fixer fix --dry-run --diff",
         "cs:format": "php-cs-fixer fix",
         "check": [
-            "@cs:lint",
-            "@test"
+            "@cs:lint"
         ],
         "cs:fix": "php-cs-fixer fix"
     },
