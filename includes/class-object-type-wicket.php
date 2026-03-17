@@ -120,6 +120,13 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     'orderby'   => true,
                     'operators' => $this->supported_operators(),
                 ],
+                'identifying_number' => [
+                    'label'     => esc_html__('Identifying Number', 'wicket-gf'),
+                    'value'     => 'identifying_number',
+                    'callable'  => '__return_empty_array',
+                    'orderby'   => true,
+                    'operators' => $this->supported_operators(),
+                ],
             ];
         }
     }
@@ -243,7 +250,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
         } elseif ($args['primary_property_value'] == 'org') {
             $org_query = preg_replace('/\%5B\d+\%5D/', '%5B%5D', http_build_query([
                 'fields' => [
-                    'organizations' => 'legal_name_en,legal_name_fr,type',
+                    'organizations' => 'legal_name_en,legal_name_fr,type,identifying_number',
                 ],
                 'filter' => $filters,
                 'include' => 'addresses',
@@ -304,6 +311,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     $tmp['legal_name'] = $org['attributes']['legal_name_' . $this->language];
                     $tmp['type'] = $org['attributes']['type'];
                     $tmp['location'] = ($city ? $city . ', ' : '') . $state_name;
+                    $tmp['identifying_number'] = $org['attributes']['identifying_number'];
                     $orgs[] = $tmp;
                 }
             }
