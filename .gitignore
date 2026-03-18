@@ -5,3 +5,4 @@ js/gf_editor/node_modules
 coverage
 node_modules
 tests/Browser/screenshots
+*.bak

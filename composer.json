@@ -1,7 +1,7 @@
 {
     "name": "industrialdev/wicket-wp-gravity-forms",
     "description": "Wicket Gravity Forms Plugin",
-    "version": "2.3.19",
+    "version": "2.3.20",
     "keywords": [
         "wordpress",
         "plugin"
@@ -21,12 +21,8 @@
         "friendsofphp/php-cs-fixer": "^3"
     },
     "scripts": {
-        "production": "[ -x vendor/bin/php-cs-fixer ] || composer install && composer cs:fix && rm -rf vendor && composer update --no-dev && composer install --no-dev --optimize-autoloader",
+        "production": "composer install && composer cs:fix && composer install --no-dev --optimize-autoloader",
         "setup-hooks": "mkdir -p .git/hooks && cp .ci/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo 'Git hooks installed to .git/hooks/pre-push'",
-        "version-bump": [
-            "@php ./.ci/version-bump.php",
-            "@cs:fix"
-        ],
         "cs:lint": "php-cs-fixer fix --dry-run --diff",
         "cs:format": "php-cs-fixer fix",
         "check": [

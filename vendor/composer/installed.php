@@ -1,8 +1,8 @@
 <?php return array(
     'root' => array(
         'name' => 'industrialdev/wicket-wp-gravity-forms',
-        'pretty_version' => '2.3.12',
-        'version' => '2.3.12.0',
+        'pretty_version' => '2.3.19',
+        'version' => '2.3.19.0',
         'reference' => null,
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
@@ -11,8 +11,8 @@
     ),
     'versions' => array(
         'industrialdev/wicket-wp-gravity-forms' => array(
-            'pretty_version' => '2.3.12',
-            'version' => '2.3.12.0',
+            'pretty_version' => '2.3.19',
+            'version' => '2.3.19.0',
             'reference' => null,
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
