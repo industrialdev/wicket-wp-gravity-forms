@@ -81,6 +81,10 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     <label for="orgss_disable_org_creation" class="inline">Disable ability to create new org/entity?</label>
                     <br />
 
+                    <input onchange="SetFieldProperty('orgss_allow_continue_without_org', this.checked)" type="checkbox" id="orgss_allow_continue_without_org" class="orgss_allow_continue_without_org">
+                    <label for="orgss_allow_continue_without_org" class="inline">Allow users to continue without selecting an organization?</label>
+                    <br />
+
                     <input onchange="SetFieldProperty('orgss_hide_remove_buttons', this.checked)" type="checkbox" id="orgss_hide_remove_buttons" class="orgss_hide_remove_buttons">
                     <label for="orgss_hide_remove_buttons" class="inline">Hide remove buttons?</label>
                     <br />
@@ -376,6 +380,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
                     // Handle checkboxes
                     $('#orgss_disable_org_creation').prop('checked', field.orgss_disable_org_creation || false);
+                    $('#orgss_allow_continue_without_org').prop('checked', field.orgss_allow_continue_without_org || false);
                     $('#orgss_hide_remove_buttons').prop('checked', field.orgss_hide_remove_buttons || false);
                     $('#orgss_hide_select_buttons').prop('checked', field.orgss_hide_select_buttons || false);
                     $('#orgss_display_removal_alert_message').prop('checked', field.orgss_display_removal_alert_message || false);
@@ -588,6 +593,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 field.orgss_no_results_message = '';
                 field.orgss_checkbox_id_new_org = '';
                 field.orgss_disable_org_creation = false;
+                field.orgss_allow_continue_without_org = false;
                 field.orgss_hide_remove_buttons = false;
                 field.orgss_hide_select_buttons = false;
                 field.orgss_display_removal_alert_message = false;
@@ -740,6 +746,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         $org_term_plural = 'Organizations';
         $orgss_no_results_message = '';
         $disable_org_creation = false;
+        $allow_continue_without_org = false;
         $checkbox_id_new_org = '';
         $disable_selecting_orgs_with_active_membership = false;
         $grant_roster_man_on_purchase = false;
@@ -819,6 +826,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         }
                         if (isset($field->orgss_disable_org_creation)) {
                             $disable_org_creation = $field->orgss_disable_org_creation;
+                        }
+                        if (isset($field->orgss_allow_continue_without_org)) {
+                            $allow_continue_without_org = $field->orgss_allow_continue_without_org;
                         }
                         if (isset($field->orgss_checkbox_id_new_org)) {
                             $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
@@ -977,6 +987,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 // Use standard GF naming convention
                 'selected_uuid_hidden_field_name'               => 'input_' . $id,
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
+                'allow_continue_without_org'                    => $allow_continue_without_org,
                 'key'                                           => $id,
                 'org_term_singular'                             => $org_term_singular,
                 'org_term_plural'                               => $org_term_plural,
@@ -1047,12 +1058,86 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 ? sprintf("<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style>", $field_id)
                 : '';
 
-            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $hidden_field . '</div>';
+            $allow_without_org_checkbox = '';
+            if ($allow_continue_without_org) {
+                $skip_checkbox_id = 'orgss_allow_continue_without_org_' . $form_id . '_' . $id;
+                $skip_checkbox_name = 'input_' . $id . '_allow_continue_without_org';
+                $skip_checkbox_checked = function_exists('rgpost') && rgpost($skip_checkbox_name) === 'on';
+                $allow_without_org_checkbox = sprintf(
+                    '<div class="wicket-orgss-continue-without-org" style="margin-top: 1rem;">
+                        <label for="%1$s" style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                            <input type="checkbox" id="%1$s" name="%2$s" class="wicket-orgss-continue-without-org__input" %4$s />
+                            <span>%3$s</span>
+                        </label>
+                    </div>
+                    <script>
+                        (function() {
+                            const checkboxId = %5$s;
+                            const formId = %6$d;
+                            const fieldId = %7$d;
+                            const checkbox = document.getElementById(checkboxId);
+                            const form = document.getElementById("gform_" + formId);
+
+                            if (!checkbox || !form) {
+                                return;
+                            }
+
+                            const selectedOrgInput = form.querySelector("input[name=\'input_" + fieldId + "\']");
+
+                            const setVisibility = () => {
+                                const currentPage = checkbox.closest(".gform_page") || form;
+                                const footer = currentPage.querySelector(".gform_page_footer, .gform-page-footer");
+                                const buttons = currentPage.querySelectorAll(".gform_next_button, .gform_button, .gform_submit_button");
+                                const shouldShow = checkbox.checked || (selectedOrgInput && selectedOrgInput.value && selectedOrgInput.value.trim() !== "");
+
+                                const toggle = (el, visible) => {
+                                    if (!el) {
+                                        return;
+                                    }
+
+                                    el.style.setProperty("display", visible ? "flex" : "none", "important");
+                                    el.style.setProperty("opacity", visible ? "1" : "0", "important");
+                                    el.style.setProperty("max-height", visible ? "none" : "0px", "important");
+                                    el.style.setProperty("height", visible ? "auto" : "0px", "important");
+                                    el.style.setProperty("visibility", visible ? "visible" : "hidden", "important");
+                                    el.hidden = !visible;
+                                    el.setAttribute("aria-hidden", visible ? "false" : "true");
+                                };
+
+                                toggle(footer, shouldShow);
+                                buttons.forEach((button) => toggle(button, shouldShow));
+                            };
+
+                            checkbox.addEventListener("change", setVisibility);
+                            if (selectedOrgInput) {
+                                selectedOrgInput.addEventListener("change", setVisibility);
+                                selectedOrgInput.addEventListener("input", setVisibility);
+                            }
+
+                            window.addEventListener("gform_post_render", setVisibility);
+                            window.addEventListener("orgss-selection-made", setVisibility);
+                            window.addEventListener("wicket:org_search_select_cleared", setVisibility);
+
+                            setVisibility();
+                        }());
+                    </script>',
+                    esc_attr($skip_checkbox_id),
+                    esc_attr($skip_checkbox_name),
+                    esc_html__('Continue without selecting an organization', 'wicket-gf'),
+                    checked($skip_checkbox_checked, true, false),
+                    wp_json_encode($skip_checkbox_id),
+                    (int) $form_id,
+                    (int) $id
+                );
+            }
+
+            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $allow_without_org_checkbox . $hidden_field . '</div>';
             $this->orgss_debug_log($form_id, 'get_field_input.rendered', [
                 'search_mode' => $search_mode,
                 'relationship_mode' => $relationship_mode,
                 'relationship_type_upon_org_creation' => $relationship_type_upon_org_creation,
                 'disable_org_creation' => $disable_org_creation,
+                'allow_continue_without_org' => $allow_continue_without_org,
                 'hide_select_buttons' => $orgss_hide_select_buttons,
                 'hide_remove_buttons' => $orgss_hide_remove_buttons,
             ]);
@@ -1180,6 +1265,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         if (isset($this->orgss_no_results_message)) {
             $this->orgss_no_results_message = sanitize_textarea_field($this->orgss_no_results_message);
         }
+        if (isset($this->orgss_allow_continue_without_org)) {
+            $this->orgss_allow_continue_without_org = (bool) $this->orgss_allow_continue_without_org;
+        }
     }
 
     /**
@@ -1199,6 +1287,15 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
         // Basic validation - check if required field has value
         if ($this->isRequired && empty($value)) {
+            $allow_continue_without_org = !empty($this->orgss_allow_continue_without_org) && rgpost('input_' . $this->id . '_allow_continue_without_org') === 'on';
+            if ($allow_continue_without_org) {
+                $this->orgss_debug_log($form_id, 'validate.skip_required', [
+                    'allow_continue_without_org' => true,
+                ]);
+
+                return;
+            }
+
             $this->failed_validation = true;
             $this->validation_message = empty($this->errorMessage) ? esc_html__('This field is required.', 'wicket-gf') : $this->errorMessage;
         }

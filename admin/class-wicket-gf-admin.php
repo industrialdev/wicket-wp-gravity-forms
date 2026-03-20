@@ -356,7 +356,7 @@ class Wicket_Gf_Admin
 
             <div class="wicket_orgss_auto_advance" style="">
                 <input type="checkbox" name="wicket_gf_orgss_auto_advance" id="wicket_gf_orgss_auto_advance"
-                    <?php checked(get_option('wicket_gf_orgss_auto_advance', true), 'on'); ?>>
+                    <?php checked(get_option('wicket_gf_orgss_auto_advance', false), 'on'); ?>>
                 <label for="wicket_gf_orgss_auto_advance" class="inline">Auto-advance to next page on org selection in
                     the Org Search & Select</label>
             </div>
