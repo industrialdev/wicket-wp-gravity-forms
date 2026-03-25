@@ -1,5 +1,10 @@
+function wicketGf_HasAnyOrgssAutoAdvanceEnabled() {
+    const config = window.WicketGfOrgssAutoAdvance || {};
+    return Object.keys(config).some((key) => !!config[key]);
+}
+
 // ORGSS auto-advance on selection
-if (WicketGfPluginData.shouldAutoAdvance) {
+if (wicketGf_HasAnyOrgssAutoAdvanceEnabled()) {
     // Wait for Gravity Forms to be fully initialized
     document.addEventListener("gform/post_init", function (event) {
         // Wait for the next buttons to be present on screen

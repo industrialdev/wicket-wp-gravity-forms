@@ -85,6 +85,10 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     <label for="orgss_allow_continue_without_org" class="inline">Allow users to continue without selecting an organization?</label>
                     <br />
 
+                    <input onchange="SetFieldProperty('orgss_auto_advance', this.checked)" type="checkbox" id="orgss_auto_advance" class="orgss_auto_advance">
+                    <label for="orgss_auto_advance" class="inline">Auto-advance to next page when an organization is selected?</label>
+                    <br />
+
                     <input onchange="SetFieldProperty('orgss_hide_remove_buttons', this.checked)" type="checkbox" id="orgss_hide_remove_buttons" class="orgss_hide_remove_buttons">
                     <label for="orgss_hide_remove_buttons" class="inline">Hide remove buttons?</label>
                     <br />
@@ -381,6 +385,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     // Handle checkboxes
                     $('#orgss_disable_org_creation').prop('checked', field.orgss_disable_org_creation || false);
                     $('#orgss_allow_continue_without_org').prop('checked', field.orgss_allow_continue_without_org || false);
+                    $('#orgss_auto_advance').prop('checked', field.orgss_auto_advance || false);
                     $('#orgss_hide_remove_buttons').prop('checked', field.orgss_hide_remove_buttons || false);
                     $('#orgss_hide_select_buttons').prop('checked', field.orgss_hide_select_buttons || false);
                     $('#orgss_display_removal_alert_message').prop('checked', field.orgss_display_removal_alert_message || false);
@@ -594,6 +599,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 field.orgss_checkbox_id_new_org = '';
                 field.orgss_disable_org_creation = false;
                 field.orgss_allow_continue_without_org = false;
+                field.orgss_auto_advance = false;
                 field.orgss_hide_remove_buttons = false;
                 field.orgss_hide_select_buttons = false;
                 field.orgss_display_removal_alert_message = false;
@@ -747,6 +753,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         $orgss_no_results_message = '';
         $disable_org_creation = false;
         $allow_continue_without_org = false;
+        $orgss_auto_advance = false;
         $checkbox_id_new_org = '';
         $disable_selecting_orgs_with_active_membership = false;
         $grant_roster_man_on_purchase = false;
@@ -829,6 +836,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                         }
                         if (isset($field->orgss_allow_continue_without_org)) {
                             $allow_continue_without_org = $field->orgss_allow_continue_without_org;
+                        }
+                        if (isset($field->orgss_auto_advance)) {
+                            $orgss_auto_advance = $field->orgss_auto_advance;
                         }
                         if (isset($field->orgss_checkbox_id_new_org)) {
                             $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
@@ -1053,6 +1063,12 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 esc_attr($gf_field_id),
                 esc_attr($value)
             );
+            $auto_advance_map_script = sprintf(
+                '<script>(function(){window.WicketGfOrgssAutoAdvance=window.WicketGfOrgssAutoAdvance||{};window.WicketGfOrgssAutoAdvance["%1$d:%2$d"]=%3$s;}());</script>',
+                (int) $form_id,
+                (int) $id,
+                $orgss_auto_advance ? 'true' : 'false'
+            );
 
             $label_css = $hide_label
                 ? sprintf("<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style>", $field_id)
@@ -1083,12 +1099,15 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                             }
 
                             const selectedOrgInput = form.querySelector("input[name=\'input_" + fieldId + "\']");
+                            const checkboxWrapper = checkbox.closest(".wicket-orgss-continue-without-org");
+                            const selectedOrgCtaText = %8$s;
 
                             const setVisibility = () => {
                                 const currentPage = checkbox.closest(".gform_page") || form;
                                 const footer = currentPage.querySelector(".gform_page_footer, .gform-page-footer");
                                 const buttons = currentPage.querySelectorAll(".gform_next_button, .gform_button, .gform_submit_button");
-                                const shouldShow = checkbox.checked || (selectedOrgInput && selectedOrgInput.value && selectedOrgInput.value.trim() !== "");
+                                const orgIsSelected = !!(selectedOrgInput && selectedOrgInput.value && selectedOrgInput.value.trim() !== "");
+                                const shouldShow = checkbox.checked || orgIsSelected;
 
                                 const toggle = (el, visible) => {
                                     if (!el) {
@@ -1104,8 +1123,51 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                                     el.setAttribute("aria-hidden", visible ? "false" : "true");
                                 };
 
+                                const getButtonText = (button) => {
+                                    if (!button) {
+                                        return "";
+                                    }
+                                    if (button.tagName && button.tagName.toLowerCase() === "input") {
+                                        return button.value || "";
+                                    }
+                                    return button.textContent || "";
+                                };
+
+                                const setButtonText = (button, text) => {
+                                    if (!button) {
+                                        return;
+                                    }
+                                    if (button.tagName && button.tagName.toLowerCase() === "input") {
+                                        button.value = text;
+                                        return;
+                                    }
+                                    button.textContent = text;
+                                };
+
+                                if (checkboxWrapper) {
+                                    checkboxWrapper.style.display = orgIsSelected ? "none" : "";
+                                    checkboxWrapper.hidden = orgIsSelected;
+                                }
+
+                                if (orgIsSelected && checkbox.checked) {
+                                    checkbox.checked = false;
+                                }
+
                                 toggle(footer, shouldShow);
                                 buttons.forEach((button) => toggle(button, shouldShow));
+
+                                const advanceButtons = currentPage.querySelectorAll(".gform_next_button, .gform_submit_button");
+                                advanceButtons.forEach((button) => {
+                                    if (!button.dataset.orgssDefaultLabel) {
+                                        button.dataset.orgssDefaultLabel = getButtonText(button).trim();
+                                    }
+
+                                    if (orgIsSelected) {
+                                        setButtonText(button, selectedOrgCtaText);
+                                    } else if (button.dataset.orgssDefaultLabel) {
+                                        setButtonText(button, button.dataset.orgssDefaultLabel);
+                                    }
+                                });
                             };
 
                             checkbox.addEventListener("change", setVisibility);
@@ -1127,11 +1189,12 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                     checked($skip_checkbox_checked, true, false),
                     wp_json_encode($skip_checkbox_id),
                     (int) $form_id,
-                    (int) $id
+                    (int) $id,
+                    wp_json_encode(__('Proceed with selected organization', 'wicket-gf'))
                 );
             }
 
-            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $allow_without_org_checkbox . $hidden_field . '</div>';
+            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $allow_without_org_checkbox . $hidden_field . $auto_advance_map_script . '</div>';
             $this->orgss_debug_log($form_id, 'get_field_input.rendered', [
                 'search_mode' => $search_mode,
                 'relationship_mode' => $relationship_mode,
@@ -1267,6 +1330,9 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
         }
         if (isset($this->orgss_allow_continue_without_org)) {
             $this->orgss_allow_continue_without_org = (bool) $this->orgss_allow_continue_without_org;
+        }
+        if (isset($this->orgss_auto_advance)) {
+            $this->orgss_auto_advance = (bool) $this->orgss_auto_advance;
         }
     }
 

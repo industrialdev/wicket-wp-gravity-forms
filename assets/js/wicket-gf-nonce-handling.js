@@ -4,6 +4,34 @@
  */
 
 jQuery(document).ready(function($) {
+    function getOrgssAutoAdvanceMap() {
+        return window.WicketGfOrgssAutoAdvance || {};
+    }
+
+    function hasAnyOrgssAutoAdvanceEnabled() {
+        var config = getOrgssAutoAdvanceMap();
+        return Object.keys(config).some(function (key) {
+            return !!config[key];
+        });
+    }
+
+    function isAutoAdvanceEnabledForSelection(selectionDetail) {
+        if (!selectionDetail || !selectionDetail.formId) {
+            return false;
+        }
+
+        var formId = String(selectionDetail.formId);
+        var fieldKey = String(selectionDetail.orgSearchSelectKey || selectionDetail.key || '');
+        if (!fieldKey) {
+            return false;
+        }
+
+        var config = getOrgssAutoAdvanceMap();
+        var lookupKey = formId + ':' + fieldKey;
+
+        return !!config[lookupKey];
+    }
+
     // Monitor for nonce timeout errors
     $(document).on(
         "gform_post_render",
@@ -100,15 +128,15 @@ jQuery(document).ready(function($) {
     });
 
     // Enhanced auto-advance with modal confirmation support
-    if (
-        typeof WicketGfPluginData !== "undefined" &&
-        WicketGfPluginData.shouldAutoAdvance
-    ) {
+    if (hasAnyOrgssAutoAdvanceEnabled()) {
         // Override the auto-advance logic to handle confirmation modals
         $(window)
             .off("orgss-selection-made")
             .on("orgss-selection-made", function (event) {
                 if (!event.detail || !event.detail.uuid) {
+                    return;
+                }
+                if (!isAutoAdvanceEnabledForSelection(event.detail)) {
                     return;
                 }
 

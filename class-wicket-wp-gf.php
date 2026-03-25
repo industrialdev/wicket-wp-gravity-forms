@@ -818,7 +818,8 @@ class Wicket_Gf_Main
             'wicket-gf-general-script',
             'WicketGfPluginData',
             [
-                'shouldAutoAdvance' => (bool) get_option('wicket_gf_orgss_auto_advance', false),
+                // Deprecated global flag retained for backwards compatibility.
+                'shouldAutoAdvance' => false,
             ]
         );
     }

@@ -34,7 +34,6 @@ class Wicket_Gf_Admin
         add_option('wicket_gf_slug_mapping', '');
         register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', ['sanitize_callback' => [__CLASS__, 'sanitize_slug_mapping']]);
         register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
-        register_setting('wicket_gf_options_group', 'wicket_gf_orgss_auto_advance', null);
     }
 
     // Create an options page
@@ -62,12 +61,10 @@ class Wicket_Gf_Admin
             margin-right: 4px;
             min-width: 30px;
         }
-        .wicket_pagination_settings,
-        .wicket_orgss_auto_advance {
+        .wicket_pagination_settings {
             margin-bottom: 15px;
         }
-        .wicket_pagination_settings label,
-        .wicket_orgss_auto_advance label {
+        .wicket_pagination_settings label {
             margin-left: 8px;
         }
         #validation-message {
@@ -352,13 +349,6 @@ class Wicket_Gf_Admin
                     id="wicket_gf_pagination_sidebar_layout"
                     <?php checked(get_option('wicket_gf_pagination_sidebar_layout'), 'on'); ?>>
                 <label for="wicket_gf_pagination_sidebar_layout" class="inline">Use Sidebar Pagination Layout</label>
-            </div>
-
-            <div class="wicket_orgss_auto_advance" style="">
-                <input type="checkbox" name="wicket_gf_orgss_auto_advance" id="wicket_gf_orgss_auto_advance"
-                    <?php checked(get_option('wicket_gf_orgss_auto_advance', false), 'on'); ?>>
-                <label for="wicket_gf_orgss_auto_advance" class="inline">Auto-advance to next page on org selection in
-                    the Org Search & Select</label>
             </div>
 
             <?php submit_button(); ?>
