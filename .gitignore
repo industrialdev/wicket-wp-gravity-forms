@@ -6,3 +6,10 @@ coverage
 node_modules
 tests/Browser/screenshots
 *.bak
+
+# Yarn PnP and cache artifacts
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/releases/
+.yarn/install-state.gz
+.yarn/unplugged/
