@@ -81,8 +81,7 @@ class Wicket_Gf_Nonce_Handler
         // Log nonce verification attempts
         add_filter('wp_verify_nonce', function ($result, $nonce, $action) {
             if ($action && strpos($action, 'gform') !== false) {
-                $logger = wc_get_logger();
-                $logger->debug(sprintf(
+                Wicket()->log()->debug(sprintf(
                     'Action: %s, Result: %s, Nonce: %s, User: %d, Time: %s',
                     $action,
                     $result ? 'PASS' : 'FAIL',
@@ -92,7 +91,7 @@ class Wicket_Gf_Nonce_Handler
                 ), ['source' => 'wicket-gf-nonce']);
 
                 if (!$result) {
-                    $logger->warning('Nonce verification failed. Check session timeout settings.', ['source' => 'wicket-gf-nonce']);
+                    Wicket()->log()->warning('Nonce verification failed. Check session timeout settings.', ['source' => 'wicket-gf-nonce']);
                 }
             }
 
@@ -102,11 +101,10 @@ class Wicket_Gf_Nonce_Handler
         // Log Gravity Forms validation errors
         add_action('gform_validation', function ($validation_result) {
             if (!$validation_result['is_valid']) {
-                $logger = wc_get_logger();
-                $logger->info('Form validation failed for form ID: ' . $validation_result['form']['id'], ['source' => 'wicket-gf-nonce']);
+                Wicket()->log()->info('Form validation failed for form ID: ' . $validation_result['form']['id'], ['source' => 'wicket-gf-nonce']);
                 foreach ($validation_result['form']['fields'] as $field) {
                     if (isset($field->failed_validation) && $field->failed_validation) {
-                        $logger->debug('Field validation failed - ID: ' . $field->id . ', Message: ' . ($field->validation_message ?? 'Unknown error'), ['source' => 'wicket-gf-nonce']);
+                        Wicket()->log()->debug('Field validation failed - ID: ' . $field->id . ', Message: ' . ($field->validation_message ?? 'Unknown error'), ['source' => 'wicket-gf-nonce']);
                     }
                 }
             }
@@ -117,10 +115,9 @@ class Wicket_Gf_Nonce_Handler
         // Check PHP session configuration
         add_action('admin_init', function () {
             if (current_user_can('manage_options') && isset($_GET['wicket_gf_debug_session'])) {
-                $logger = wc_get_logger();
-                $logger->debug('session.gc_maxlifetime: ' . ini_get('session.gc_maxlifetime'), ['source' => 'wicket-gf-nonce']);
-                $logger->debug('session.cookie_lifetime: ' . ini_get('session.cookie_lifetime'), ['source' => 'wicket-gf-nonce']);
-                $logger->debug('WordPress nonce lifetime: ' . (wp_nonce_tick() * DAY_IN_SECONDS), ['source' => 'wicket-gf-nonce']);
+                Wicket()->log()->debug('session.gc_maxlifetime: ' . ini_get('session.gc_maxlifetime'), ['source' => 'wicket-gf-nonce']);
+                Wicket()->log()->debug('session.cookie_lifetime: ' . ini_get('session.cookie_lifetime'), ['source' => 'wicket-gf-nonce']);
+                Wicket()->log()->debug('WordPress nonce lifetime: ' . (wp_nonce_tick() * DAY_IN_SECONDS), ['source' => 'wicket-gf-nonce']);
                 wp_die('Session debug info logged. Check WooCommerce logs.');
             }
         });

@@ -361,8 +361,7 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
         $value = $this->get_value_submission([], true);
 
         // Log for diagnostics
-        $logger = wc_get_logger();
-        $logger->debug('GF AI Widget is_value_submission_empty called for field ' . $this->id . ' with value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('GF AI Widget is_value_submission_empty called for field ' . $this->id . ' with value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
 
         if (is_string($value)) {
             $trimmed = trim($value);
@@ -390,10 +389,9 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             return '<p>Widget will show here on the frontend</p>';
         }
 
-        $logger = wc_get_logger();
-        $logger->debug('GF AI Widget get_field_input called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
-        $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
-        $logger->debug('Field properties: ' . var_export(get_object_vars($this), true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('GF AI Widget get_field_input called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Field properties: ' . var_export(get_object_vars($this), true), ['source' => 'gravityforms-state-debug']);
 
         $id = (int) $this->id;
         $unique_component_id = 'wicket-ai-widget-' . $id; // Generate a unique ID for the component instance
@@ -487,19 +485,18 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
     public function validate($value, $form)
     {
-        $logger = wc_get_logger();
-        $logger->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
-        $logger->debug('Validate value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Validate value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
 
         $value_array = json_decode($value, true);
-        $logger->debug('JSON decode result: ' . var_export($value_array, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('JSON decode result: ' . var_export($value_array, true), ['source' => 'gravityforms-state-debug']);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $logger->debug('JSON decode error: ' . json_last_error_msg(), ['source' => 'gravityforms-state-debug']);
+            Wicket()->log()->debug('JSON decode error: ' . json_last_error_msg(), ['source' => 'gravityforms-state-debug']);
             if (!empty($value)) {
                 $this->failed_validation = true;
                 $this->validation_message = 'Invalid data format submitted.';
-                $logger->debug('Setting failed_validation due to JSON error', ['source' => 'gravityforms-state-debug']);
+                Wicket()->log()->debug('Setting failed_validation due to JSON error', ['source' => 'gravityforms-state-debug']);
             }
 
             return;
@@ -507,9 +504,9 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
 
         $invalid = $value_array['invalid'] ?? [];
         $validation = $value_array['validation'] ?? [];
-        $logger->debug('Invalid array: ' . var_export($invalid, true), ['source' => 'gravityforms-state-debug']);
-        $logger->debug('Validation array: ' . var_export($validation, true), ['source' => 'gravityforms-state-debug']);
-        $logger->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Invalid array: ' . var_export($invalid, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Validation array: ' . var_export($validation, true), ['source' => 'gravityforms-state-debug']);
+        Wicket()->log()->debug('Field isRequired: ' . var_export($this->isRequired, true), ['source' => 'gravityforms-state-debug']);
 
         // Check for validation errors, but only for fields that are actually required
         // Individual schemas can have their own required fields based on showAsRequired setting
@@ -589,11 +586,11 @@ class GFWicketFieldWidgetAdditionalInfo extends GF_Field
             }
 
             $this->validation_message = $error_message;
-            $logger->debug('Setting failed_validation due to schema validation errors', ['source' => 'gravityforms-state-debug']);
+            Wicket()->log()->debug('Setting failed_validation due to schema validation errors', ['source' => 'gravityforms-state-debug']);
         } else {
             $this->failed_validation = false;
             $this->validation_message = '';
-            $logger->debug('Validation passed - clearing failed_validation', ['source' => 'gravityforms-state-debug']);
+            Wicket()->log()->debug('Validation passed - clearing failed_validation', ['source' => 'gravityforms-state-debug']);
         }
     }
 

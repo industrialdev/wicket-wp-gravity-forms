@@ -694,25 +694,25 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
     private function orgss_debug_log($form_id, $event, $context = [])
     {
-        if (!$this->should_debug_form($form_id) || !function_exists('wc_get_logger')) {
+        if (!$this->should_debug_form($form_id)) {
             return;
         }
 
         $safe_form_id = (int) $form_id;
-        $logger = wc_get_logger();
         $base_context = [
-            'event' => $event,
-            'form_id' => $safe_form_id,
-            'field_id' => (int) $this->id,
-            'request_method' => $_SERVER['REQUEST_METHOD'] ?? '',
-            'gform_source_page' => function_exists('rgpost') ? rgpost('gform_source_page_number') : null,
-            'gform_target_page' => function_exists('rgpost') ? rgpost('gform_target_page_number') : null,
-            'is_submit' => function_exists('rgpost') ? rgpost('is_submit_' . $safe_form_id) : null,
+            'source'             => 'wicket-gf-orgss-debug',
+            'event'              => $event,
+            'form_id'            => $safe_form_id,
+            'field_id'           => (int) $this->id,
+            'request_method'     => $_SERVER['REQUEST_METHOD'] ?? '',
+            'gform_source_page'  => function_exists('rgpost') ? rgpost('gform_source_page_number') : null,
+            'gform_target_page'  => function_exists('rgpost') ? rgpost('gform_target_page_number') : null,
+            'is_submit'          => function_exists('rgpost') ? rgpost('is_submit_' . $safe_form_id) : null,
         ];
 
-        $logger->debug(
+        Wicket()->log()->debug(
             'ORGSS GF debug: ' . $event . ' CONTEXT: ' . wp_json_encode(array_merge($base_context, $context)),
-            ['source' => 'wicket-gf-orgss-debug']
+            $base_context
         );
     }
 
@@ -1371,8 +1371,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
             // Check if this might be a nonce timeout issue
             $form_nonce = $_POST['gform_submit'] ?? '';
             if (!empty($form_nonce) && !wp_verify_nonce($form_nonce, 'gform_submit_' . $form['id'])) {
-                $logger = wc_get_logger();
-                $logger->warning('Possible nonce timeout for form ' . $form['id'] . ' field ' . $this->id, ['source' => 'wicket-gf-org-search']);
+                Wicket()->log()->warning('Possible nonce timeout for form ' . $form['id'] . ' field ' . $this->id, ['source' => 'wicket-gf-org-search']);
 
                 // Provide user-friendly error message for required fields
                 if ($this->isRequired) {

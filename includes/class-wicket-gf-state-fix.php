@@ -106,7 +106,6 @@ add_filter('gform_field_validation', function ($result, $value, $form, $field) {
         return $result;
     }
 
-    $logger = wc_get_logger();
     $form_id = is_array($form) && isset($form['id']) ? $form['id'] : (is_object($form) && isset($form->id) ? $form->id : 'unknown');
     $field_id = is_object($field) && isset($field->id) ? $field->id : (is_array($field) && isset($field['id']) ? $field['id'] : null);
     $field_type = is_object($field) && isset($field->type) ? $field->type : (is_array($field) && isset($field['type']) ? $field['type'] : null);
@@ -117,7 +116,7 @@ add_filter('gform_field_validation', function ($result, $value, $form, $field) {
         $value_str = substr($value_str, 0, 500);
     }
 
-    $logger->info(
+    Wicket()->log()->info(
         'GF field validation failed: form=' . $form_id . ' field=' . $field_id . ' type=' . $field_type . ' message=' . $message . ' value_trunc=' . var_export($value_str, true),
         ['source' => 'wicket-gf-validation']
     );
@@ -128,7 +127,6 @@ add_filter('gform_field_validation', function ($result, $value, $form, $field) {
 // Log summary when form validation fails.
 add_filter('gform_validation', function ($validation_result) {
     if (!is_array($validation_result) || empty($validation_result['is_valid'])) {
-        $logger = wc_get_logger();
         $form = $validation_result['form'] ?? null;
         $form_id = is_array($form) && isset($form['id']) ? $form['id'] : (is_object($form) && isset($form->id) ? $form->id : 'unknown');
         $failed_fields = [];
@@ -148,7 +146,7 @@ add_filter('gform_validation', function ($validation_result) {
             }
         }
 
-        $logger->info(
+        Wicket()->log()->info(
             'GF validation failed: form=' . $form_id . ' failed_fields=' . implode(' | ', $failed_fields),
             ['source' => 'wicket-gf-validation']
         );

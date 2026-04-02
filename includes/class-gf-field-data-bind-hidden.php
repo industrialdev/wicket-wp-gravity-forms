@@ -712,8 +712,7 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
+                    Wicket()->log()->error('wicket_current_person_uuid function not found', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -850,8 +849,7 @@ class GFDataBindHiddenField extends GF_Field
             } elseif ($data_source === 'person_profile') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
+                    Wicket()->log()->error('wicket_current_person_uuid function not found for person_profile', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
@@ -1110,8 +1108,7 @@ class GFDataBindHiddenField extends GF_Field
             if ($data_source === 'person_addinfo') {
                 // Check if wicket helper function exists
                 if (!function_exists('wicket_current_person_uuid')) {
-                    $logger = wc_get_logger();
-                    $logger->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
+                    Wicket()->log()->error('wicket_current_person_uuid function not found in value_keys', ['source' => 'wicket-gf']);
                     wp_send_json_error('Wicket helper functions not available.');
 
                     return;
