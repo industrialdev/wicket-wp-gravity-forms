@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.24
+ * Version:           2.3.25
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -1043,13 +1043,13 @@ class Wicket_Gf_Main
                 unset($index);
                 if (($field['name'] ?? '') === 'type' && !empty($field['choices']) && is_array($field['choices'])) {
                     $field['choices'][] = [
-                        'label' => __('Same URL redirect (with params)', 'wicket-gf'),
+                        'label' => __('Same Page redirect', 'wicket-gf'),
                         'value' => self::CONFIRMATION_TYPE_SELF_REDIRECT,
                     ];
 
                     if ($is_woocommerce_active) {
                         $field['choices'][] = [
-                            'label' => __('Cart redirect (with params)', 'wicket-gf'),
+                            'label' => __('Cart redirect', 'wicket-gf'),
                             'value' => self::CONFIRMATION_TYPE_WC_CART_REDIRECT,
                         ];
                     }
