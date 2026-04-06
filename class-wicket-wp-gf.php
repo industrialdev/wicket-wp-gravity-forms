@@ -1042,7 +1042,7 @@ class Wicket_Gf_Main
             foreach ($section['fields'] as $index => &$field) {
                 if (($field['name'] ?? '') === 'type' && !empty($field['choices']) && is_array($field['choices'])) {
                     $field['choices'][] = [
-                        'label' => __('Same URL (with params)', 'wicket-gf'),
+                        'label' => __('Same URL redirect (with params)', 'wicket-gf'),
                         'value' => self::CONFIRMATION_TYPE_SELF_REDIRECT,
                     ];
                 }
