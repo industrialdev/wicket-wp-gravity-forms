@@ -48,7 +48,8 @@ if (!defined('WICKET_WP_GF_VERSION')) {
 class Wicket_Gf_Main
 {
     private const CONFIRMATION_TYPE_SELF_REDIRECT = 'self_redirect';
-    private const CONFIRMATION_FIELD_SELF_QUERY_STRING = 'wicket_self_query_string';
+    private const CONFIRMATION_TYPE_WC_CART_REDIRECT = 'wc_cart_redirect';
+    private const LEGACY_CONFIRMATION_FIELD_SELF_QUERY_STRING = 'wicket_self_query_string';
 
     /**
      * Plugin instance.
@@ -1031,50 +1032,57 @@ class Wicket_Gf_Main
     public function extend_confirmation_settings_fields(array $fields, array $confirmation, array $form): array
     {
         unset($confirmation, $form);
+        $is_woocommerce_active = $this->is_woocommerce_active();
 
         foreach ($fields as &$section) {
             if (empty($section['fields']) || !is_array($section['fields'])) {
                 continue;
             }
 
-            $insert_index = null;
-
             foreach ($section['fields'] as $index => &$field) {
+                unset($index);
                 if (($field['name'] ?? '') === 'type' && !empty($field['choices']) && is_array($field['choices'])) {
                     $field['choices'][] = [
                         'label' => __('Same URL redirect (with params)', 'wicket-gf'),
                         'value' => self::CONFIRMATION_TYPE_SELF_REDIRECT,
                     ];
+
+                    if ($is_woocommerce_active) {
+                        $field['choices'][] = [
+                            'label' => __('Cart redirect (with params)', 'wicket-gf'),
+                            'value' => self::CONFIRMATION_TYPE_WC_CART_REDIRECT,
+                        ];
+                    }
                 }
 
                 if (($field['name'] ?? '') === 'queryString') {
-                    $insert_index = $index + 1;
+                    if (!empty($field['dependency']['fields']) && is_array($field['dependency']['fields'])) {
+                        foreach ($field['dependency']['fields'] as &$dependency_field) {
+                            if (($dependency_field['field'] ?? '') !== 'type') {
+                                continue;
+                            }
+
+                            $dependency_values = $dependency_field['values'] ?? [];
+                            if (!is_array($dependency_values)) {
+                                $dependency_values = [];
+                            }
+
+                            if (!in_array(self::CONFIRMATION_TYPE_SELF_REDIRECT, $dependency_values, true)) {
+                                $dependency_values[] = self::CONFIRMATION_TYPE_SELF_REDIRECT;
+                            }
+
+                            if ($is_woocommerce_active && !in_array(self::CONFIRMATION_TYPE_WC_CART_REDIRECT, $dependency_values, true)) {
+                                $dependency_values[] = self::CONFIRMATION_TYPE_WC_CART_REDIRECT;
+                            }
+
+                            $dependency_field['values'] = $dependency_values;
+                        }
+                        unset($dependency_field);
+                    }
+
                 }
             }
             unset($field);
-
-            if ($insert_index === null) {
-                continue;
-            }
-
-            array_splice($section['fields'], $insert_index, 0, [[
-                'name' => self::CONFIRMATION_FIELD_SELF_QUERY_STRING,
-                'type' => 'text',
-                'label' => __('Additional Query String Params', 'wicket-gf'),
-                'class' => 'merge-tag-support mt-position-right mt-hide_all_fields mt-option-url',
-                'tooltip' => gform_tooltip('form_redirect_querystring', null, true),
-                'dependency' => [
-                    'live' => true,
-                    'operator' => 'ALL',
-                    'fields' => [
-                        [
-                            'field' => 'type',
-                            'values' => [self::CONFIRMATION_TYPE_SELF_REDIRECT],
-                        ],
-                    ],
-                ],
-                'description' => esc_html__('Optional. Example: updated=1&tab=profile&email={Email:2}', 'wicket-gf'),
-            ]]);
 
             break;
         }
@@ -1096,12 +1104,17 @@ class Wicket_Gf_Main
         unset($form, $is_new_confirmation);
 
         $selected_type = sanitize_text_field((string) rgpost('_gform_setting_type'));
-        if ($selected_type !== self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+        if ($selected_type === self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+            $confirmation['type'] = self::CONFIRMATION_TYPE_SELF_REDIRECT;
+            $confirmation['queryString'] = sanitize_text_field((string) rgpost('queryString'));
+
             return $confirmation;
         }
 
-        $confirmation['type'] = self::CONFIRMATION_TYPE_SELF_REDIRECT;
-        $confirmation[self::CONFIRMATION_FIELD_SELF_QUERY_STRING] = sanitize_text_field((string) rgpost(self::CONFIRMATION_FIELD_SELF_QUERY_STRING));
+        if ($selected_type === self::CONFIRMATION_TYPE_WC_CART_REDIRECT && $this->is_woocommerce_active()) {
+            $confirmation['type'] = self::CONFIRMATION_TYPE_WC_CART_REDIRECT;
+            $confirmation['queryString'] = sanitize_text_field((string) rgpost('queryString'));
+        }
 
         return $confirmation;
     }
@@ -1120,25 +1133,57 @@ class Wicket_Gf_Main
         unset($ajax);
 
         $active_confirmation = rgar($form, 'confirmation');
-        if (!is_array($active_confirmation) || rgar($active_confirmation, 'type') !== self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+        if (!is_array($active_confirmation)) {
             return $confirmation;
         }
 
-        $source_url = rgar($entry, 'source_url');
-        if (empty($source_url)) {
-            $source_url = GFFormsModel::get_current_page_url();
-        }
+        $confirmation_type = rgar($active_confirmation, 'type');
+        if ($confirmation_type === self::CONFIRMATION_TYPE_SELF_REDIRECT) {
+            $source_url = rgar($entry, 'source_url');
+            if (empty($source_url)) {
+                $source_url = GFFormsModel::get_current_page_url();
+            }
 
-        if (empty($source_url)) {
+            if (empty($source_url)) {
+                return $confirmation;
+            }
+
+            $active_confirmation['url'] = $source_url;
+            $active_confirmation['queryString'] = rgar(
+                $active_confirmation,
+                'queryString',
+                rgar($active_confirmation, self::LEGACY_CONFIRMATION_FIELD_SELF_QUERY_STRING, '')
+            );
+        } elseif ($confirmation_type === self::CONFIRMATION_TYPE_WC_CART_REDIRECT) {
+            if (!$this->is_woocommerce_active()) {
+                return $confirmation;
+            }
+
+            $cart_url = wc_get_cart_url();
+            if (empty($cart_url)) {
+                return $confirmation;
+            }
+
+            $active_confirmation['url'] = $cart_url;
+            $active_confirmation['queryString'] = rgar($active_confirmation, 'queryString', '');
+        } else {
             return $confirmation;
         }
 
-        $active_confirmation['url'] = $source_url;
-        $active_confirmation['queryString'] = rgar($active_confirmation, self::CONFIRMATION_FIELD_SELF_QUERY_STRING, '');
 
         return [
             'redirect' => GFFormDisplay::get_confirmation_url($active_confirmation, $form, $entry),
         ];
+    }
+
+    /**
+     * Determine whether WooCommerce is active and cart helpers are available.
+     *
+     * @return bool
+     */
+    private function is_woocommerce_active(): bool
+    {
+        return class_exists('WooCommerce') && function_exists('wc_get_cart_url');
     }
 
     public static function shortcode($atts)
