@@ -226,10 +226,14 @@ do_action('wicket_gf_fields_registered');
 apply_filters('wicket_gf_allowed_form_statuses', $statuses);
 ```
 
+## Documentation
+
+For complete documentation, see **[docs/index.md](docs/index.md)**.
+
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/industrialdev/wicket-wp-gravity-forms/issues)
-- **Documentation**: [Wicket Developer Docs](https://wicket.io/docs)
+- **Documentation**: [Internal docs](docs/index.md) · [Wicket Developer Docs](https://wicket.io/docs)
 
 ## License
 
