@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.25
+ * Version:           2.3.26
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -1104,16 +1104,18 @@ class Wicket_Gf_Main
         unset($form, $is_new_confirmation);
 
         $selected_type = sanitize_text_field((string) rgpost('_gform_setting_type'));
+        $query_string = sanitize_text_field((string) rgpost('_gform_setting_queryString', rgpost('queryString', '')));
+
         if ($selected_type === self::CONFIRMATION_TYPE_SELF_REDIRECT) {
             $confirmation['type'] = self::CONFIRMATION_TYPE_SELF_REDIRECT;
-            $confirmation['queryString'] = sanitize_text_field((string) rgpost('queryString'));
+            $confirmation['queryString'] = $query_string;
 
             return $confirmation;
         }
 
         if ($selected_type === self::CONFIRMATION_TYPE_WC_CART_REDIRECT && $this->is_woocommerce_active()) {
             $confirmation['type'] = self::CONFIRMATION_TYPE_WC_CART_REDIRECT;
-            $confirmation['queryString'] = sanitize_text_field((string) rgpost('queryString'));
+            $confirmation['queryString'] = $query_string;
         }
 
         return $confirmation;
