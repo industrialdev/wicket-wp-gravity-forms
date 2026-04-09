@@ -1181,28 +1181,7 @@ class GFDataBindHiddenField extends GF_Field
                     $person_attributes_arr = ['data_fields' => $person_data_response['data_fields']];
                 }
 
-                if (is_array($person_attributes_arr) && isset($person_attributes_arr['data_fields']) && is_array($person_attributes_arr['data_fields'])) {
-                    $data_fields_array = $person_attributes_arr['data_fields'];
-
-                    foreach ($data_fields_array as $schema_value_arr) {
-                        $current_schema_value_arr = is_object($schema_value_arr) ? (array) $schema_value_arr : $schema_value_arr;
-                        $identifier = $current_schema_value_arr['schema_slug'] ?? $current_schema_value_arr['key'] ?? null;
-
-                        if ($identifier && $identifier === $schema_data_slug) {
-                            if (isset($current_schema_value_arr['value']) && (is_object($current_schema_value_arr['value']) || is_array($current_schema_value_arr['value']))) {
-                                $value_data = is_object($current_schema_value_arr['value']) ? (array) $current_schema_value_arr['value'] : $current_schema_value_arr['value'];
-                                foreach (array_keys($value_data) as $key) {
-                                    $options[$key] = ucfirst(str_replace('_', ' ', $key));
-                                }
-                            } elseif (isset($current_schema_value_arr['value'])) {
-                                $options['_self'] = 'Value';
-                            }
-                            break;
-                        }
-                    }
-                }
-
-                if (empty($options) && is_array($included_items_array)) {
+                if (is_array($included_items_array)) {
                     foreach ($included_items_array as $item) {
                         $item_arr = is_object($item) ? (array) $item : $item;
 
@@ -1224,6 +1203,27 @@ class GFDataBindHiddenField extends GF_Field
 
                         if (!empty($schema_options)) {
                             $options = $schema_options;
+                            break;
+                        }
+                    }
+                }
+
+                if (empty($options) && is_array($person_attributes_arr) && isset($person_attributes_arr['data_fields']) && is_array($person_attributes_arr['data_fields'])) {
+                    $data_fields_array = $person_attributes_arr['data_fields'];
+
+                    foreach ($data_fields_array as $schema_value_arr) {
+                        $current_schema_value_arr = is_object($schema_value_arr) ? (array) $schema_value_arr : $schema_value_arr;
+                        $identifier = $current_schema_value_arr['schema_slug'] ?? $current_schema_value_arr['key'] ?? null;
+
+                        if ($identifier && $identifier === $schema_data_slug) {
+                            if (isset($current_schema_value_arr['value']) && (is_object($current_schema_value_arr['value']) || is_array($current_schema_value_arr['value']))) {
+                                $value_data = is_object($current_schema_value_arr['value']) ? (array) $current_schema_value_arr['value'] : $current_schema_value_arr['value'];
+                                foreach (array_keys($value_data) as $key) {
+                                    $options[$key] = ucfirst(str_replace('_', ' ', $key));
+                                }
+                            } elseif (isset($current_schema_value_arr['value'])) {
+                                $options['_self'] = 'Value';
+                            }
                             break;
                         }
                     }
