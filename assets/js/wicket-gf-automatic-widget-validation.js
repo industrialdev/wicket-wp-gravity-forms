@@ -45,10 +45,15 @@ const WicketMDPAutoValidation = {
      * Initialize the automatic validation system
      */
     init() {
+        const config = window.WicketMDPAutoValidationConfig || {};
+        const forceLoggingFromQuery = window.location.search.indexOf('wicketGfDebug=1') !== -1;
+        this.enableLogging = Boolean(forceLoggingFromQuery);
+
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
             enableLogging: this.enableLogging,
-            autoDetectionEnabled: true
+            autoDetectionEnabled: true,
+            config
         });
 
         this.detectWicketPresence();
@@ -617,16 +622,25 @@ const WicketMDPAutoValidation = {
             if (nextButton) {
                 // Perform a fresh HTML scan before validation
                 self.updateValidationFromHTML();
+                // Sync hidden payload + GF validation flags for this transition.
+                self.updateAllWidgetDataBeforeSubmit();
 
                 if (self.shouldBlockNavigation()) {
                     event.preventDefault();
                     event.stopPropagation();
 
                     const errorMessage = self.buildErrorMessage();
+                    self.log('Next navigation blocked', {
+                        currentValidationState: self.getValidationState(),
+                        errorMessage
+                    });
                     self.showValidationErrors(errorMessage);
 
                     return false;
                 } else {
+                    self.log('Next navigation allowed', {
+                        currentValidationState: self.getValidationState()
+                    });
                     self.hideValidationErrors();
                 }
             }
@@ -645,6 +659,9 @@ const WicketMDPAutoValidation = {
             if (form.id && form.id.startsWith('gform_')) {
                 self.log('Gravity Form submission detected, checking widget validation');
 
+                // Recompute from current DOM before mutating hidden fields.
+                self.updateValidationFromHTML();
+
                 // First, update hidden fields with latest widget data before validation
                 self.updateAllWidgetDataBeforeSubmit();
 
@@ -657,9 +674,17 @@ const WicketMDPAutoValidation = {
                     event.stopPropagation();
 
                     const errorMessage = self.buildErrorMessage();
+                    self.log('Submit blocked', {
+                        currentValidationState: self.getValidationState(),
+                        errorMessage
+                    });
                     self.showValidationErrors(errorMessage);
 
                     return false;
+                } else {
+                    self.log('Submit allowed', {
+                        currentValidationState: self.getValidationState()
+                    });
                 }
             }
         }, true);
@@ -714,6 +739,23 @@ const WicketMDPAutoValidation = {
                 });
             });
         }
+
+        // Keep GF per-field validation flags aligned with the latest computed state.
+        const hasIncomplete = this.currentValidationState.incompleteRequiredFields.length > 0 ||
+            this.currentValidationState.incompleteRequiredResources.length > 0;
+        const validationValue = hasIncomplete ? 'false' : 'true';
+        const validationInputs = document.querySelectorAll('input[type="hidden"][name^="input_"][name$="_validation"]');
+
+        validationInputs.forEach((input) => {
+            input.value = validationValue;
+        });
+
+        this.log('Updated GF validation flags before submission', {
+            validationInputsCount: validationInputs.length,
+            validationValue,
+            incompleteRequiredFields: this.currentValidationState.incompleteRequiredFields,
+            incompleteRequiredResources: this.currentValidationState.incompleteRequiredResources
+        });
     },
 
     /**
@@ -734,6 +776,13 @@ const WicketMDPAutoValidation = {
         const incompleteFields = this.currentValidationState.incompleteRequiredFields;
         const incompleteResources = this.currentValidationState.incompleteRequiredResources;
         const hasIncompleteFields = incompleteFields.length > 0 || incompleteResources.length > 0;
+        this.log('shouldBlockNavigation evaluated', {
+            widgetsReady: this.currentValidationState.widgetsReady,
+            hasRequiredFields: this.currentValidationState.hasRequiredFields,
+            incompleteRequiredFields: incompleteFields,
+            incompleteRequiredResources: incompleteResources,
+            result: hasIncompleteFields
+        });
 
         // Special debug for "job level" field
         const jobLevelFields = incompleteFields.filter(field =>

@@ -4,6 +4,7 @@ class GFWicketFieldWidgetProfile extends GF_Field
 {
     public $type = 'wicket_widget_profile_individual';
     public $wwidget_profile_required_resources = '';
+    private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['personType'];
 
     /**
      * Initialize the widget field and enqueue validation scripts.
@@ -355,7 +356,8 @@ jQuery(document).ready(function($) {
                 if (!empty($value)) {
                     $value_array = json_decode($value, true);
                     $value_array = is_array($value_array) ? $value_array : [];
-                    $fields_incomplete = isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
+                    $fields_incomplete_list = $this->get_filtered_incomplete_required_fields($value_array);
+                    $fields_incomplete = count($fields_incomplete_list) > 0;
                     $resources_incomplete = isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
                     $is_incomplete = ($fields_incomplete || $resources_incomplete);
                 }
@@ -398,17 +400,16 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        if (isset($value_array['incompleteRequiredFields'])) {
-            if (count($value_array['incompleteRequiredFields']) > 0) {
-                $this->failed_validation = true;
-                if (!empty($this->errorMessage)) {
-                    $this->validation_message = $this->errorMessage;
-                } else {
-                    $this->validation_message = __('Please fill out all required fields in your profile.', 'wicket_gf');
-                }
-
-                return;
+        $filtered_incomplete_required_fields = $this->get_filtered_incomplete_required_fields($value_array);
+        if (count($filtered_incomplete_required_fields) > 0) {
+            $this->failed_validation = true;
+            if (!empty($this->errorMessage)) {
+                $this->validation_message = $this->errorMessage;
+            } else {
+                $this->validation_message = __('Please fill out all required fields in your profile.', 'wicket_gf');
             }
+
+            return;
         }
 
         if (isset($value_array['incompleteRequiredResources'])) {
@@ -443,6 +444,24 @@ jQuery(document).ready(function($) {
         }
 
         return null;
+    }
+
+    /**
+     * Ignore hidden fields that are intentionally not editable in the profile widget.
+     *
+     * @param array $value_array Decoded widget payload.
+     * @return array
+     */
+    private function get_filtered_incomplete_required_fields(array $value_array): array
+    {
+        if (empty($value_array['incompleteRequiredFields']) || !is_array($value_array['incompleteRequiredFields'])) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $value_array['incompleteRequiredFields'],
+            static fn ($field_key) => is_string($field_key) && !in_array($field_key, self::VALIDATION_IGNORED_HIDDEN_FIELDS, true)
+        ));
     }
 }
 
