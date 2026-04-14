@@ -1070,6 +1070,15 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 $orgss_auto_advance ? 'true' : 'false'
             );
 
+            // Expose per-field config for JavaScript decision-making (non-hardcoded)
+            $config_map_script = sprintf(
+                '<script>(function(){window.WicketGfOrgssConfig=window.WicketGfOrgssConfig||{};window.WicketGfOrgssConfig["%1$d:%2$d"]={allowContinueWithoutOrg:%3$s,isAjax:%4$s};}());</script>',
+                (int) $form_id,
+                (int) $id,
+                $allow_continue_without_org ? 'true' : 'false',
+                (!empty($form['ajax']) && $form['ajax']) ? 'true' : 'false'
+            );
+
             $label_css = $hide_label
                 ? sprintf("<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style>", $field_id)
                 : '';
@@ -1103,6 +1112,21 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                             const selectedOrgCtaText = %8$s;
 
                             const setVisibility = () => {
+                                // Re-query fresh each call: GF AJAX navigation replaces DOM nodes,
+                                // making closed-over references stale. Shadowing outer vars here.
+                                const checkbox = document.getElementById(checkboxId);
+                                const form = document.getElementById("gform_" + formId);
+
+                                // Element left the DOM — self-remove stale window listeners and bail.
+                                if (!checkbox || !form || !document.body.contains(checkbox)) {
+                                    window.removeEventListener("gform_post_render", setVisibility);
+                                    window.removeEventListener("orgss-selection-made", setVisibility);
+                                    window.removeEventListener("wicket:org_search_select_cleared", setVisibility);
+                                    return;
+                                }
+
+                                const selectedOrgInput = form.querySelector("input[name=\'input_" + fieldId + "\']");
+                                const checkboxWrapper = checkbox.closest(".wicket-orgss-continue-without-org");
                                 const currentPage = checkbox.closest(".gform_page") || form;
                                 const footer = currentPage.querySelector(".gform_page_footer, .gform-page-footer");
                                 const buttons = currentPage.querySelectorAll(".gform_next_button, .gform_button, .gform_submit_button");
@@ -1194,7 +1218,7 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
                 );
             }
 
-            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $allow_without_org_checkbox . $hidden_field . $auto_advance_map_script . '</div>';
+            $html_output = $label_css . '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . $allow_without_org_checkbox . $hidden_field . $auto_advance_map_script . $config_map_script . '</div>';
             $this->orgss_debug_log($form_id, 'get_field_input.rendered', [
                 'search_mode' => $search_mode,
                 'relationship_mode' => $relationship_mode,
