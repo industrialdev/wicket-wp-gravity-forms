@@ -2,6 +2,7 @@
 title: "Gravity Forms Field Types"
 audience: [implementer, support]
 php_class: Wicket_Gf_Main
+db_option_prefix: wicket_gf_
 ---
 
 # Gravity Forms Field Types

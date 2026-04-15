@@ -1,6 +1,7 @@
 ---
 title: "Field Architecture"
 audience: [developer, agent]
+php_class: Wicket_Gf_Main
 source_files: [
   "includes/class-gf-field-org-search-select.php",
   "includes/class-gf-field-widget-profile.php",
@@ -9,7 +10,8 @@ source_files: [
   "includes/class-gf-field-widget-prefs.php",
   "includes/class-gf-field-data-bind-hidden.php",
   "includes/class-gf-field-api-data-bind.php",
-  "includes/class-gf-field-user-mdp-tags.php"
+  "includes/class-gf-field-user-mdp-tags.php",
+  "includes/class-gf-mapping-addon.php"
 ]
 ---
 

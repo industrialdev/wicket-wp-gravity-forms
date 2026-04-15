@@ -1,12 +1,48 @@
 ---
 title: "Filters & Actions"
 audience: [developer, agent]
-source_files: ["class-wicket-wp-gf.php"]
+php_class: Wicket_Gf_Main
+source_files: ["class-wicket-wp-gf.php", "includes/class-gf-field-org-search-select.php", "includes/class-gf-field-user-mdp-tags.php", "includes/class-gf-field-api-data-bind.php"]
 ---
 
 # Filters & Actions
 
 ## Filters
+
+### `wicket_gf_org_search_select_html_output`
+
+Filters the HTML output of the Org. Search field before rendering.
+
+**Arguments:**
+- `$html_output` (string) — the generated HTML
+- `$field` (GFWicketFieldOrgSearchSelect) — the field instance
+- `$form` (array) — the form object
+
+---
+
+### `wicket_gf_process_feed_merge_vars`
+
+Filters the merge variables before they are sent to the Wicket API feed processor.
+
+**Arguments:**
+- `$merge_vars` (array) — associative array of field name => value pairs
+- `$form` (array) — the Gravity Forms form object
+- `$entry` (array) — the Gravity Forms entry object
+- `$feed` (array) — the feed configuration
+
+---
+
+### `wicket_gf_widget_profile_component_args`
+
+Filters the component arguments passed to the Wicket profile widget before rendering.
+
+**Arguments:**
+- `$component_args` (array) — the component configuration array
+- `$form` (array) — the Gravity Forms form object
+- `$field` (GFWicketFieldWidgetProfile) — the field instance
+- `$id` (int) — the field ID
+
+---
 
 ### `wicket_gf_user_mdp_tags_default_source`
 

@@ -13,8 +13,8 @@ Integration plugin that connects Wicket's member data platform with Gravity Form
 
 ## Requirements
 
-- **WordPress**: 6.0+
-- **PHP**: 8.2+
+- **WordPress**: 6.6+
+- **PHP**: 8.1+
 - **Gravity Forms**: 2.5+
 - **Composer**: For dependency management
 
@@ -201,30 +201,14 @@ The plugin registers these custom Gravity Forms fields:
 
 | Field Class | Type | Description |
 |------------|------|-------------|
-| `GFWicketFieldOrgSearchSelect` | `wicket_org_search_select` | Organization search dropdown |
-| `GFWicketFieldMdpTags` | `wicket_mdp_tags` | MDP tag selection |
-| `GFWicketFieldProfileWidgets` | `wicket_profile_widgets` | Profile widget display |
-| `GFWicketFieldDataBind` | `wicket_data_bind` | Data binding field |
-| `GFWicketFieldHidden` | `wicket_hidden` | Hidden input field |
-| `GFWicketFieldHtml` | `wicket_html` | HTML content field |
-| `GFWicketFieldValidation` | `wicket_validation` | Validation field |
-| `GFWicketFieldWpData` | `wicket_wp_data` | WordPress data field |
-
-## Hooks & Filters
-
-### Actions
-
-```php
-// Fired after custom fields are registered
-do_action('wicket_gf_fields_registered');
-```
-
-### Filters
-
-```php
-// Modify allowed form statuses for guest checkout
-apply_filters('wicket_gf_allowed_form_statuses', $statuses);
-```
+| `GFWicketFieldOrgSearchSelect` | `wicket_org_search_select` | Organization search and selection |
+| `GFWicketFieldUserMdpTags` | `wicket_user_mdp_tags` | MDP tags for current user |
+| `GFWicketFieldWidgetProfile` | `wicket_widget_profile_individual` | Embedded profile editor widget |
+| `GFWicketFieldWidgetProfileOrg` | `wicket_widget_profile_org` | Embedded organization profile editor |
+| `GFWicketFieldWidgetAdditionalInfo` | `wicket_widget_ai` | Additional information widget |
+| `GFWicketFieldWidgetPrefs` | `wicket_widget_prefs` | Communication preferences widget |
+| `GFDataBindHiddenField` | `wicket_data_hidden` | Hidden field with live data binding |
+| `GFApiDataBindField` | `wicket_api_data_bind` | API data binding field |
 
 ## Documentation
 

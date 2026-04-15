@@ -1,8 +1,9 @@
 ---
 title: "Wicket Gravity Forms Overview"
 audience: [implementer, support]
+wp_admin_path: "Forms → Wicket Settings"
 php_class: Wicket_Gf_Main
-source_files: ["class-wicket-wp-gf.php", "includes/class-gf-mapping-addon.php"]
+db_option_prefix: wicket_gf_
 ---
 
 # Overview
