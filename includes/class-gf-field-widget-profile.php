@@ -61,10 +61,12 @@ class GFWicketFieldWidgetProfile extends GF_Field
     {
         return [
             'label_setting',
+            'admin_label_setting',
             'description_setting',
             'rules_setting',
             'error_message_setting',
             'css_class_setting',
+            'visibility_setting',
             'conditional_logic_field_setting',
             'wicket_widget_profile_setting',
         ];
