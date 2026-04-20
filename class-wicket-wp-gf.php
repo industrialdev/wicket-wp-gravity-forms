@@ -1205,8 +1205,10 @@ class Wicket_Gf_Main
             return $confirmation;
         }
 
+        $redirect_url = GFFormDisplay::get_confirmation_url($active_confirmation, $form, $entry);
+
         return [
-            'redirect' => GFFormDisplay::get_confirmation_url($active_confirmation, $form, $entry),
+            'redirect' => $redirect_url,
         ];
     }
 
