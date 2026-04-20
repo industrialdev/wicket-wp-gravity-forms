@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.30
+ * Version:           2.3.31
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -49,6 +49,7 @@ class Wicket_Gf_Main
 {
     private const CONFIRMATION_TYPE_SELF_REDIRECT = 'self_redirect';
     private const CONFIRMATION_TYPE_WC_CART_REDIRECT = 'wc_cart_redirect';
+    private const CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT = 'wc_checkout_link_redirect';
     private const LEGACY_CONFIRMATION_FIELD_SELF_QUERY_STRING = 'wicket_self_query_string';
 
     /**
@@ -1052,6 +1053,10 @@ class Wicket_Gf_Main
                             'label' => __('Cart redirect', 'wicket-gf'),
                             'value' => self::CONFIRMATION_TYPE_WC_CART_REDIRECT,
                         ];
+                        $field['choices'][] = [
+                            'label' => __('Checkout Link redirect', 'wicket-gf'),
+                            'value' => self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT,
+                        ];
                     }
                 }
 
@@ -1073,6 +1078,10 @@ class Wicket_Gf_Main
 
                             if ($is_woocommerce_active && !in_array(self::CONFIRMATION_TYPE_WC_CART_REDIRECT, $dependency_values, true)) {
                                 $dependency_values[] = self::CONFIRMATION_TYPE_WC_CART_REDIRECT;
+                            }
+
+                            if ($is_woocommerce_active && !in_array(self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT, $dependency_values, true)) {
+                                $dependency_values[] = self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT;
                             }
 
                             $dependency_field['values'] = $dependency_values;
@@ -1115,6 +1124,13 @@ class Wicket_Gf_Main
 
         if ($selected_type === self::CONFIRMATION_TYPE_WC_CART_REDIRECT && $this->is_woocommerce_active()) {
             $confirmation['type'] = self::CONFIRMATION_TYPE_WC_CART_REDIRECT;
+            $confirmation['queryString'] = $query_string;
+
+            return $confirmation;
+        }
+
+        if ($selected_type === self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT && $this->is_woocommerce_active()) {
+            $confirmation['type'] = self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT;
             $confirmation['queryString'] = $query_string;
         }
 
@@ -1168,6 +1184,18 @@ class Wicket_Gf_Main
 
             $active_confirmation['url'] = $cart_url;
             $active_confirmation['queryString'] = rgar($active_confirmation, 'queryString', '');
+        } elseif ($confirmation_type === self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT) {
+            if (!$this->is_woocommerce_active()) {
+                return $confirmation;
+            }
+
+            $checkout_link_url = $this->get_wc_checkout_link_url();
+            if (empty($checkout_link_url)) {
+                return $confirmation;
+            }
+
+            $active_confirmation['url'] = $checkout_link_url;
+            $active_confirmation['queryString'] = rgar($active_confirmation, 'queryString', '');
         } else {
             return $confirmation;
         }
@@ -1185,6 +1213,23 @@ class Wicket_Gf_Main
     private function is_woocommerce_active(): bool
     {
         return class_exists('WooCommerce') && function_exists('wc_get_cart_url');
+    }
+
+    /**
+     * Resolve the WooCommerce checkout-link URL.
+     * WooCommerce Blocks registers 'checkout-link' as a rewrite rule (not a page),
+     * so home_url() is the correct resolver. We guard on the CheckoutLink class
+     * to ensure the feature is actually present before redirecting there.
+     *
+     * @return string Empty string when the WooCommerce Blocks checkout-link feature is unavailable.
+     */
+    private function get_wc_checkout_link_url(): string
+    {
+        if (!class_exists('Automattic\WooCommerce\Blocks\Domain\Services\CheckoutLink')) {
+            return '';
+        }
+
+        return home_url('/checkout-link/');
     }
 
     public static function shortcode($atts)
