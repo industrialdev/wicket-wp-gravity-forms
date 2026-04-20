@@ -1056,6 +1056,11 @@ class Wicket_Gf_Main
                         $field['choices'][] = [
                             'label' => __('Checkout Link redirect', 'wicket-gf'),
                             'value' => self::CONFIRMATION_TYPE_WC_CHECKOUT_LINK_REDIRECT,
+                            'description' => sprintf(
+                                '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                                'https://developer.woocommerce.com/docs/best-practices/urls-and-routing/checkout-urls/',
+                                __('Learn how to use checkout links', 'wicket-gf')
+                            ),
                         ];
                     }
                 }
