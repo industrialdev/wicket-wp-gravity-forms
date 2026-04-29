@@ -6,13 +6,43 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e
 {
+    public static $prefixLengthsPsr4 = array (
+        'W' =>
+        array (
+            'WicketGF\\' => 9,
+        ),
+    );
+
+    public static $prefixDirsPsr4 = array (
+        'WicketGF\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/src',
+        ),
+    );
+
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+        'WicketGF\\Admin' => __DIR__ . '/../..' . '/src/Admin.php',
+        'WicketGF\\Fields\\ApiDataBind' => __DIR__ . '/../..' . '/src/Fields/ApiDataBind.php',
+        'WicketGF\\Fields\\ConsentFieldExtension' => __DIR__ . '/../..' . '/src/Fields/ConsentFieldExtension.php',
+        'WicketGF\\Fields\\DataBindHidden' => __DIR__ . '/../..' . '/src/Fields/DataBindHidden.php',
+        'WicketGF\\Fields\\OrgSearchSelect' => __DIR__ . '/../..' . '/src/Fields/OrgSearchSelect.php',
+        'WicketGF\\Fields\\UserMdpTags' => __DIR__ . '/../..' . '/src/Fields/UserMdpTags.php',
+        'WicketGF\\Fields\\WidgetAdditionalInfo' => __DIR__ . '/../..' . '/src/Fields/WidgetAdditionalInfo.php',
+        'WicketGF\\Fields\\WidgetPrefs' => __DIR__ . '/../..' . '/src/Fields/WidgetPrefs.php',
+        'WicketGF\\Fields\\WidgetProfile' => __DIR__ . '/../..' . '/src/Fields/WidgetProfile.php',
+        'WicketGF\\Fields\\WidgetProfileOrg' => __DIR__ . '/../..' . '/src/Fields/WidgetProfileOrg.php',
+        'WicketGF\\MappingAddOn' => __DIR__ . '/../..' . '/src/MappingAddOn.php',
+        'WicketGF\\NonceHandler' => __DIR__ . '/../..' . '/src/NonceHandler.php',
+        'WicketGF\\ObjectTypeWicket' => __DIR__ . '/../..' . '/src/ObjectTypeWicket.php',
+        'WicketGF\\Validation' => __DIR__ . '/../..' . '/src/Validation.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
+            $loader->prefixLengthsPsr4 = ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e::$prefixDirsPsr4;
             $loader->classMap = ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e::$classMap;
 
         }, null, ClassLoader::class);

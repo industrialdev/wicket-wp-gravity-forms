@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.3.32
+ * Version:           2.4.0
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -38,9 +38,36 @@ if (!in_array('gravityforms/gravityforms.php', apply_filters('active_plugins', g
     add_action('admin_notices', 'wicket_gf_admin_notice');
 }
 
+// Plugin constants
+define('WICKET_GF_VERSION', get_file_data(__FILE__, ['Version' => 'Version'], false)['Version']);
+define('WICKET_GF_PATH', plugin_dir_path(__FILE__));
+define('WICKET_GF_URL', plugin_dir_url(__FILE__));
+define('WICKET_GF_BASENAME', plugin_basename(__FILE__));
+
+// Back-compat alias used by includes/ and mapping addon
 if (!defined('WICKET_WP_GF_VERSION')) {
-    define('WICKET_WP_GF_VERSION', get_plugin_data(plugin_dir_path(__FILE__))['Version']);
+    define('WICKET_WP_GF_VERSION', WICKET_GF_VERSION);
 }
+
+// Composer autoloader
+if (file_exists(WICKET_GF_PATH . 'vendor/autoload.php')) {
+    require_once WICKET_GF_PATH . 'vendor/autoload.php';
+}
+
+use WicketGF\Admin;
+use WicketGF\Fields\ApiDataBind;
+use WicketGF\Fields\ConsentFieldExtension;
+use WicketGF\Fields\DataBindHidden;
+use WicketGF\Fields\OrgSearchSelect;
+use WicketGF\Fields\UserMdpTags;
+use WicketGF\Fields\WidgetAdditionalInfo;
+use WicketGF\Fields\WidgetPrefs;
+use WicketGF\Fields\WidgetProfile;
+use WicketGF\Fields\WidgetProfileOrg;
+use WicketGF\MappingAddOn;
+use WicketGF\NonceHandler;
+use WicketGF\ObjectTypeWicket;
+use WicketGF\Validation;
 
 /**
  * The main Wicket Gravity Forms class.
@@ -103,8 +130,8 @@ class Wicket_Gf_Main
      */
     public function plugin_setup()
     {
-        $this->plugin_url = plugins_url('/', __FILE__);
-        $this->plugin_path = plugin_dir_path(__FILE__);
+        $this->plugin_url = WICKET_GF_URL;
+        $this->plugin_path = WICKET_GF_PATH;
         $this->load_language('wicket-gf');
 
         $this->project_includes();
@@ -122,7 +149,7 @@ class Wicket_Gf_Main
         add_action('add_meta_boxes', [$this, 'override_subscription_metabox_callbacks_on_add'], 1000, 2);
 
         // Initialize Wicket Org Validation
-        $Wicket_Gf_Validation = new Wicket_Gf_Validation();
+        new Validation();
 
         // Add a custom field group for Wicket fields
         add_filter('gform_add_field_buttons', function ($field_groups) {
@@ -207,12 +234,11 @@ class Wicket_Gf_Main
         add_action('rest_api_init', [$this, 'register_rest_routes']);
 
         // Add Options Page for plugin
-        add_action('admin_menu', ['Wicket_Gf_Admin', 'register_options_page'], 20);
-        add_action('admin_init', ['Wicket_Gf_Admin', 'register_settings']);
+        add_action('admin_menu', [Admin::class, 'register_options_page'], 20);
+        add_action('admin_init', [Admin::class, 'register_settings']);
 
         // Add settings link to plugins page listing
-        $plugin = plugin_basename(__FILE__);
-        add_filter("plugin_action_links_$plugin", ['Wicket_Gf_Admin', 'add_settings_link']);
+        add_filter('plugin_action_links_' . WICKET_GF_BASENAME, [Admin::class, 'add_settings_link']);
 
         // Allow all tags in gform fields that WP's wp_kses_post() allows
         add_filter('gform_allowable_tags', '__return_true');
@@ -221,7 +247,7 @@ class Wicket_Gf_Main
         // Modifying GF Entry screens
         add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
         add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
-        add_filter('gform_entry_detail_meta_boxes', ['Wicket_Gf_Admin', 'register_meta_box'], 10, 3);
+        add_filter('gform_entry_detail_meta_boxes', [Admin::class, 'register_meta_box'], 10, 3);
         add_filter('gform_confirmation_settings_fields', [$this, 'extend_confirmation_settings_fields'], 10, 3);
         add_filter('gform_pre_confirmation_save', [$this, 'save_self_redirect_confirmation'], 10, 3);
         add_filter('gform_confirmation', [$this, 'handle_self_redirect_confirmation'], 10, 4);
@@ -254,7 +280,7 @@ class Wicket_Gf_Main
         load_plugin_textdomain(
             $domain,
             false,
-            dirname(plugin_basename(__FILE__)) . '/languages'
+            dirname(WICKET_GF_BASENAME) . '/languages'
         );
     }
 
@@ -602,12 +628,9 @@ class Wicket_Gf_Main
             return;
         }
 
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-mapping-addon.php';
+        GFAddOn::register('WicketGF\\MappingAddOn');
 
-        GFAddOn::register('GFWicketMappingAddOn');
-
-        // handle displaying content for our custom menu when selected
-        add_action('gform_form_settings_page_wicketmap', ['GFWicketMappingAddOn', 'addon_custom_ui'], 20);
+        add_action('gform_form_settings_page_wicketmap', [MappingAddOn::class, 'addon_custom_ui'], 20);
     }
 
     /**
@@ -635,14 +658,13 @@ class Wicket_Gf_Main
     private function project_includes()
     {
         // Debug
-        //require_once plugin_dir_path(__FILE__) . 'includes/class-debug-gravityforms-state.php';
+        //require_once WICKET_GF_PATH . 'includes/class-debug-gravityforms-state.php';
 
-        require_once plugin_dir_path(__FILE__) . 'admin/class-wicket-gf-admin.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gw-update-posts.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-validation.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-state-fix.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-wicket-gf-nonce-handler.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-consent-field-extension.php';
+        require_once WICKET_GF_PATH . 'src/state-fix.php';
+        require_once WICKET_GF_PATH . 'src/helpers.php';
+        require_once WICKET_GF_PATH . 'src/tweaks.php';
+        NonceHandler::init();
+        ConsentFieldExtension::get_instance();
     }
 
     /**
@@ -652,25 +674,20 @@ class Wicket_Gf_Main
      */
     public function register_custom_fields()
     {
-        // Include the custom field classes now that Gravity Forms is loaded
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-org-search-select.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-user-mdp-tags.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-data-bind-hidden.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-api-data-bind.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-profile-org.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-additional-info.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/class-gf-field-widget-prefs.php';
-
         // Register the custom fields
-        GF_Fields::register(new GFWicketFieldOrgSearchSelect());
-        GF_Fields::register(new GFWicketFieldUserMdpTags());
-        GF_Fields::register(new GFWicketFieldWidgetProfile());
-        GF_Fields::register(new GFDataBindHiddenField());
-        GF_Fields::register(new GFApiDataBindField());
-        GF_Fields::register(new GFWicketFieldWidgetProfileOrg());
-        GF_Fields::register(new GFWicketFieldWidgetAdditionalInfo());
-        GF_Fields::register(new GFWicketFieldWidgetPrefs());
+        GF_Fields::register(new OrgSearchSelect());
+        GF_Fields::register(new UserMdpTags());
+        GF_Fields::register(new WidgetProfile());
+        GF_Fields::register(new DataBindHidden());
+        GF_Fields::register(new ApiDataBind());
+        GF_Fields::register(new WidgetProfileOrg());
+        GF_Fields::register(new WidgetAdditionalInfo());
+        GF_Fields::register(new WidgetPrefs());
+
+        WidgetProfile::init();
+        WidgetProfileOrg::init();
+        WidgetAdditionalInfo::init();
+        WidgetPrefs::init();
     }
 
     /**
@@ -682,8 +699,7 @@ class Wicket_Gf_Main
     {
         // Only initialize this plugin if Populate Anything plugin is active and the wicket_api_client() function exists
         if (class_exists('GP_Populate_Anything') && class_exists('GPPA_Object_Type') && function_exists('wicket_api_client')) {
-            require_once plugin_dir_path(__FILE__) . 'includes/class-object-type-wicket.php';
-            gp_populate_anything()->register_object_type('wicket', 'GPPA_Object_Type_Wicket');
+            \gp_populate_anything()->register_object_type('wicket', ObjectTypeWicket::class);
         }
     }
 
@@ -730,7 +746,7 @@ class Wicket_Gf_Main
         }
 
         if ($should_enqueue) {
-            $plugin_url = plugin_dir_url(__FILE__);
+            $plugin_url = WICKET_GF_URL;
             wp_enqueue_script(
                 'wicket-gf-hidden-data-bind',
                 $plugin_url . 'assets/js/wicket-gf-hidden-data-bind.js',
@@ -760,8 +776,8 @@ class Wicket_Gf_Main
         }
 
         // Check if any API Data Bind fields need the frontend script
-        if (GFApiDataBindField::should_enqueue_frontend_js($form)) {
-            $plugin_url = plugin_dir_url(__FILE__);
+        if (ApiDataBind::should_enqueue_frontend_js($form)) {
+            $plugin_url = WICKET_GF_URL;
 
             wp_enqueue_script(
                 'wicket-gf-api-data-bind',
@@ -839,41 +855,24 @@ class Wicket_Gf_Main
         self::gf_editor_global_custom_fields($position, $form_id);
 
         // Call each field's custom settings (only fields that have them)
-        if (class_exists('GFWicketFieldOrgSearchSelect')) {
-            GFWicketFieldOrgSearchSelect::custom_settings($position, $form_id);
-        }
+        OrgSearchSelect::custom_settings($position, $form_id);
 
-        if (class_exists('GFDataBindHiddenField')) {
-            GFDataBindHiddenField::custom_settings($position, $form_id);
-        }
-        if (class_exists('GFApiDataBindField')) {
-            GFApiDataBindField::custom_settings($position, $form_id);
-        }
+        DataBindHidden::custom_settings($position, $form_id);
 
-        if (class_exists('GFWicketFieldUserMdpTags')) {
-            GFWicketFieldUserMdpTags::custom_settings($position, $form_id);
-        }
+        ApiDataBind::custom_settings($position, $form_id);
 
-        if (class_exists('GFWicketFieldWidgetProfile')) {
-            GFWicketFieldWidgetProfile::custom_settings($position, $form_id);
-        }
+        UserMdpTags::custom_settings($position, $form_id);
 
-        if (class_exists('GFWicketFieldWidgetProfileOrg')) {
-            GFWicketFieldWidgetProfileOrg::custom_settings($position, $form_id);
-        }
+        WidgetProfile::custom_settings($position, $form_id);
 
-        if (class_exists('GFWicketFieldWidgetAdditionalInfo')) {
-            GFWicketFieldWidgetAdditionalInfo::custom_settings($position, $form_id);
-        }
+        WidgetProfileOrg::custom_settings($position, $form_id);
 
-        if (class_exists('GFWicketFieldWidgetPrefs')) {
-            GFWicketFieldWidgetPrefs::custom_settings($position, $form_id);
-        }
+        WidgetAdditionalInfo::custom_settings($position, $form_id);
+
+        WidgetPrefs::custom_settings($position, $form_id);
 
         // Add consent field extension settings
-        if (class_exists('GFWicket_Consent_Field_Extension')) {
-            GFWicket_Consent_Field_Extension::custom_settings($position, $form_id);
-        }
+        ConsentFieldExtension::custom_settings($position, $form_id);
     }
 
     /**
@@ -884,33 +883,23 @@ class Wicket_Gf_Main
     private function output_field_editor_scripts()
     {
         // Call each field's editor scripts
-        if (class_exists('GFWicketFieldOrgSearchSelect')) {
-            GFWicketFieldOrgSearchSelect::editor_script();
-        }
+        OrgSearchSelect::editor_script();
 
-        if (class_exists('GFDataBindHiddenField')) {
-            GFDataBindHiddenField::editor_script();
-        }
+        DataBindHidden::editor_script();
 
-        if (class_exists('GFWicketFieldUserMdpTags')) {
-            GFWicketFieldUserMdpTags::editor_script();
-        }
+        ApiDataBind::editor_script();
 
-        if (class_exists('GFWicketFieldWidgetProfileOrg')) {
-            GFWicketFieldWidgetProfileOrg::editor_script();
-        }
+        UserMdpTags::editor_script();
 
-        if (class_exists('GFWicketFieldWidgetAdditionalInfo')) {
-            GFWicketFieldWidgetAdditionalInfo::editor_script();
-        }
+        WidgetProfile::editor_script();
 
-        if (class_exists('GFWicketFieldWidgetPrefs')) {
-            GFWicketFieldWidgetPrefs::editor_script();
-        }
+        WidgetProfileOrg::editor_script();
 
-        if (class_exists('GFWicket_Consent_Field_Extension')) {
-            GFWicket_Consent_Field_Extension::editor_script();
-        }
+        WidgetAdditionalInfo::editor_script();
+
+        WidgetPrefs::editor_script();
+
+        ConsentFieldExtension::editor_script();
     }
 
     public static function gf_editor_global_custom_fields($position, $form_id)
@@ -930,6 +919,39 @@ class Wicket_Gf_Main
                 <label for="hide_label" class="inline">Hide Label</label>
             </li>
 
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_enable_mdp_mapping field_setting">
+                <style>
+                    /* Override GF's field_setting hiding for our global Wicket MDP settings */
+                    .wicket_global_custom_settings_enable_mdp_mapping,
+                    .wicket_global_custom_settings_mdp_target_object,
+                    .wicket_global_custom_settings_mdp_target_field {
+                        display: block !important;
+                    }
+                </style>
+                <input type="checkbox" id="wicket_enable_mdp_mapping"
+                    onclick="SetFieldProperty('wicket_enable_mdp_mapping', this.checked);"
+                    onkeypress="SetFieldProperty('wicket_enable_mdp_mapping', this.checked);">
+                <label for="wicket_enable_mdp_mapping" class="inline"><?php esc_html_e('Enable MDP Mapping', 'wicket-gf'); ?></label>
+            </li>
+
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_target_object field_setting" style="display: none !important;">
+                <label for="wicket_mdp_target_object"><?php esc_html_e('Target Object', 'wicket-gf'); ?></label>
+                <select id="wicket_mdp_target_object" onchange="SetFieldProperty('wicket_mdp_target_object', this.value);">
+                    <option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>
+                    <option value="person_profile"><?php esc_html_e('Person Profile', 'wicket-gf'); ?></option>
+                    <option value="additional_info"><?php esc_html_e('Additional Info', 'wicket-gf'); ?></option>
+                    <option value="preferences"><?php esc_html_e('Preferences', 'wicket-gf'); ?></option>
+                    <option value="org_profile"><?php esc_html_e('Org Profile', 'wicket-gf'); ?></option>
+                </select>
+            </li>
+
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_target_field field_setting" style="display: none !important;">
+                <label for="wicket_mdp_target_field"><?php esc_html_e('Target Field', 'wicket-gf'); ?></label>
+                <select id="wicket_mdp_target_field" onchange="SetFieldProperty('wicket_mdp_target_field', this.value);">
+                    <option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>
+                </select>
+            </li>
+
         <?php echo ob_get_clean();
         }
     }
@@ -939,9 +961,97 @@ class Wicket_Gf_Main
         // Action to inject supporting script to the form editor page to populate our custom settings
         ?>
         <script type='text/javascript'>
-            // Binding to the load field settings event to initialize the checkbox
+            // Static field definitions per target object (sourced from MDP API PATCH schema).
+            // Additional Info and Preferences are schema-driven; Task 2.1 will replace those with dynamic discovery.
+            var wicketMdpTargetFields = {
+                person_profile: [
+                    { value: 'attributes.given_name',       label: '<?php esc_html_e('First Name', 'wicket-gf'); ?>' },
+                    { value: 'attributes.family_name',      label: '<?php esc_html_e('Last Name', 'wicket-gf'); ?>' },
+                    { value: 'attributes.additional_name',  label: '<?php esc_html_e('Additional Name', 'wicket-gf'); ?>' },
+                    { value: 'attributes.alternate_name',   label: '<?php esc_html_e('Alternate Name', 'wicket-gf'); ?>' },
+                    { value: 'attributes.maiden_name',      label: '<?php esc_html_e('Maiden Name', 'wicket-gf'); ?>' },
+                    { value: 'attributes.gender',           label: '<?php esc_html_e('Gender', 'wicket-gf'); ?>' },
+                    { value: 'attributes.honorific_prefix', label: '<?php esc_html_e('Honorific Prefix', 'wicket-gf'); ?>' },
+                    { value: 'attributes.honorific_suffix', label: '<?php esc_html_e('Honorific Suffix', 'wicket-gf'); ?>' },
+                    { value: 'attributes.preferred_pronoun',label: '<?php esc_html_e('Preferred Pronoun', 'wicket-gf'); ?>' },
+                    { value: 'attributes.job_title',        label: '<?php esc_html_e('Job Title', 'wicket-gf'); ?>' },
+                    { value: 'attributes.birth_date',       label: '<?php esc_html_e('Birth Date', 'wicket-gf'); ?>' },
+                    { value: 'attributes.language',         label: '<?php esc_html_e('Language', 'wicket-gf'); ?>' },
+                    { value: 'attributes.nickname',         label: '<?php esc_html_e('Nickname', 'wicket-gf'); ?>' },
+                    { value: 'attributes.job_function',     label: '<?php esc_html_e('Job Function', 'wicket-gf'); ?>' },
+                    { value: 'attributes.job_level',        label: '<?php esc_html_e('Job Level', 'wicket-gf'); ?>' }
+                ],
+                additional_info: [],
+                preferences:     [],
+                org_profile: [
+                    { value: 'attributes.legal_name', label: '<?php esc_html_e('Legal Name', 'wicket-gf'); ?>' }
+                ]
+            };
+
+            // Toggle a conditional MDP setting row. Uses setProperty('important') so it beats
+            // the 'display: block !important' class rule that keeps these rows visible to GF.
+            function wicketMdpToggle($el, show) {
+                if (show) {
+                    $el[0].style.removeProperty('display');
+                } else {
+                    $el[0].style.setProperty('display', 'none', 'important');
+                }
+            }
+
+            function wicketPopulateMdpTargetFields(targetObject, selectedValue) {
+                var $select = jQuery('#wicket_mdp_target_field');
+                var $row    = jQuery('.wicket_global_custom_settings_mdp_target_field');
+                var fields  = wicketMdpTargetFields[targetObject] || [];
+
+                $select.empty().append('<option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>');
+                jQuery.each(fields, function(i, f) {
+                    $select.append('<option value="' + f.value + '">' + f.label + '</option>');
+                });
+                if (selectedValue) {
+                    $select.val(selectedValue);
+                }
+                wicketMdpToggle($row, fields.length > 0);
+            }
+
             jQuery(document).on('gform_load_field_settings', function(event, field, form){
-                jQuery( '#hide_label' ).prop( 'checked', Boolean( rgar( field, 'hide_label' ) ) );
+                jQuery('#hide_label').prop('checked', Boolean(rgar(field, 'hide_label')));
+
+                var mdpEnabled   = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
+                var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
+                var targetField  = rgar(field, 'wicket_mdp_target_field')  || '';
+
+                jQuery('#wicket_enable_mdp_mapping').prop('checked', mdpEnabled);
+                wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_object'), mdpEnabled);
+
+                jQuery('#wicket_mdp_target_object').val(targetObject);
+                if (mdpEnabled && targetObject) {
+                    wicketPopulateMdpTargetFields(targetObject, targetField);
+                } else {
+                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
+                }
+            });
+
+            jQuery(document).on('change', '#wicket_enable_mdp_mapping', function(){
+                var enabled = this.checked;
+                wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_object'), enabled);
+                if (!enabled) {
+                    jQuery('#wicket_mdp_target_object').val('');
+                    SetFieldProperty('wicket_mdp_target_object', '');
+                    jQuery('#wicket_mdp_target_field').val('');
+                    SetFieldProperty('wicket_mdp_target_field', '');
+                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
+                }
+            });
+
+            jQuery(document).on('change', '#wicket_mdp_target_object', function(){
+                jQuery('#wicket_mdp_target_field').val('');
+                SetFieldProperty('wicket_mdp_target_field', '');
+                var val = this.value;
+                if (val) {
+                    wicketPopulateMdpTargetFields(val, '');
+                } else {
+                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
+                }
             });
         </script>
         <?php
@@ -969,7 +1079,7 @@ class Wicket_Gf_Main
      */
     public function populate_user_mdp_tags_dynamic_parameter($value = ''): string
     {
-        if (!class_exists('GFWicketFieldUserMdpTags')) {
+        if (!class_exists(UserMdpTags::class)) {
             return '';
         }
 
@@ -980,7 +1090,7 @@ class Wicket_Gf_Main
             $default_source = 'combined';
         }
 
-        return GFWicketFieldUserMdpTags::get_user_tags_by_source((string) $default_source);
+        return UserMdpTags::get_user_tags_by_source((string) $default_source);
     }
 
     public static function update_kses_tags($allowedposttags)
@@ -1341,10 +1451,6 @@ add_action(
     [Wicket_Gf_Main::get_instance(), 'plugin_setup'],
     11
 );
-
-// General Helpers
-require_once plugin_dir_path(__FILE__) . 'includes/helpers.php';
-require_once plugin_dir_path(__FILE__) . 'includes/tweaks.php';
 
 /*
  * Test cleanup endpoint for browser tests.

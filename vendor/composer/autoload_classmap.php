@@ -7,4 +7,18 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+    'WicketGF\\Admin' => $baseDir . '/src/Admin.php',
+    'WicketGF\\Fields\\ApiDataBind' => $baseDir . '/src/Fields/ApiDataBind.php',
+    'WicketGF\\Fields\\ConsentFieldExtension' => $baseDir . '/src/Fields/ConsentFieldExtension.php',
+    'WicketGF\\Fields\\DataBindHidden' => $baseDir . '/src/Fields/DataBindHidden.php',
+    'WicketGF\\Fields\\OrgSearchSelect' => $baseDir . '/src/Fields/OrgSearchSelect.php',
+    'WicketGF\\Fields\\UserMdpTags' => $baseDir . '/src/Fields/UserMdpTags.php',
+    'WicketGF\\Fields\\WidgetAdditionalInfo' => $baseDir . '/src/Fields/WidgetAdditionalInfo.php',
+    'WicketGF\\Fields\\WidgetPrefs' => $baseDir . '/src/Fields/WidgetPrefs.php',
+    'WicketGF\\Fields\\WidgetProfile' => $baseDir . '/src/Fields/WidgetProfile.php',
+    'WicketGF\\Fields\\WidgetProfileOrg' => $baseDir . '/src/Fields/WidgetProfileOrg.php',
+    'WicketGF\\MappingAddOn' => $baseDir . '/src/MappingAddOn.php',
+    'WicketGF\\NonceHandler' => $baseDir . '/src/NonceHandler.php',
+    'WicketGF\\ObjectTypeWicket' => $baseDir . '/src/ObjectTypeWicket.php',
+    'WicketGF\\Validation' => $baseDir . '/src/Validation.php',
 );

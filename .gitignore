@@ -13,3 +13,4 @@ tests/Browser/screenshots
 .yarn/releases/
 .yarn/install-state.gz
 .yarn/unplugged/
+/.pi-lens

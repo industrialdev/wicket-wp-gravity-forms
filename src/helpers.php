@@ -32,10 +32,10 @@ if (!function_exists('wicket_get_gf_mapping_addon')) {
     /**
      * Access the singleton instance of the Wicket Gravity Forms mapping add-on.
      *
-     * @return GFWicketMappingAddOn|null Mapping add-on instance when available, null otherwise.
+     * @return WicketGF\MappingAddOn|null Mapping add-on instance when available, null otherwise.
      */
     function wicket_get_gf_mapping_addon()
     {
-        return GFWicketMappingAddOn::get_instance();
+        return WicketGF\MappingAddOn::get_instance();
     }
 }

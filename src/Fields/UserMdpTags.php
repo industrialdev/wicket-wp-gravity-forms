@@ -2,47 +2,33 @@
 
 declare(strict_types=1);
 
+namespace WicketGF\Fields;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
- * Class GFWicketFieldUserMdpTags.
- *
- * A custom Gravity Forms field that automatically retrieves and stores
- * the current user's tags from Wicket as a comma-separated list.
+ * Custom GF field that stores the current user's MDP tags as a comma-separated hidden value.
  */
-class GFWicketFieldUserMdpTags extends GF_Field
+class UserMdpTags extends \GF_Field
 {
-    /**
-     * Field type identifier.
-     */
     public $type = 'wicket_user_mdp_tags';
 
-    /**
-     * Constructor.
-     */
     public function __construct($data = [])
     {
         parent::__construct($data);
 
-        // Set default label for admin
         if (empty($this->label)) {
-            /*
-            If strings are made translatable at the constructor, WP will throw an error:
-            Function _load_textdomain_just_in_time was called incorrectly. Translation loading for the wicket-gf domain was triggered too early. This is usually an indicator for some code in the plugin or theme running too early. Translations should be loaded at the init action or later.
-            */
-            $this->label = 'Wicket User Tags (Hidden)'; // Default non-translated label
+            $this->label = 'Wicket User Tags (Hidden)';
         }
     }
 
-    /**
-     * Return the field title for the form editor.
-     */
     public function get_form_editor_field_title()
     {
         return esc_attr__('Wicket User Tags', 'wicket-gf');
     }
 
-    /**
-     * Define field button properties for the form editor.
-     */
     public function get_form_editor_button()
     {
         return [
@@ -51,9 +37,6 @@ class GFWicketFieldUserMdpTags extends GF_Field
         ];
     }
 
-    /**
-     * Define the fields settings for the form editor.
-     */
     public function get_form_editor_field_settings()
     {
         return [
@@ -69,9 +52,6 @@ class GFWicketFieldUserMdpTags extends GF_Field
         ];
     }
 
-    /**
-     * Default editor values when field is inserted.
-     */
     public function get_form_editor_inline_script_on_page_render(): string
     {
         return sprintf(
@@ -85,17 +65,11 @@ class GFWicketFieldUserMdpTags extends GF_Field
         );
     }
 
-    /**
-     * Returns the field's form editor description.
-     */
     public function get_form_editor_field_description()
     {
-        return esc_attr__('Automatically retrieves the current user\'s tags from Wicket and stores them as a comma-separated list.', 'wicket-gf');
+        return esc_attr__("Automatically retrieves the current user's tags from Wicket and stores them as a comma-separated list.", 'wicket-gf');
     }
 
-    /**
-     * Configure custom field settings in the form editor.
-     */
     public static function custom_settings($position, $form_id): void
     {
         if ($position !== 25) {
@@ -111,9 +85,7 @@ class GFWicketFieldUserMdpTags extends GF_Field
                 <option value="segment_tags"><?php esc_html_e('Active/Segment Tags', 'wicket-gf'); ?></option>
                 <option value="tags"><?php esc_html_e('Standard Tags (tags)', 'wicket-gf'); ?></option>
             </select>
-            <p class="description">
-                <?php esc_html_e('Select which tag list is stored in this field.', 'wicket-gf'); ?>
-            </p>
+            <p class="description"><?php esc_html_e('Select which tag list is stored in this field.', 'wicket-gf'); ?></p>
             <p class="description" style="margin-top: 8px;">
                 <strong><?php esc_html_e('Note:', 'wicket-gf'); ?></strong>
                 <?php esc_html_e('Changing this source changes which tags are available to conditional logic. If rules unexpectedly stop matching, switch back to Combined or align your rules with the selected source.', 'wicket-gf'); ?>
@@ -127,16 +99,13 @@ class GFWicketFieldUserMdpTags extends GF_Field
                 <option value="hidden"><?php esc_html_e('Hidden (Default)', 'wicket-gf'); ?></option>
                 <option value="debug_disabled"><?php esc_html_e('Debug: Show Disabled Input', 'wicket-gf'); ?></option>
             </select>
-            <p class="description">
-                <?php esc_html_e('Use Debug mode temporarily to visualize pulled tags on the frontend. Keep Hidden in production.', 'wicket-gf'); ?>
-            </p>
+            <p class="description"><?php esc_html_e('Use Debug mode temporarily to visualize pulled tags on the frontend. Keep Hidden in production.', 'wicket-gf'); ?></p>
         </li>
         <script type="text/javascript">
             jQuery(document).on('gform_load_field_settings', function(event, field){
                 if (field.type !== 'wicket_user_mdp_tags') {
                     return;
                 }
-
                 jQuery('#mdpTagSource').val(field.mdpTagSource || 'combined');
                 jQuery('#mdpTagDisplayMode').val(field.mdpTagDisplayMode || 'hidden');
             });
@@ -146,30 +115,19 @@ class GFWicketFieldUserMdpTags extends GF_Field
                     if (field.type !== 'wicket_user_mdp_tags') {
                         return;
                     }
-
-                    if (!field.mdpTagSource) {
-                        field.mdpTagSource = 'combined';
-                    }
-                    if (!field.mdpTagDisplayMode) {
-                        field.mdpTagDisplayMode = 'hidden';
-                    }
+                    if (!field.mdpTagSource) { field.mdpTagSource = 'combined'; }
+                    if (!field.mdpTagDisplayMode) { field.mdpTagDisplayMode = 'hidden'; }
                 });
             }
         </script>
         <?php
     }
 
-    /**
-     * Load custom settings values into the form editor UI.
-     */
     public static function editor_script(): void
     {
-        // JavaScript is embedded in custom_settings() for reliable editor lifecycle handling.
+        // JavaScript embedded in custom_settings()
     }
 
-    /**
-     * Returns the field input markup for the form editor.
-     */
     public function get_field_input($form, $value = '', $entry = null)
     {
         if ($this->is_form_editor()) {
@@ -178,14 +136,9 @@ class GFWicketFieldUserMdpTags extends GF_Field
 
         $source = $this->mdpTagSource ?? 'combined';
         $value = self::get_user_tags_by_source((string) $source);
-
-        // Build the input
         $id = (int) $this->id;
         $field_id = $form['id'] . '_' . $id;
 
-        $display_mode = $this->mdpTagDisplayMode ?? 'hidden';
-
-        // Always keep a hidden input so value is available for submission/conditional logic.
         $hidden_input = sprintf(
             "<input name='input_%d' id='input_%s' type='hidden' value='%s' class='gform_hidden'/>",
             $id,
@@ -193,38 +146,30 @@ class GFWicketFieldUserMdpTags extends GF_Field
             esc_attr($value)
         );
 
-        if ($display_mode === 'debug_disabled') {
-            $debug_id = 'input_' . $field_id . '_debug';
-            $debug_summary = self::build_debug_summary($source, $value);
-            $html = sprintf(
-                "<div class='ginput_container ginput_container_text wicket_mdp_tags_debug'>%s<input id='%s' type='text' value='%s' class='medium' disabled='disabled' readonly='readonly' /><div style='margin-top:6px;font-size:12px;color:#666;'><code>%s</code></div></div>",
+        if (($this->mdpTagDisplayMode ?? 'hidden') === 'debug_disabled') {
+            $debug_summary = self::build_debug_summary((string) $source, $value);
+
+            return sprintf(
+                "<div class='ginput_container ginput_container_text wicket_mdp_tags_debug'>%s<input id='input_%s_debug' type='text' value='%s' class='medium' disabled='disabled' readonly='readonly' /><div style='margin-top:6px;font-size:12px;color:#666;'><code>%s</code></div></div>",
                 $hidden_input,
-                esc_attr($debug_id),
+                esc_attr($field_id),
                 esc_attr($value),
                 esc_html($debug_summary)
             );
-        } else {
-            $html = sprintf(
-                "<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style><div style='display:none;' class='ginput_container ginput_container_hidden'>%s</div>",
-                $field_id,
-                $hidden_input
-            );
         }
 
-        return $html;
+        return sprintf(
+            "<style>.gform_wrapper.gravity-theme label[for='input_%s'].gfield_label { display: none; }</style><div style='display:none;' class='ginput_container ginput_container_hidden'>%s</div>",
+            $field_id,
+            $hidden_input
+        );
     }
 
-    /**
-     * Enable conditional logic support explicitly.
-     */
     public function is_conditional_logic_supported(): bool
     {
         return true;
     }
 
-    /**
-     * Get the current user's tags from Wicket.
-     */
     public static function get_user_tags_by_source(string $source = 'combined'): string
     {
         $person = self::get_current_person_resource();
@@ -235,32 +180,21 @@ class GFWicketFieldUserMdpTags extends GF_Field
         $segment_tags = self::extract_tag_array($person, 'segment_tags');
         $tags = self::extract_tag_array($person, 'tags');
 
-        switch ($source) {
-            case 'tags':
-                $selected_tags = $tags;
-                break;
-            case 'combined':
-                $selected_tags = array_values(array_unique(array_merge($segment_tags, $tags)));
-                break;
-            case 'segment_tags':
-            default:
-                $selected_tags = $segment_tags;
-                break;
-        }
+        $selected = match ($source) {
+            'tags'        => $tags,
+            'combined'    => array_values(array_unique(array_merge($segment_tags, $tags))),
+            default       => $segment_tags,
+        };
 
-        return implode(',', $selected_tags);
+        return implode(',', $selected);
     }
 
-    /**
-     * Retrieve current person from available helpers.
-     */
-    private static function get_current_person_resource()
+    private static function get_current_person_resource(): mixed
     {
-        // Prefer explicit fetch by UUID (same pattern used by other "modern" fields in this plugin).
         if (function_exists('wicket_current_person_uuid') && function_exists('wicket_get_person_by_id')) {
-            $person_uuid = wicket_current_person_uuid();
-            if (!empty($person_uuid)) {
-                $person = wicket_get_person_by_id($person_uuid);
+            $uuid = wicket_current_person_uuid();
+            if (!empty($uuid)) {
+                $person = wicket_get_person_by_id($uuid);
                 if ($person) {
                     return $person;
                 }
@@ -275,11 +209,11 @@ class GFWicketFieldUserMdpTags extends GF_Field
         }
 
         if (function_exists('wicket_current_person_uuid') && function_exists('wicket_get_person_profile')) {
-            $person_uuid = wicket_current_person_uuid();
-            if (!empty($person_uuid)) {
-                $person_profile = wicket_get_person_profile($person_uuid);
-                if (!empty($person_profile)) {
-                    return $person_profile;
+            $uuid = wicket_current_person_uuid();
+            if (!empty($uuid)) {
+                $profile = wicket_get_person_profile($uuid);
+                if (!empty($profile)) {
+                    return $profile;
                 }
             }
         }
@@ -287,51 +221,38 @@ class GFWicketFieldUserMdpTags extends GF_Field
         return null;
     }
 
-    /**
-     * Extract and normalize tag arrays from a person resource.
-     *
-     * @param mixed  $person Person object or response array.
-     * @param string $key    Tag key to extract.
-     * @return array<int, string>
-     */
-    private static function extract_tag_array($person, string $key): array
+    private static function extract_tag_array(mixed $person, string $key): array
     {
-        $raw_value = null;
+        $raw = null;
 
         if (is_object($person)) {
             if (method_exists($person, 'getAttribute')) {
-                $raw_value = $person->getAttribute($key);
+                $raw = $person->getAttribute($key);
             } elseif (property_exists($person, $key)) {
-                $raw_value = $person->{$key};
+                $raw = $person->{$key};
             } elseif (property_exists($person, 'attributes') && is_array($person->attributes) && array_key_exists($key, $person->attributes)) {
-                $raw_value = $person->attributes[$key];
+                $raw = $person->attributes[$key];
             } elseif (method_exists($person, 'toJsonAPI')) {
                 try {
-                    $response = $person->toJsonAPI();
-                    $raw_value = $response['data']['attributes'][$key]
-                        ?? $response['attributes'][$key]
-                        ?? null;
-                } catch (Exception $e) {
-                    $raw_value = null;
+                    $r = $person->toJsonAPI();
+                    $raw = $r['data']['attributes'][$key] ?? $r['attributes'][$key] ?? null;
+                } catch (\Exception $e) {
+                    $raw = null;
                 }
             }
         } elseif (is_array($person)) {
-            $raw_value = $person['data']['attributes'][$key]
-                ?? $person['attributes'][$key]
-                ?? $person[$key]
-                ?? null;
+            $raw = $person['data']['attributes'][$key] ?? $person['attributes'][$key] ?? $person[$key] ?? null;
         }
 
-        if (!is_array($raw_value)) {
+        if (!is_array($raw)) {
             return [];
         }
 
         $tags = [];
-        foreach ($raw_value as $tag) {
+        foreach ($raw as $tag) {
             if (!is_scalar($tag)) {
                 continue;
             }
-
             $normalized = trim((string) $tag);
             if ($normalized !== '') {
                 $tags[] = $normalized;
@@ -341,70 +262,20 @@ class GFWicketFieldUserMdpTags extends GF_Field
         return array_values(array_unique($tags));
     }
 
-    /**
-     * Extract attribute keys for debug logging.
-     *
-     * @param mixed $person
-     * @return array<int, string>
-     */
-    private static function extract_attribute_keys($person): array
-    {
-        if (is_array($person)) {
-            $attributes = $person['data']['attributes'] ?? $person['attributes'] ?? [];
-            if (is_array($attributes)) {
-                return array_keys($attributes);
-            }
-
-            return [];
-        }
-
-        if (is_object($person) && method_exists($person, 'toJsonAPI')) {
-            try {
-                $response = $person->toJsonAPI();
-                $attributes = $response['data']['attributes'] ?? $response['attributes'] ?? [];
-                if (is_array($attributes)) {
-                    return array_keys($attributes);
-                }
-            } catch (Exception $e) {
-                return [];
-            }
-        }
-
-        return [];
-    }
-
-    /**
-     * Build a concise debug summary visible in debug display mode.
-     *
-     * @param string $source
-     * @param string $resolved_value
-     * @return string
-     */
     private static function build_debug_summary(string $source, string $resolved_value): string
     {
-        $person_uuid = function_exists('wicket_current_person_uuid') ? (string) wicket_current_person_uuid() : '';
-
-        $by_id = null;
-        if ($person_uuid !== '' && function_exists('wicket_get_person_by_id')) {
-            $by_id = wicket_get_person_by_id($person_uuid);
-        }
-
+        $uuid = function_exists('wicket_current_person_uuid') ? (string) wicket_current_person_uuid() : '';
+        $by_id = ($uuid !== '' && function_exists('wicket_get_person_by_id')) ? wicket_get_person_by_id($uuid) : null;
         $current = function_exists('wicket_current_person') ? wicket_current_person() : null;
+        $profile = ($uuid !== '' && function_exists('wicket_get_person_profile')) ? wicket_get_person_profile($uuid) : null;
 
-        $profile = null;
-        if ($person_uuid !== '' && function_exists('wicket_get_person_profile')) {
-            $profile = wicket_get_person_profile($person_uuid);
-        }
-
-        $parts = [
+        return implode(' | ', [
             'src=' . $source,
-            'uuid=' . ($person_uuid !== '' ? $person_uuid : 'none'),
+            'uuid=' . ($uuid !== '' ? $uuid : 'none'),
             'resolved=' . ($resolved_value !== '' ? $resolved_value : '(empty)'),
             'by_id(t=' . count(self::extract_tag_array($by_id, 'tags')) . ',s=' . count(self::extract_tag_array($by_id, 'segment_tags')) . ')',
             'current(t=' . count(self::extract_tag_array($current, 'tags')) . ',s=' . count(self::extract_tag_array($current, 'segment_tags')) . ')',
             'profile(t=' . count(self::extract_tag_array($profile, 'tags')) . ',s=' . count(self::extract_tag_array($profile, 'segment_tags')) . ')',
-        ];
-
-        return implode(' | ', $parts);
+        ]);
     }
 }

@@ -1,31 +1,23 @@
 <?php
 
-/**
- * Wicket Organization Validation Class.
- */
+declare(strict_types=1);
 
-// Exit if accessed directly.
+namespace WicketGF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class Wicket_Gf_Validation
+/**
+ * Wicket Organization Validation — validates org profile fields on GF form submission.
+ */
+class Validation
 {
-    /**
-     * Initialize the validation hooks.
-     */
     public function __construct()
     {
         add_filter('gform_validation', [$this, 'validate_org_profile']);
     }
 
-    /**
-     * Validates Wicket Widget Profile Org fields before allowing multi-step form progression
-     * or form submission.
-     *
-     * @param array $validation_result The validation result array
-     * @return array Modified validation result
-     */
     public function validate_org_profile($validation_result)
     {
         $form = $validation_result['form'];
@@ -34,7 +26,6 @@ class Wicket_Gf_Validation
         Wicket()->log()->debug('Org validation called for form ' . $form_id, ['source' => 'gravityforms-state-debug']);
         Wicket()->log()->debug('Initial validation result: ' . var_export($validation_result['is_valid'], true), ['source' => 'gravityforms-state-debug']);
 
-        // Debug what might be causing the initial validation result to be false
         if (!$validation_result['is_valid']) {
             $failed_fields = [];
             foreach ($form['fields'] as $field) {
@@ -45,33 +36,27 @@ class Wicket_Gf_Validation
             Wicket()->log()->debug('Org validation: Initial validation false - failed fields: ' . implode(', ', $failed_fields), ['source' => 'gravityforms-state-debug']);
         }
 
-        // Check if this is a multi-step form and we're trying to go to the next step
         $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
         $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
 
         Wicket()->log()->debug('Org validation pages: current=' . $current_page . ' target=' . $target_page, ['source' => 'gravityforms-state-debug']);
 
-        // Check if the user explicitly clicked the 'Next' button
         $next_button_clicked = rgpost('gform_save') === '1' || (rgpost('gform_next_button') !== null);
 
         Wicket()->log()->debug('Next button clicked: ' . var_export($next_button_clicked, true), ['source' => 'gravityforms-state-debug']);
 
-        // Determine if we should validate (either moving to next step or submitting)
         $should_validate = false;
 
-        // If we're moving forward in a multi-step form and the user clicked 'Next'
         if ($target_page > $current_page && $next_button_clicked) {
             $should_validate = true;
         }
 
-        // If we're submitting the form (target_page is 0 on submission)
         if ($target_page == 0) {
             $should_validate = true;
         }
 
         Wicket()->log()->debug('Should validate: ' . var_export($should_validate, true), ['source' => 'gravityforms-state-debug']);
 
-        // Detect if form is multi-step (has page fields)
         $is_multi_step = false;
         if (!empty($form['fields']) && is_array($form['fields'])) {
             foreach ($form['fields'] as $f) {
@@ -82,7 +67,6 @@ class Wicket_Gf_Validation
             }
         }
 
-        // If multi-step and on final submit, skip org profile validation entirely (handled earlier on its page)
         if ($is_multi_step && $target_page == 0) {
             Wicket()->log()->debug('Org validation: Multi-step final submit, skipping validation', ['source' => 'gravityforms-state-debug']);
             $validation_result['form'] = $form;
@@ -90,11 +74,10 @@ class Wicket_Gf_Validation
             return $validation_result;
         }
 
-        // If we should validate, check all Wicket org profile fields
         if ($should_validate) {
             Wicket()->log()->debug('Org validation: Starting field validation', ['source' => 'gravityforms-state-debug']);
             $org_fields_found = 0;
-            $org_validation_failed = false;  // Track if WE specifically failed validation
+            $org_validation_failed = false;
 
             foreach ($form['fields'] as &$field) {
                 if ($field->type == 'wicket_widget_profile_org') {
@@ -105,11 +88,9 @@ class Wicket_Gf_Validation
 
                     Wicket()->log()->debug('Org validation: Found org field ' . $field_id . ', value_length=' . strlen($value) . ', validation_flag=' . var_export($validation_flag, true), ['source' => 'gravityforms-state-debug']);
 
-                    // On multi-step Next: rely ONLY on validation flag to avoid stale payloads
                     if ($target_page > $current_page && $next_button_clicked) {
                         $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
                         if ($flag_false) {
-                            // Double-check payload; only block if payload still shows incompleteness
                             $is_incomplete = true;
                             if (!empty($value)) {
                                 $value_array = json_decode($value, true);
@@ -124,20 +105,16 @@ class Wicket_Gf_Validation
                                 Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (incomplete)', ['source' => 'gravityforms-state-debug']);
                                 break;
                             }
-                            // JSON indicates complete; allow progression despite stale flag
                             Wicket()->log()->debug('Org validation: Field ' . $field_id . ' JSON indicates complete, allowing progression', ['source' => 'gravityforms-state-debug']);
                             continue;
                         }
-                        // If flag is true or missing, allow progression
                         Wicket()->log()->debug('Org validation: Field ' . $field_id . ' validation flag is true/missing, allowing progression', ['source' => 'gravityforms-state-debug']);
                         continue;
                     }
 
-                    // On final submission or non-multi-step forms: perform full checks
                     if (!empty($value)) {
                         $value_array = json_decode($value, true);
 
-                        // Check for incomplete required fields
                         if (isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
@@ -145,7 +122,6 @@ class Wicket_Gf_Validation
                             break;
                         }
 
-                        // Check for incomplete required resources
                         if (isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
@@ -153,21 +129,18 @@ class Wicket_Gf_Validation
                             break;
                         }
                     } else {
-                        // Only fail validation for empty org profile if the field is actually required
                         if ($field->isRequired) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
                             $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Organization profile is required.';
                             Wicket()->log()->debug('Org validation: Field ' . $field_id . ' is required but empty, failing validation', ['source' => 'gravityforms-state-debug']);
                             break;
-                        } else {
-                            Wicket()->log()->debug('Org validation: Field ' . $field_id . ' is empty but not required, allowing progression', ['source' => 'gravityforms-state-debug']);
                         }
+                        Wicket()->log()->debug('Org validation: Field ' . $field_id . ' is empty but not required, allowing progression', ['source' => 'gravityforms-state-debug']);
                     }
                 }
             }
 
-            // Only set validation to false if we specifically found org validation issues
             if ($org_validation_failed) {
                 $validation_result['is_valid'] = false;
                 Wicket()->log()->debug('Org validation: Set form validation to false due to org profile issues', ['source' => 'gravityforms-state-debug']);

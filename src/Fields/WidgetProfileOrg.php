@@ -1,22 +1,25 @@
 <?php
-class GFWicketFieldWidgetProfileOrg extends GF_Field
+
+declare(strict_types=1);
+
+namespace WicketGF\Fields;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class WidgetProfileOrg extends \GF_Field
 {
     public $type = 'wicket_widget_profile_org';
     private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['type'];
-    // Declare custom properties so GF persists them with the field
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
 
-    /**
-     * Initialize the widget field and enqueue validation scripts.
-     */
-    public static function init()
+    public static function init(): void
     {
-        // Enqueue validation scripts when this widget is used
-        add_action('gform_enqueue_scripts', [__CLASS__, 'enqueue_validation_scripts'], 10, 2);
+        add_action('gform_enqueue_scripts', [static::class, 'enqueue_validation_scripts'], 10, 2);
     }
 
-    // Ensure new fields have sane defaults server-side
     public function get_default_properties()
     {
         $defaults = parent::get_default_properties();
@@ -26,29 +29,22 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         return $defaults;
     }
 
-    // Sanitize and enforce defaults when the form is saved in the editor
     public function sanitize_settings()
     {
         parent::sanitize_settings();
 
-        // UUID is plain text
         if (isset($this->wwidget_org_profile_uuid)) {
             $this->wwidget_org_profile_uuid = sanitize_text_field((string) $this->wwidget_org_profile_uuid);
         } else {
             $this->wwidget_org_profile_uuid = '';
         }
 
-        // Required resources: keep as a raw string (brace/quote content) but strip tags; set default if empty
         $default_required = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
         if (empty($this->wwidget_org_profile_required_resources)) {
             $this->wwidget_org_profile_required_resources = $default_required;
         } else {
-            $raw = (string) $this->wwidget_org_profile_required_resources;
-            // Remove any tags while preserving braces/quotes
-            $this->wwidget_org_profile_required_resources = wp_kses_post($raw);
-            if ($this->wwidget_org_profile_required_resources === '') {
-                $this->wwidget_org_profile_required_resources = $default_required;
-            }
+            $raw = wp_kses_post((string) $this->wwidget_org_profile_required_resources);
+            $this->wwidget_org_profile_required_resources = $raw !== '' ? $raw : $default_required;
         }
     }
 
@@ -57,7 +53,6 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         return esc_attr__('Wicket Widget: Org Profile', 'wicket-gf');
     }
 
-    // Move the field to 'advanced fields'
     public function get_form_editor_button()
     {
         return [
@@ -94,9 +89,8 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
         );
     }
 
-    public static function custom_settings($position, $form_id)
+    public static function custom_settings($position, $form_id): void
     {
-        //create settings on position 25 (right after Field Label)
         if ($position == 25) {
             ob_start(); ?>
 
@@ -119,17 +113,14 @@ class GFWicketFieldWidgetProfileOrg extends GF_Field
 </li>
 
 <script type='text/javascript'>
-// Use jQuery-based GF editor events for reliability (matches working field patterns)
 jQuery(document).ready(function($) {
     var defaultRequired = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
 
-    // When settings panel loads for a field
     $(document).on('gform_load_field_settings', function(event, field) {
         if (field.type !== 'wicket_widget_profile_org') {
             return;
         }
 
-        // Populate inputs
         $('#wwidget_org_profile_uuid_input').val(field.wwidget_org_profile_uuid || '');
 
         if (!field.wwidget_org_profile_required_resources) {
@@ -138,7 +129,6 @@ jQuery(document).ready(function($) {
         }
         $('#wwidget_org_profile_required_resources_input').val(field.wwidget_org_profile_required_resources || '');
 
-        // Bind once: keep model in sync as user types
         var rrSel = '#wwidget_org_profile_required_resources_input';
         if (!$(rrSel).data('bound')) {
             $(rrSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
@@ -146,7 +136,6 @@ jQuery(document).ready(function($) {
             }).data('bound', true);
         }
 
-        // Bind once: keep UUID model in sync
         var uuidSel = '#wwidget_org_profile_uuid_input';
         if (!$(uuidSel).data('bound')) {
             $(uuidSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
@@ -155,7 +144,6 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // When a new field is added to the form
     $(document).on('gform_field_added', function(event, field) {
         if (field.type !== 'wicket_widget_profile_org') {
             return;
@@ -175,12 +163,11 @@ jQuery(document).ready(function($) {
         }
     }
 
-    public static function editor_script()
+    public static function editor_script(): void
     {
-        // JavaScript now embedded in custom_settings method for better integration
+        // JavaScript embedded in custom_settings()
     }
 
-    // Render the field
     public function get_field_input($form, $value = '', $entry = null)
     {
         if ($this->is_form_editor()) {
@@ -189,28 +176,19 @@ jQuery(document).ready(function($) {
 
         $org_uuid = $this->wwidget_org_profile_uuid ?? '';
 
-        // On multi-page forms, the pre-render hook runs too late. We need to get the UUID directly from POST.
-        $current_page = GFFormDisplay::get_current_page($form['id']);
+        $current_page = \GFFormDisplay::get_current_page($form['id']);
         if ($current_page > 1) {
-
-            // Check if the UUID is actually a field ID
             if (is_numeric($org_uuid)) {
                 $field_id = (int) $org_uuid;
-
-                // Use standard GF naming convention
                 $field_name = 'input_' . $field_id;
-
                 if (!empty($_POST[$field_name])) {
                     $org_uuid = sanitize_text_field($_POST[$field_name]);
                 }
             }
 
-            // Find the org_uuid from the POST data of the previous page
             foreach ($form['fields'] as $field) {
                 if ($field->type == 'wicket_org_search_select') {
-                    // Use standard GF naming convention
                     $field_name = 'input_' . $field->id;
-
                     if (!empty($_POST[$field_name])) {
                         $org_uuid = sanitize_text_field($_POST[$field_name]);
                         break;
@@ -222,31 +200,24 @@ jQuery(document).ready(function($) {
         $org_required_resources = $this->wwidget_org_profile_required_resources ?? '';
 
         if (component_exists('widget-profile-org')) {
-            // If admin has not configured requiredResources, use sane defaults with valid types
-            // Note: "primary" is a flag, not a type. Valid example types per widget are e.g. "work", "mailing", "website".
             if (empty($org_required_resources)) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
-            // Use standard GF naming convention
-            $org_info_field_name = 'input_' . $this->id;
-            $org_validation_field_name = 'input_' . $this->id . '_validation';
 
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
-                'org_info_data_field_name'   => $org_info_field_name,
-                'validation_data_field_name' => $org_validation_field_name,
+                'org_info_data_field_name'   => 'input_' . $this->id,
+                'validation_data_field_name' => 'input_' . $this->id . '_validation',
                 'org_id'                     => $org_uuid,
                 'org_required_resources'     => $org_required_resources,
             ], false);
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
-        } else {
-            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
         }
 
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
     }
 
-    // Override how to Save the field value
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
     {
         $org_id = '';
@@ -254,11 +225,9 @@ jQuery(document).ready(function($) {
         if (is_string($value) && $value !== '') {
             $decoded = json_decode($value, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                // Primary location used by widget payload
                 if (!empty($decoded['attributes']['uuid'])) {
                     $org_id = sanitize_text_field((string) $decoded['attributes']['uuid']);
                 } elseif (!empty($decoded['uuid'])) {
-                    // Fallback if structure differs
                     $org_id = sanitize_text_field((string) $decoded['uuid']);
                 }
             }
@@ -274,27 +243,21 @@ jQuery(document).ready(function($) {
             return '';
         }
 
-        $link_to_org = $admin_base . '/organizations/' . $org_id;
-
-        return $link_to_org;
+        return $admin_base . '/organizations/' . $org_id;
     }
 
-    public function validate($value, $form)
+    public function validate($value, $form): void
     {
-        // Gate validation by user action: only on Next or final submit
         $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
         $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
         $next_clicked = rgpost('gform_save') === '1' || (rgpost('gform_next_button') !== null);
-
         $on_next = ($target_page > $current_page && $next_clicked);
-        $on_submit = ($target_page == 0); // GF uses 0 when submitting the form
+        $on_submit = ($target_page == 0);
 
         if (!$on_next && !$on_submit) {
-            // Do not validate on initial load or unrelated actions
             return;
         }
 
-        // If this is a multi-step form and we're on final submit, skip validation for this field
         $is_multi_step = false;
         if (!empty($form['fields']) && is_array($form['fields'])) {
             foreach ($form['fields'] as $f) {
@@ -304,6 +267,7 @@ jQuery(document).ready(function($) {
                 }
             }
         }
+
         if ($on_submit && $is_multi_step) {
             return;
         }
@@ -312,90 +276,53 @@ jQuery(document).ready(function($) {
         $validation_flag = $field_id !== null ? rgpost('input_' . $field_id . '_validation') : null;
 
         if ($on_next) {
-            // On Next, rely on hidden flag; double-check JSON only if flag is false
             $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
             if ($flag_false) {
                 $is_incomplete = true;
                 if (!empty($value)) {
-                    $value_array = json_decode($value, true);
-                    $value_array = is_array($value_array) ? $value_array : [];
+                    $value_array = is_array(json_decode($value, true)) ? json_decode($value, true) : [];
                     $fields_incomplete_list = $this->get_filtered_incomplete_required_fields($value_array);
-                    $fields_incomplete = count($fields_incomplete_list) > 0;
                     $resources_incomplete = isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
-                    $is_incomplete = ($fields_incomplete || $resources_incomplete);
+                    $is_incomplete = count($fields_incomplete_list) > 0 || $resources_incomplete;
                 }
                 if ($is_incomplete) {
                     $this->failed_validation = true;
-                    $this->validation_message = !empty($this->errorMessage)
-                        ? $this->errorMessage
-                        /* translators: Message displayed when organization profile is incomplete */
-                        : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+                    $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
                 }
             }
 
-            // If flag true or missing, allow progression
             return;
         }
 
-        // On final submission, perform checks but avoid false blocking when field isn't on this page
-        $value_array = json_decode($value, true);
-        $value_array = is_array($value_array) ? $value_array : [];
+        $value_array = is_array(json_decode($value, true)) ? json_decode($value, true) : [];
+        $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+        $flag_true = ($validation_flag === true || $validation_flag === 'true' || $validation_flag === '1');
 
-        // If the hidden flag is posted and explicitly false, block; if it's absent, don't use it to block
-        $flag_false_submit = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
-        if ($validation_flag !== null && $flag_false_submit) {
+        if ($validation_flag !== null && $flag_false) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage)
-                ? $this->errorMessage
-                : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
 
             return;
         }
 
-        // If the hidden flag is explicitly true, allow submit (authoritative success from the widget)
-        $flag_true_submit = ($validation_flag === true || $validation_flag === 'true' || $validation_flag === '1');
-        if ($flag_true_submit) {
+        if ($flag_true || empty($value_array)) {
             return;
         }
 
-        // If there is no JSON payload at all, allow submit (field likely not present on this page / no new data)
-        if (empty($value_array)) {
-            return;
-        }
-
-        $filtered_incomplete_required_fields = $this->get_filtered_incomplete_required_fields($value_array);
-        if (count($filtered_incomplete_required_fields) > 0) {
+        $incomplete = $this->get_filtered_incomplete_required_fields($value_array);
+        if (count($incomplete) > 0) {
             $this->failed_validation = true;
-            if (!empty($this->errorMessage)) {
-                $this->validation_message = $this->errorMessage;
-            } else {
-                $this->validation_message = __('Please complete all required fields in the organization profile.', 'wicket_gf');
-            }
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please complete all required fields in the organization profile.', 'wicket_gf');
 
             return;
         }
 
-        if (isset($value_array['incompleteRequiredResources'])) {
-            if (count($value_array['incompleteRequiredResources']) > 0) {
-                $this->failed_validation = true;
-                if (!empty($this->errorMessage)) {
-                    $this->validation_message = $this->errorMessage;
-                } else {
-                    $this->validation_message = __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
-                }
-
-                return;
-            }
+        if (!empty($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
+            $this->failed_validation = true;
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
         }
-
     }
 
-    /**
-     * Ignore hidden fields that are intentionally not editable in the organization widget.
-     *
-     * @param array $value_array Decoded widget payload.
-     * @return array
-     */
     private function get_filtered_incomplete_required_fields(array $value_array): array
     {
         if (empty($value_array['incompleteRequiredFields']) || !is_array($value_array['incompleteRequiredFields'])) {
@@ -408,49 +335,32 @@ jQuery(document).ready(function($) {
         ));
     }
 
-    /**
-     * Enqueue validation scripts for MDP widgets.
-     */
-    public static function enqueue_validation_scripts($form, $is_ajax)
+    public static function enqueue_validation_scripts($form, $is_ajax): void
     {
-        // Check if this form contains an org profile widget
-        $has_org_widget = false;
+        $has_widget = false;
         foreach ($form['fields'] as $field) {
             if ($field instanceof self) {
-                $has_org_widget = true;
+                $has_widget = true;
                 break;
             }
         }
 
-        if (!$has_org_widget) {
+        if (!$has_widget) {
             return;
         }
 
-        $plugin_dir = plugin_dir_path(dirname(__FILE__));
-        $plugin_url = plugin_dir_url(dirname(__FILE__));
-        $version = defined('WICKET_WP_GF_VERSION') ? WICKET_WP_GF_VERSION : '1.0.0';
-
-        // Enqueue the validation scripts
         wp_enqueue_script(
             'wicket-gf-automatic-widget-validation',
-            $plugin_url . 'assets/js/wicket-gf-automatic-widget-validation.js',
+            WICKET_GF_URL . 'assets/js/wicket-gf-automatic-widget-validation.js',
             ['jquery'],
-            $version,
+            WICKET_GF_VERSION,
             true
         );
 
-        // Pass configuration to automatic validation script
-        wp_localize_script(
-            'wicket-gf-automatic-widget-validation',
-            'WicketMDPAutoValidationConfig',
-            [
-                'enableLogging' => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
-                'enableAutoDetection' => true,
-                'debugMode' => defined('WP_ENV') && WP_ENV === 'development',
-            ]
-        );
+        wp_localize_script('wicket-gf-automatic-widget-validation', 'WicketMDPAutoValidationConfig', [
+            'enableLogging'       => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
+            'enableAutoDetection' => true,
+            'debugMode'           => defined('WP_ENV') && WP_ENV === 'development',
+        ]);
     }
 }
-
-// Initialize the widget field
-GFWicketFieldWidgetProfileOrg::init();

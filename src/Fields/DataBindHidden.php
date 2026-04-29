@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 
-class GFDataBindHiddenField extends GF_Field
+namespace WicketGF\Fields;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class DataBindHidden extends \GF_Field
 {
     public $type = 'wicket_data_hidden';
 
@@ -1722,5 +1728,5 @@ class GFDataBindHiddenField extends GF_Field
 }
 
 // Register AJAX handlers
-add_action('wp_ajax_gf_wicket_get_mdp_schemas', ['GFDataBindHiddenField', 'ajax_get_mdp_schemas']);
-add_action('wp_ajax_gf_wicket_get_mdp_value_keys', ['GFDataBindHiddenField', 'ajax_get_mdp_value_keys']);
+add_action('wp_ajax_gf_wicket_get_mdp_schemas', [DataBindHidden::class, 'ajax_get_mdp_schemas']);
+add_action('wp_ajax_gf_wicket_get_mdp_value_keys', [DataBindHidden::class, 'ajax_get_mdp_value_keys']);

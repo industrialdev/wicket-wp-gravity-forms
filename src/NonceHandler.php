@@ -1,34 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
+namespace WicketGF;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Handles nonce timeout issues and form session management
  * for Wicket Gravity Forms plugin.
  */
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly.
-}
-
-class Wicket_Gf_Nonce_Handler
+class NonceHandler
 {
-    /**
-     * Initialize the nonce handler.
-     */
-    public static function init()
+    public static function init(): void
     {
-        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_nonce_handling_script']);
-        add_action('wp_ajax_wicket_gf_validate_nonce', [__CLASS__, 'ajax_validate_nonce']);
-        add_action('wp_ajax_nopriv_wicket_gf_validate_nonce', [__CLASS__, 'ajax_validate_nonce']);
+        add_action('wp_enqueue_scripts', [static::class, 'enqueue_nonce_handling_script']);
+        add_action('wp_ajax_wicket_gf_validate_nonce', [static::class, 'ajax_validate_nonce']);
+        add_action('wp_ajax_nopriv_wicket_gf_validate_nonce', [static::class, 'ajax_validate_nonce']);
 
-        // Add debugging if in development
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            add_action('init', [__CLASS__, 'add_debug_hooks']);
+            add_action('init', [static::class, 'add_debug_hooks']);
         }
     }
 
-    /**
-     * Enqueue nonce handling JavaScript.
-     */
-    public static function enqueue_nonce_handling_script()
+    public static function enqueue_nonce_handling_script(): void
     {
         if (!class_exists('GFForms')) {
             return;
@@ -36,26 +33,22 @@ class Wicket_Gf_Nonce_Handler
 
         wp_enqueue_script(
             'wicket-gf-nonce-handling',
-            plugins_url('assets/js/wicket-gf-nonce-handling.js', dirname(__FILE__)),
+            WICKET_GF_URL . 'assets/js/wicket-gf-nonce-handling.js',
             ['jquery'],
-            WICKET_WP_GF_VERSION,
+            WICKET_GF_VERSION,
             true
         );
 
-        // Localize script with necessary data
         wp_localize_script('wicket-gf-nonce-handling', 'WicketGfNonce', [
             'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('wicket_gf_nonce_validation'),
+            'nonce'   => wp_create_nonce('wicket_gf_nonce_validation'),
         ]);
     }
 
-    /**
-     * AJAX handler to validate Gravity Forms nonce before auto-advance.
-     */
-    public static function ajax_validate_nonce()
+    public static function ajax_validate_nonce(): void
     {
         $form_id = intval($_POST['form_id'] ?? 0);
-        $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+        $nonce = sanitize_text_field(wp_unslash($_POST['nonce'] ?? ''));
 
         if (empty($form_id) || empty($nonce)) {
             wp_send_json_error('Missing required parameters');
@@ -63,7 +56,6 @@ class Wicket_Gf_Nonce_Handler
             return;
         }
 
-        // Validate the Gravity Forms nonce
         $is_valid = wp_verify_nonce($nonce, 'gform_submit_' . $form_id);
 
         if ($is_valid) {
@@ -73,12 +65,8 @@ class Wicket_Gf_Nonce_Handler
         }
     }
 
-    /**
-     * Add debug hooks for nonce and session issues.
-     */
-    public static function add_debug_hooks()
+    public static function add_debug_hooks(): void
     {
-        // Log nonce verification attempts
         add_filter('wp_verify_nonce', function ($result, $nonce, $action) {
             if ($action && strpos($action, 'gform') !== false) {
                 Wicket()->log()->debug(sprintf(
@@ -98,7 +86,6 @@ class Wicket_Gf_Nonce_Handler
             return $result;
         }, 10, 3);
 
-        // Log Gravity Forms validation errors
         add_action('gform_validation', function ($validation_result) {
             if (!$validation_result['is_valid']) {
                 Wicket()->log()->info('Form validation failed for form ID: ' . $validation_result['form']['id'], ['source' => 'wicket-gf-nonce']);
@@ -112,7 +99,6 @@ class Wicket_Gf_Nonce_Handler
             return $validation_result;
         });
 
-        // Check PHP session configuration
         add_action('admin_init', function () {
             if (current_user_can('manage_options') && isset($_GET['wicket_gf_debug_session'])) {
                 Wicket()->log()->debug('session.gc_maxlifetime: ' . ini_get('session.gc_maxlifetime'), ['source' => 'wicket-gf-nonce']);
@@ -123,6 +109,3 @@ class Wicket_Gf_Nonce_Handler
         });
     }
 }
-
-// Initialize the nonce handler
-Wicket_Gf_Nonce_Handler::init();

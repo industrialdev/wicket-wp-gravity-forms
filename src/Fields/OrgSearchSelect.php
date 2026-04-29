@@ -1,15 +1,19 @@
 <?php
 
-if (!class_exists('GF_Field')) {
-    die();
+declare(strict_types=1);
+
+namespace WicketGF\Fields;
+
+if (!defined('ABSPATH')) {
+    exit;
 }
 
 /**
- * Class GFWicketFieldOrgSearchSelect.
+ * Class OrgSearchSelect.
  *
  * The Wicket Organization Search custom field
  */
-class GFWicketFieldOrgSearchSelect extends GF_Field
+class OrgSearchSelect extends \GF_Field
 {
     public $type = 'wicket_org_search_select';
 
@@ -806,183 +810,181 @@ class GFWicketFieldOrgSearchSelect extends GF_Field
 
         // Extract field settings
         foreach ($form['fields'] as $field) {
-            if (gettype($field) == 'object') {
-                if (get_class($field) == 'GFWicketFieldOrgSearchSelect') {
-                    if ($field->id == $id) {
-                        if (isset($field->orgss_search_mode)) {
-                            $search_mode = $field->orgss_search_mode;
-                        }
-                        if (isset($field->orgss_search_org_type)) {
-                            $search_org_type = $field->orgss_search_org_type;
-                        }
-                        if (isset($field->orgss_relationship_type_upon_org_creation)) {
-                            $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
-                        }
-                        if (isset($field->orgss_relationship_mode)) {
-                            $relationship_mode = $field->orgss_relationship_mode;
-                        }
-                        if (isset($field->orgss_new_org_type_override)) {
-                            $new_org_type_override = $field->orgss_new_org_type_override;
-                        }
-                        if (isset($field->orgss_org_term_singular)) {
-                            $org_term_singular = $field->orgss_org_term_singular;
-                        }
-                        if (isset($field->orgss_org_term_plural)) {
-                            $org_term_plural = $field->orgss_org_term_plural;
-                        }
-                        if (isset($field->orgss_no_results_message)) {
-                            $orgss_no_results_message = $field->orgss_no_results_message;
-                        }
-                        if (isset($field->orgss_disable_org_creation)) {
-                            $disable_org_creation = $field->orgss_disable_org_creation;
-                        }
-                        if (isset($field->orgss_allow_continue_without_org)) {
-                            $allow_continue_without_org = $field->orgss_allow_continue_without_org;
-                        }
-                        if (isset($field->orgss_auto_advance)) {
-                            $orgss_auto_advance = $field->orgss_auto_advance;
-                        }
-                        if (isset($field->orgss_checkbox_id_new_org)) {
-                            $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
-                        }
-                        if (isset($field->orgss_disable_selecting_orgs_with_active_membership)) {
-                            $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
-                        }
-                        if (isset($field->orgss_active_membership_alert_title)) {
-                            $orgss_active_membership_alert_title = $field->orgss_active_membership_alert_title;
-                        }
-                        if (isset($field->orgss_active_membership_alert_body)) {
-                            $orgss_active_membership_alert_body = $field->orgss_active_membership_alert_body;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_1_text)) {
-                            $orgss_active_membership_alert_button_1_text = $field->orgss_active_membership_alert_button_1_text;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_1_url)) {
-                            $orgss_active_membership_alert_button_1_url = $field->orgss_active_membership_alert_button_1_url;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_1_style)) {
-                            $orgss_active_membership_alert_button_1_style = $field->orgss_active_membership_alert_button_1_style;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_1_new_tab)) {
-                            $orgss_active_membership_alert_button_1_new_tab = $field->orgss_active_membership_alert_button_1_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_2_text)) {
-                            $orgss_active_membership_alert_button_2_text = $field->orgss_active_membership_alert_button_2_text;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_2_url)) {
-                            $orgss_active_membership_alert_button_2_url = $field->orgss_active_membership_alert_button_2_url;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_2_style)) {
-                            $orgss_active_membership_alert_button_2_style = $field->orgss_active_membership_alert_button_2_style;
-                        }
-                        if (isset($field->orgss_active_membership_alert_button_2_new_tab)) {
-                            $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_notify_enabled)) {
-                            $orgss_active_membership_notify_enabled = $field->orgss_active_membership_notify_enabled;
-                        }
-                        if (isset($field->orgss_active_membership_notify_email_subject)) {
-                            $orgss_active_membership_notify_email_subject = $field->orgss_active_membership_notify_email_subject;
-                        }
-                        if (isset($field->orgss_active_membership_notify_email_body)) {
-                            $orgss_active_membership_notify_email_body = $field->orgss_active_membership_notify_email_body;
-                        }
-                        if (isset($field->orgss_active_membership_seat_messaging_enabled)) {
-                            $orgss_active_membership_seat_messaging_enabled = $field->orgss_active_membership_seat_messaging_enabled;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_title)) {
-                            $orgss_active_membership_seat_available_alert_title = $field->orgss_active_membership_seat_available_alert_title;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_body)) {
-                            $orgss_active_membership_seat_available_alert_body = $field->orgss_active_membership_seat_available_alert_body;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_text)) {
-                            $orgss_active_membership_seat_available_alert_button_1_text = $field->orgss_active_membership_seat_available_alert_button_1_text;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_url)) {
-                            $orgss_active_membership_seat_available_alert_button_1_url = $field->orgss_active_membership_seat_available_alert_button_1_url;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_style)) {
-                            $orgss_active_membership_seat_available_alert_button_1_style = $field->orgss_active_membership_seat_available_alert_button_1_style;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_1_new_tab)) {
-                            $orgss_active_membership_seat_available_alert_button_1_new_tab = $field->orgss_active_membership_seat_available_alert_button_1_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_text)) {
-                            $orgss_active_membership_seat_available_alert_button_2_text = $field->orgss_active_membership_seat_available_alert_button_2_text;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_url)) {
-                            $orgss_active_membership_seat_available_alert_button_2_url = $field->orgss_active_membership_seat_available_alert_button_2_url;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_style)) {
-                            $orgss_active_membership_seat_available_alert_button_2_style = $field->orgss_active_membership_seat_available_alert_button_2_style;
-                        }
-                        if (isset($field->orgss_active_membership_seat_available_alert_button_2_new_tab)) {
-                            $orgss_active_membership_seat_available_alert_button_2_new_tab = $field->orgss_active_membership_seat_available_alert_button_2_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_title)) {
-                            $orgss_active_membership_seat_unavailable_alert_title = $field->orgss_active_membership_seat_unavailable_alert_title;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_body)) {
-                            $orgss_active_membership_seat_unavailable_alert_body = $field->orgss_active_membership_seat_unavailable_alert_body;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_text)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_1_text = $field->orgss_active_membership_seat_unavailable_alert_button_1_text;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_url)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_1_url = $field->orgss_active_membership_seat_unavailable_alert_button_1_url;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_style)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_1_style = $field->orgss_active_membership_seat_unavailable_alert_button_1_style;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_1_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_text)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_2_text = $field->orgss_active_membership_seat_unavailable_alert_button_2_text;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_url)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_2_url = $field->orgss_active_membership_seat_unavailable_alert_button_2_url;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_style)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_2_style = $field->orgss_active_membership_seat_unavailable_alert_button_2_style;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab)) {
-                            $orgss_active_membership_seat_unavailable_alert_button_2_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_notify_enabled)) {
-                            $orgss_active_membership_seat_unavailable_notify_enabled = $field->orgss_active_membership_seat_unavailable_notify_enabled;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_notify_email_subject)) {
-                            $orgss_active_membership_seat_unavailable_notify_email_subject = $field->orgss_active_membership_seat_unavailable_notify_email_subject;
-                        }
-                        if (isset($field->orgss_active_membership_seat_unavailable_notify_email_body)) {
-                            $orgss_active_membership_seat_unavailable_notify_email_body = $field->orgss_active_membership_seat_unavailable_notify_email_body;
-                        }
-                        if (isset($field->orgss_grant_roster_man_on_purchase)) {
-                            $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
-                        }
-                        if (isset($field->orgss_grant_org_editor_on_select)) {
-                            $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
-                        }
-                        if (isset($field->orgss_grant_org_editor_on_purchase)) {
-                            $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
-                        }
-                        if (isset($field->orgss_display_org_fields)) {
-                            $orgss_display_org_fields = $field->orgss_display_org_fields;
-                        }
-                        if (isset($field->orgss_display_org_type)) {
-                            $orgss_display_org_type = $field->orgss_display_org_type;
-                        }
-                        if (isset($field->orgss_hide_remove_buttons)) {
-                            $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
-                        }
-                        if (isset($field->orgss_hide_select_buttons)) {
-                            $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
-                        }
-                        if (isset($field->orgss_display_removal_alert_message)) {
-                            $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
-                        }
+            if ($field instanceof self) {
+                if ($field->id == $id) {
+                    if (isset($field->orgss_search_mode)) {
+                        $search_mode = $field->orgss_search_mode;
+                    }
+                    if (isset($field->orgss_search_org_type)) {
+                        $search_org_type = $field->orgss_search_org_type;
+                    }
+                    if (isset($field->orgss_relationship_type_upon_org_creation)) {
+                        $relationship_type_upon_org_creation = $field->orgss_relationship_type_upon_org_creation;
+                    }
+                    if (isset($field->orgss_relationship_mode)) {
+                        $relationship_mode = $field->orgss_relationship_mode;
+                    }
+                    if (isset($field->orgss_new_org_type_override)) {
+                        $new_org_type_override = $field->orgss_new_org_type_override;
+                    }
+                    if (isset($field->orgss_org_term_singular)) {
+                        $org_term_singular = $field->orgss_org_term_singular;
+                    }
+                    if (isset($field->orgss_org_term_plural)) {
+                        $org_term_plural = $field->orgss_org_term_plural;
+                    }
+                    if (isset($field->orgss_no_results_message)) {
+                        $orgss_no_results_message = $field->orgss_no_results_message;
+                    }
+                    if (isset($field->orgss_disable_org_creation)) {
+                        $disable_org_creation = $field->orgss_disable_org_creation;
+                    }
+                    if (isset($field->orgss_allow_continue_without_org)) {
+                        $allow_continue_without_org = $field->orgss_allow_continue_without_org;
+                    }
+                    if (isset($field->orgss_auto_advance)) {
+                        $orgss_auto_advance = $field->orgss_auto_advance;
+                    }
+                    if (isset($field->orgss_checkbox_id_new_org)) {
+                        $checkbox_id_new_org = $field->orgss_checkbox_id_new_org;
+                    }
+                    if (isset($field->orgss_disable_selecting_orgs_with_active_membership)) {
+                        $disable_selecting_orgs_with_active_membership = $field->orgss_disable_selecting_orgs_with_active_membership;
+                    }
+                    if (isset($field->orgss_active_membership_alert_title)) {
+                        $orgss_active_membership_alert_title = $field->orgss_active_membership_alert_title;
+                    }
+                    if (isset($field->orgss_active_membership_alert_body)) {
+                        $orgss_active_membership_alert_body = $field->orgss_active_membership_alert_body;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_1_text)) {
+                        $orgss_active_membership_alert_button_1_text = $field->orgss_active_membership_alert_button_1_text;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_1_url)) {
+                        $orgss_active_membership_alert_button_1_url = $field->orgss_active_membership_alert_button_1_url;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_1_style)) {
+                        $orgss_active_membership_alert_button_1_style = $field->orgss_active_membership_alert_button_1_style;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_1_new_tab)) {
+                        $orgss_active_membership_alert_button_1_new_tab = $field->orgss_active_membership_alert_button_1_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_2_text)) {
+                        $orgss_active_membership_alert_button_2_text = $field->orgss_active_membership_alert_button_2_text;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_2_url)) {
+                        $orgss_active_membership_alert_button_2_url = $field->orgss_active_membership_alert_button_2_url;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_2_style)) {
+                        $orgss_active_membership_alert_button_2_style = $field->orgss_active_membership_alert_button_2_style;
+                    }
+                    if (isset($field->orgss_active_membership_alert_button_2_new_tab)) {
+                        $orgss_active_membership_alert_button_2_new_tab = $field->orgss_active_membership_alert_button_2_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_notify_enabled)) {
+                        $orgss_active_membership_notify_enabled = $field->orgss_active_membership_notify_enabled;
+                    }
+                    if (isset($field->orgss_active_membership_notify_email_subject)) {
+                        $orgss_active_membership_notify_email_subject = $field->orgss_active_membership_notify_email_subject;
+                    }
+                    if (isset($field->orgss_active_membership_notify_email_body)) {
+                        $orgss_active_membership_notify_email_body = $field->orgss_active_membership_notify_email_body;
+                    }
+                    if (isset($field->orgss_active_membership_seat_messaging_enabled)) {
+                        $orgss_active_membership_seat_messaging_enabled = $field->orgss_active_membership_seat_messaging_enabled;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_title)) {
+                        $orgss_active_membership_seat_available_alert_title = $field->orgss_active_membership_seat_available_alert_title;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_body)) {
+                        $orgss_active_membership_seat_available_alert_body = $field->orgss_active_membership_seat_available_alert_body;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_1_text)) {
+                        $orgss_active_membership_seat_available_alert_button_1_text = $field->orgss_active_membership_seat_available_alert_button_1_text;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_1_url)) {
+                        $orgss_active_membership_seat_available_alert_button_1_url = $field->orgss_active_membership_seat_available_alert_button_1_url;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_1_style)) {
+                        $orgss_active_membership_seat_available_alert_button_1_style = $field->orgss_active_membership_seat_available_alert_button_1_style;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_1_new_tab)) {
+                        $orgss_active_membership_seat_available_alert_button_1_new_tab = $field->orgss_active_membership_seat_available_alert_button_1_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_2_text)) {
+                        $orgss_active_membership_seat_available_alert_button_2_text = $field->orgss_active_membership_seat_available_alert_button_2_text;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_2_url)) {
+                        $orgss_active_membership_seat_available_alert_button_2_url = $field->orgss_active_membership_seat_available_alert_button_2_url;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_2_style)) {
+                        $orgss_active_membership_seat_available_alert_button_2_style = $field->orgss_active_membership_seat_available_alert_button_2_style;
+                    }
+                    if (isset($field->orgss_active_membership_seat_available_alert_button_2_new_tab)) {
+                        $orgss_active_membership_seat_available_alert_button_2_new_tab = $field->orgss_active_membership_seat_available_alert_button_2_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_title)) {
+                        $orgss_active_membership_seat_unavailable_alert_title = $field->orgss_active_membership_seat_unavailable_alert_title;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_body)) {
+                        $orgss_active_membership_seat_unavailable_alert_body = $field->orgss_active_membership_seat_unavailable_alert_body;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_text)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_1_text = $field->orgss_active_membership_seat_unavailable_alert_button_1_text;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_url)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_1_url = $field->orgss_active_membership_seat_unavailable_alert_button_1_url;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_style)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_1_style = $field->orgss_active_membership_seat_unavailable_alert_button_1_style;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_1_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_1_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_text)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_2_text = $field->orgss_active_membership_seat_unavailable_alert_button_2_text;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_url)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_2_url = $field->orgss_active_membership_seat_unavailable_alert_button_2_url;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_style)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_2_style = $field->orgss_active_membership_seat_unavailable_alert_button_2_style;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab)) {
+                        $orgss_active_membership_seat_unavailable_alert_button_2_new_tab = $field->orgss_active_membership_seat_unavailable_alert_button_2_new_tab;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_notify_enabled)) {
+                        $orgss_active_membership_seat_unavailable_notify_enabled = $field->orgss_active_membership_seat_unavailable_notify_enabled;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_notify_email_subject)) {
+                        $orgss_active_membership_seat_unavailable_notify_email_subject = $field->orgss_active_membership_seat_unavailable_notify_email_subject;
+                    }
+                    if (isset($field->orgss_active_membership_seat_unavailable_notify_email_body)) {
+                        $orgss_active_membership_seat_unavailable_notify_email_body = $field->orgss_active_membership_seat_unavailable_notify_email_body;
+                    }
+                    if (isset($field->orgss_grant_roster_man_on_purchase)) {
+                        $grant_roster_man_on_purchase = $field->orgss_grant_roster_man_on_purchase;
+                    }
+                    if (isset($field->orgss_grant_org_editor_on_select)) {
+                        $orgss_grant_org_editor_on_select = $field->orgss_grant_org_editor_on_select;
+                    }
+                    if (isset($field->orgss_grant_org_editor_on_purchase)) {
+                        $orgss_grant_org_editor_on_purchase = $field->orgss_grant_org_editor_on_purchase;
+                    }
+                    if (isset($field->orgss_display_org_fields)) {
+                        $orgss_display_org_fields = $field->orgss_display_org_fields;
+                    }
+                    if (isset($field->orgss_display_org_type)) {
+                        $orgss_display_org_type = $field->orgss_display_org_type;
+                    }
+                    if (isset($field->orgss_hide_remove_buttons)) {
+                        $orgss_hide_remove_buttons = $field->orgss_hide_remove_buttons;
+                    }
+                    if (isset($field->orgss_hide_select_buttons)) {
+                        $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
+                    }
+                    if (isset($field->orgss_display_removal_alert_message)) {
+                        $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
                     }
                 }
             }

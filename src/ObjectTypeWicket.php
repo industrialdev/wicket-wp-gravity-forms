@@ -1,6 +1,14 @@
 <?php
 
-class GPPA_Object_Type_Wicket extends GPPA_Object_Type
+declare(strict_types=1);
+
+namespace WicketGF;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class ObjectTypeWicket extends \GPPA_Object_Type
 {
     private static $max_results = 50;
     private $client;
@@ -20,7 +28,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
         // } else {
         // 	if( str_contains( get_locale(), 'fr' ) ) {
         // 		$this->language = 'fr';
-        // 	}
+        //	}
         // }
     }
 
@@ -228,8 +236,8 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 
             try {
                 $get_people = $this->client->get('/people', ['query' => $people_query]);
-                $get_people = new Wicket\ResponseHelper($get_people);
-            } catch (Exception $e) {
+                $get_people = new \Wicket\ResponseHelper($get_people);
+            } catch (\Exception $e) {
                 return [];
             }
 
@@ -261,8 +269,8 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 
             try {
                 $get_orgs = $this->client->get('/organizations', ['query' => $org_query]);
-                $get_orgs = new Wicket\ResponseHelper($get_orgs);
-            } catch (Exception $e) {
+                $get_orgs = new \Wicket\ResponseHelper($get_orgs);
+            } catch (\Exception $e) {
                 return [];
             }
 
@@ -297,11 +305,8 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                     if (isset($new_included[$org['id']])) {
                         foreach ($new_included[$org['id']] as $address) {
                             if ($address['attributes']['primary'] === true) {
-                                // $address1 = isset($address["address1"]) ? $address["address1"] : '';
                                 $city = $address['attributes']['city'] ?? '';
-                                // $zip_code = isset($address["zip_code"]) ? $address["zip_code"] : '';
                                 $state_name = $address['attributes']['state_name'] ?? '';
-                                // $country_code = isset($address["country_code"]) ? $address["country_code"] : '';
                             }
                         }
                     }
@@ -368,7 +373,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
         /** @var array */
         $field_values = null;
 
-        /** @var GF_Field */
+        /** @var \GF_Field */
         $field = null;
 
         /** @var bool */
@@ -387,7 +392,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
             $properties = $this->get_properties_filtered($primary_property_value);
         }
 
-        gf_do_action(['gppa_pre_object_type_query', $this->id], $processed_filter_groups, $args);
+        \gf_do_action(['gppa_pre_object_type_query', $this->id], $processed_filter_groups, $args);
 
         if (!is_array($filter_groups)) {
             return $processed_filter_groups;
@@ -396,10 +401,10 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
         $return_array = [];
         foreach ($filter_groups as $filter_group_index => $filter_group) {
             foreach ($filter_group as $filter) {
-                $filter_value = gp_populate_anything()->extract_custom_value($filter['value']);
+                $filter_value = \gp_populate_anything()->extract_custom_value($filter['value']);
 
                 if (is_scalar($filter_value)) {
-                    $filter_value = GFCommon::replace_variables_prepopulate($filter_value, false, false, true);
+                    $filter_value = \GFCommon::replace_variables_prepopulate($filter_value, false, false, true);
                 }
 
                 if (!$filter['value'] || !$filter['property']) {
@@ -407,7 +412,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                 }
 
                 if (!$this->can_skip_loading_properties_during_query()) {
-                    $property = rgar($properties, $filter['property']);
+                    $property = \rgar($properties, $filter['property']);
 
                     if (!$property) {
                         continue;
@@ -422,7 +427,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
                 $filter_value = apply_filters('gppa_replace_filter_value_variables_' . $this->id, $filter_value, $field_values, $primary_property_value, $filter, $ordering, $field, $property);
                 $wp_filter_name = 'gppa_object_type_' . $this->id . '_filter_' . $filter['property'];
 
-                $group = rgar($property, 'group');
+                $group = \rgar($property, 'group');
 
                 if (!has_filter($wp_filter_name) && $group) {
                     $wp_filter_name = 'gppa_object_type_' . $this->id . '_filter_group_' . $group;
@@ -458,7 +463,7 @@ class GPPA_Object_Type_Wicket extends GPPA_Object_Type
 
     public function supported_operators()
     {
-        return array_merge(gp_populate_anything()->get_default_operators(), ['is_in', 'is_not_in']);
+        return array_merge(\gp_populate_anything()->get_default_operators(), ['is_in', 'is_not_in']);
     }
 
     /**

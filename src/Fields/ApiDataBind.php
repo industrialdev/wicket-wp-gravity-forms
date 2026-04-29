@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+namespace WicketGF\Fields;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Gravity Forms API Data Bind Field.
  *
@@ -30,7 +36,7 @@ declare(strict_types=1);
  *     $stored_selection = get_transient('gform_org_selection_' . $form['id']);
  *     if ($stored_selection) {
  *         // Reuse the field's API fetching logic
- *         $api_field = new GFApiDataBindField();
+ *         $api_field = new ApiDataBind();
  *         $api_field->apiDataSource = 'organization';
  *         $api_field->apiFieldPath = $field->apiFieldPath;
  *         return $api_field->fetch_value_from_api_by_uuid($stored_selection);
@@ -146,7 +152,7 @@ declare(strict_types=1);
  * - Requires maintaining both server and client code
  * - Potential for code duplication
  */
-class GFApiDataBindField extends GF_Field
+class ApiDataBind extends \GF_Field
 {
     public $type = 'wicket_api_data_bind';
 
@@ -359,7 +365,7 @@ class GFApiDataBindField extends GF_Field
                 default:
                     return $this->get_fallback_value();
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->get_fallback_value();
         }
     }
@@ -521,7 +527,7 @@ class GFApiDataBindField extends GF_Field
                     try {
                         $api_response = $current_data->toJsonAPI();
                         $current_data = $api_response['data'] ?? $api_response;
-                    } catch (Exception $e) {
+                    } catch (\Exception $e) {
                         $current_data = (array) $current_data;
                     }
                 } else {
@@ -1465,7 +1471,7 @@ class GFApiDataBindField extends GF_Field
 
             // Return the extracted value
             wp_send_json_success($value);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             wp_send_json_error('Error: ' . $e->getMessage());
         }
     }
@@ -1874,8 +1880,3 @@ class GFApiDataBindField extends GF_Field
         return $display_name;
     }
 }
-
-// Register AJAX handlers
-add_action('wp_ajax_gf_wicket_get_api_data_fields', ['GFApiDataBindField', 'ajax_get_api_data_fields']);
-add_action('wp_ajax_gf_wicket_api_data_bind_fetch_value', ['GFApiDataBindField', 'ajax_fetch_value_for_live_update']);
-add_action('wp_ajax_nopriv_gf_wicket_api_data_bind_fetch_value', ['GFApiDataBindField', 'ajax_fetch_value_for_live_update']);
