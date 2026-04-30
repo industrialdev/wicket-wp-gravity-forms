@@ -214,6 +214,8 @@ class Wicket_Gf_Main
         add_action('gform_field_standard_settings', [$this, 'register_field_settings'], 25, 2);
         add_action('gform_editor_js', [$this, 'gf_editor_script']);
         add_action('gform_tooltips', [$this, 'register_tooltips']);
+        add_filter('gform_form_settings_fields', [$this, 'register_form_settings_fields'], 10, 2);
+        add_filter('gform_pre_form_settings_save', [$this, 'sanitize_mdp_form_settings']);
 
         // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
@@ -631,6 +633,130 @@ class Wicket_Gf_Main
         GFAddOn::register('WicketGF\\MappingAddOn');
 
         add_action('gform_form_settings_page_wicketmap', [MappingAddOn::class, 'addon_custom_ui'], 20);
+    }
+
+    public function register_form_settings_fields($fields, $form)
+    {
+        $fields['wicket_mdp'] = [
+            'title'       => esc_html__('Wicket MDP Mapping', 'wicket-gf'),
+            'description' => esc_html__('Configure the target entity type and the form field that supplies the MDP UUID for mapped updates.', 'wicket-gf'),
+            'fields'      => [
+                [
+                    'name'    => 'wicket_mdp_entity_type',
+                    'type'    => 'select',
+                    'label'   => esc_html__('Entity Type', 'wicket-gf'),
+                    'choices' => [
+                        [
+                            'label' => esc_html__('— Select —', 'wicket-gf'),
+                            'value' => '',
+                        ],
+                        [
+                            'label' => esc_html__('Person', 'wicket-gf'),
+                            'value' => 'person',
+                        ],
+                        [
+                            'label' => esc_html__('Org', 'wicket-gf'),
+                            'value' => 'organization',
+                        ],
+                    ],
+                ],
+                [
+                    'name'    => 'wicket_mdp_uuid_source_field',
+                    'type'    => 'select',
+                    'label'   => esc_html__('UUID Source Field', 'wicket-gf'),
+                    'choices' => $this->get_mdp_uuid_source_field_choices($form),
+                ],
+            ],
+        ];
+
+        return $fields;
+    }
+
+    public function sanitize_mdp_form_settings($form)
+    {
+        $entity_type = isset($form['wicket_mdp_entity_type']) ? (string) $form['wicket_mdp_entity_type'] : '';
+        if (!in_array($entity_type, ['', 'person', 'organization'], true)) {
+            $form['wicket_mdp_entity_type'] = '';
+        }
+
+        $allowed_uuid_source_fields = array_map(
+            static function ($choice) {
+                return (string) ($choice['value'] ?? '');
+            },
+            $this->get_mdp_uuid_source_field_choices($form)
+        );
+
+        $uuid_source_field = isset($form['wicket_mdp_uuid_source_field']) ? (string) $form['wicket_mdp_uuid_source_field'] : '';
+        if (!in_array($uuid_source_field, $allowed_uuid_source_fields, true)) {
+            $form['wicket_mdp_uuid_source_field'] = '';
+        }
+
+        return $form;
+    }
+
+    private function get_mdp_uuid_source_field_choices($form)
+    {
+        $choices = [
+            [
+                'label' => esc_html__('— Select —', 'wicket-gf'),
+                'value' => '',
+            ],
+        ];
+
+        if (empty($form['fields']) || !is_array($form['fields'])) {
+            return $choices;
+        }
+
+        foreach ($form['fields'] as $field) {
+            if (!$this->is_supported_mdp_uuid_source_field($field)) {
+                continue;
+            }
+
+            $field_id = isset($field->id) ? (string) $field->id : '';
+            if ($field_id === '') {
+                continue;
+            }
+
+            $label = $this->get_mdp_uuid_source_field_label($field, $field_id);
+
+            $choices[] = [
+                'label' => $label,
+                'value' => $field_id,
+            ];
+        }
+
+        return $choices;
+    }
+
+    private function is_supported_mdp_uuid_source_field($field)
+    {
+        if (!is_object($field)) {
+            return false;
+        }
+
+        $unsupported_types = ['captcha', 'html', 'page', 'section'];
+        $field_type = isset($field->type) ? (string) $field->type : '';
+
+        return !in_array($field_type, $unsupported_types, true);
+    }
+
+    private function get_mdp_uuid_source_field_label($field, $field_id)
+    {
+        $label = '';
+
+        if (!empty($field->label)) {
+            $label = trim((string) $field->label);
+        }
+
+        if ($label === '' && !empty($field->adminLabel)) {
+            $label = trim((string) $field->adminLabel);
+        }
+
+        if ($label === '') {
+            return sprintf(esc_html__('Field %s', 'wicket-gf'), $field_id);
+        }
+
+        return sprintf('%1$s (Field %2$s)', $label, $field_id);
     }
 
     /**
