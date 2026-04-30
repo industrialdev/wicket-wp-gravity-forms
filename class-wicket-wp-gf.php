@@ -759,6 +759,38 @@ class Wicket_Gf_Main
         return sprintf('%1$s (Field %2$s)', $label, $field_id);
     }
 
+    protected function get_mdp_target_object_choices($entity_type = '')
+    {
+        $choices = [
+            'person' => [
+                [
+                    'label' => esc_html__('Person Profile', 'wicket-gf'),
+                    'value' => 'person_profile',
+                ],
+                [
+                    'label' => esc_html__('Additional Info', 'wicket-gf'),
+                    'value' => 'additional_info',
+                ],
+                [
+                    'label' => esc_html__('Preferences', 'wicket-gf'),
+                    'value' => 'preferences',
+                ],
+            ],
+            'organization' => [
+                [
+                    'label' => esc_html__('Org Profile', 'wicket-gf'),
+                    'value' => 'org_profile',
+                ],
+            ],
+        ];
+
+        if ($entity_type === '') {
+            return $choices;
+        }
+
+        return $choices[$entity_type] ?? [];
+    }
+
     /**
      * Register tooltips for custom field settings.
      *
@@ -1087,6 +1119,8 @@ class Wicket_Gf_Main
         // Action to inject supporting script to the form editor page to populate our custom settings
         ?>
         <script type='text/javascript'>
+            var wicketMdpTargetObjects = <?php echo json_encode($this->get_mdp_target_object_choices()); ?>;
+
             // Static field definitions per target object (sourced from MDP API PATCH schema).
             // Additional Info and Preferences are schema-driven; Task 2.1 will replace those with dynamic discovery.
             var wicketMdpTargetFields = {
@@ -1117,6 +1151,10 @@ class Wicket_Gf_Main
             // Toggle a conditional MDP setting row. Uses setProperty('important') so it beats
             // the 'display: block !important' class rule that keeps these rows visible to GF.
             function wicketMdpToggle($el, show) {
+                if (!$el.length) {
+                    return;
+                }
+
                 if (show) {
                     $el[0].style.removeProperty('display');
                 } else {
@@ -1124,60 +1162,121 @@ class Wicket_Gf_Main
                 }
             }
 
+            function wicketGetCurrentFormObject(currentForm) {
+                return currentForm || window.form || {};
+            }
+
+            function wicketGetMdpFormConfig(currentForm) {
+                currentForm = wicketGetCurrentFormObject(currentForm);
+
+                return {
+                    entityType: rgar(currentForm, 'wicket_mdp_entity_type') || '',
+                    uuidSourceField: rgar(currentForm, 'wicket_mdp_uuid_source_field') || ''
+                };
+            }
+
+            function wicketPopulateMdpTargetObjects(entityType, selectedValue) {
+                var $select = jQuery('#wicket_mdp_target_object');
+                var choices = wicketMdpTargetObjects[entityType] || [];
+                var hasSelectedValue = false;
+
+                $select.empty().append('<option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>');
+                jQuery.each(choices, function(i, choice) {
+                    $select.append('<option value="' + choice.value + '">' + choice.label + '</option>');
+                });
+
+                if (selectedValue && choices.some(function(choice) { return choice.value === selectedValue; })) {
+                    $select.val(selectedValue);
+                    hasSelectedValue = true;
+                }
+
+                return {
+                    hasChoices: choices.length > 0,
+                    hasSelectedValue: hasSelectedValue
+                };
+            }
+
             function wicketPopulateMdpTargetFields(targetObject, selectedValue) {
                 var $select = jQuery('#wicket_mdp_target_field');
                 var $row    = jQuery('.wicket_global_custom_settings_mdp_target_field');
                 var fields  = wicketMdpTargetFields[targetObject] || [];
+                var hasSelectedValue = false;
 
                 $select.empty().append('<option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>');
                 jQuery.each(fields, function(i, f) {
                     $select.append('<option value="' + f.value + '">' + f.label + '</option>');
                 });
-                if (selectedValue) {
+                if (selectedValue && fields.some(function(field) { return field.value === selectedValue; })) {
                     $select.val(selectedValue);
+                    hasSelectedValue = true;
                 }
                 wicketMdpToggle($row, fields.length > 0);
+
+                return {
+                    hasChoices: fields.length > 0,
+                    hasSelectedValue: hasSelectedValue
+                };
+            }
+
+            function wicketRefreshMdpFieldSettings(field, currentForm) {
+                var $targetObjectRow = jQuery('.wicket_global_custom_settings_mdp_target_object');
+                var $targetFieldRow  = jQuery('.wicket_global_custom_settings_mdp_target_field');
+                var mdpEnabled       = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
+                var targetObject     = rgar(field, 'wicket_mdp_target_object') || '';
+                var targetField      = rgar(field, 'wicket_mdp_target_field') || '';
+                var formConfig       = wicketGetMdpFormConfig(currentForm);
+                var hasFormConfig    = Boolean(formConfig.entityType && formConfig.uuidSourceField);
+                var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
+
+                wicketMdpToggle($targetObjectRow, mdpEnabled && hasFormConfig && targetObjectState.hasChoices);
+
+                if (!mdpEnabled || !hasFormConfig || !targetObjectState.hasSelectedValue) {
+                    if (targetObject && !targetObjectState.hasSelectedValue) {
+                        jQuery('#wicket_mdp_target_object').val('');
+                        SetFieldProperty('wicket_mdp_target_object', '');
+                    }
+
+                    if (targetField) {
+                        jQuery('#wicket_mdp_target_field').val('');
+                        SetFieldProperty('wicket_mdp_target_field', '');
+                    }
+
+                    wicketMdpToggle($targetFieldRow, false);
+                    return;
+                }
+
+                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField);
+                if (!targetFieldState.hasSelectedValue && targetField) {
+                    jQuery('#wicket_mdp_target_field').val('');
+                    SetFieldProperty('wicket_mdp_target_field', '');
+                }
             }
 
             jQuery(document).on('gform_load_field_settings', function(event, field, form){
                 jQuery('#hide_label').prop('checked', Boolean(rgar(field, 'hide_label')));
-
-                var mdpEnabled   = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
-                var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
-                var targetField  = rgar(field, 'wicket_mdp_target_field')  || '';
-
-                jQuery('#wicket_enable_mdp_mapping').prop('checked', mdpEnabled);
-                wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_object'), mdpEnabled);
-
-                jQuery('#wicket_mdp_target_object').val(targetObject);
-                if (mdpEnabled && targetObject) {
-                    wicketPopulateMdpTargetFields(targetObject, targetField);
-                } else {
-                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
-                }
+                jQuery('#wicket_enable_mdp_mapping').prop('checked', Boolean(rgar(field, 'wicket_enable_mdp_mapping')));
+                wicketRefreshMdpFieldSettings(field, form);
             });
 
             jQuery(document).on('change', '#wicket_enable_mdp_mapping', function(){
-                var enabled = this.checked;
-                wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_object'), enabled);
-                if (!enabled) {
+                var field = GetSelectedField();
+
+                if (!this.checked) {
                     jQuery('#wicket_mdp_target_object').val('');
                     SetFieldProperty('wicket_mdp_target_object', '');
                     jQuery('#wicket_mdp_target_field').val('');
                     SetFieldProperty('wicket_mdp_target_field', '');
-                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
                 }
+
+                wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
             });
 
             jQuery(document).on('change', '#wicket_mdp_target_object', function(){
+                var field = GetSelectedField();
+
                 jQuery('#wicket_mdp_target_field').val('');
                 SetFieldProperty('wicket_mdp_target_field', '');
-                var val = this.value;
-                if (val) {
-                    wicketPopulateMdpTargetFields(val, '');
-                } else {
-                    wicketMdpToggle(jQuery('.wicket_global_custom_settings_mdp_target_field'), false);
-                }
+                wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
             });
         </script>
         <?php
