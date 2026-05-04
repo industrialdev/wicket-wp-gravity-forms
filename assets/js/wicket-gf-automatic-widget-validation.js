@@ -422,6 +422,9 @@ const WicketMDPAutoValidation = {
         // Find all required field indicators within this widget
         const requiredIndicators = widgetElement.querySelectorAll('.required-symbol');
         const incompleteFields = [];
+        const existingIncompleteResources = Array.isArray(this.currentValidationState.incompleteRequiredResources)
+            ? this.currentValidationState.incompleteRequiredResources
+            : [];
 
         requiredIndicators.forEach((indicator) => {
             const label = this.findFieldLabel(indicator);
@@ -433,14 +436,14 @@ const WicketMDPAutoValidation = {
             }
         });
 
-        // Update validation state based on HTML parsing
+        // Update field-level validation state based on HTML parsing.
+        // Preserve resource-level validation from widget events.
         if (incompleteFields.length > 0) {
             this.currentValidationState.incompleteRequiredFields = incompleteFields;
-            this.currentValidationState.incompleteRequiredResources = [];
             this.currentValidationState.hasRequiredFields = true;
         } else {
             this.currentValidationState.incompleteRequiredFields = [];
-            this.currentValidationState.incompleteRequiredResources = [];
+            this.currentValidationState.hasRequiredFields = existingIncompleteResources.length > 0 || this.hasAnyRequiredFields();
         }
     },
 
@@ -830,10 +833,16 @@ const WicketMDPAutoValidation = {
 
         // Update the global validation state
         if (widgetsFound) {
+            const existingIncompleteResources = Array.isArray(this.currentValidationState.incompleteRequiredResources)
+                ? this.currentValidationState.incompleteRequiredResources
+                : [];
+
             this.currentValidationState.widgetsReady = true;
-            this.currentValidationState.hasRequiredFields = allIncompleteFields.length > 0 || this.hasAnyRequiredFields();
+            this.currentValidationState.hasRequiredFields =
+                allIncompleteFields.length > 0 ||
+                existingIncompleteResources.length > 0 ||
+                this.hasAnyRequiredFields();
             this.currentValidationState.incompleteRequiredFields = allIncompleteFields;
-            this.currentValidationState.incompleteRequiredResources = []; // Clear resources as we're using HTML parsing
 
             if (allIncompleteFields.length > 0) {
                 this.log(`Found ${allIncompleteFields.length} incomplete fields in visible widgets`, allIncompleteFields);

@@ -71,7 +71,7 @@ class ConsentFieldExtension
                 $consent_given = !empty(rgar($entry, $field->id)) || !empty(rgar($entry, $field->id . '.1'));
 
                 if ($consent_given) {
-                    Wicket()->log()->info('MDP sync triggered for consent field ' . $field->id . ', entry ' . $entry['id'], ['source' => 'wicket-gf']);
+                    \Wicket()->log()->info('MDP sync triggered for consent field ' . $field->id . ', entry ' . $entry['id'], ['source' => 'wicket-gf']);
                     $this->execute_custom_functionality($entry, $form, $field);
                 }
             }
@@ -83,13 +83,13 @@ class ConsentFieldExtension
         $person_uuid = wicket_current_person_uuid();
 
         if (empty($person_uuid)) {
-            Wicket()->log()->error('MDP sync failed: No valid user UUID found', ['source' => 'wicket-gf']);
+            \Wicket()->log()->error('MDP sync failed: No valid user UUID found', ['source' => 'wicket-gf']);
 
             return;
         }
 
         if (!function_exists('wicket_person_enable_all_communications')) {
-            Wicket()->log()->error('MDP sync failed: Communication helper functions not available', ['source' => 'wicket-gf']);
+            \Wicket()->log()->error('MDP sync failed: Communication helper functions not available', ['source' => 'wicket-gf']);
 
             return;
         }
@@ -98,17 +98,17 @@ class ConsentFieldExtension
             $result = wicket_person_enable_all_communications();
 
             if ($result) {
-                Wicket()->log()->info('MDP sync successful for user ' . $person_uuid, ['source' => 'wicket-gf']);
+                \Wicket()->log()->info('MDP sync successful for user ' . $person_uuid, ['source' => 'wicket-gf']);
                 gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_success', true, $form['id']);
                 gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_person_uuid', $person_uuid, $form['id']);
                 gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_timestamp', current_time('mysql'), $form['id']);
             } else {
-                Wicket()->log()->error('MDP sync failed for user ' . $person_uuid, ['source' => 'wicket-gf']);
+                \Wicket()->log()->error('MDP sync failed for user ' . $person_uuid, ['source' => 'wicket-gf']);
                 gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_failed', true, $form['id']);
                 gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_error_timestamp', current_time('mysql'), $form['id']);
             }
         } catch (\Exception $e) {
-            Wicket()->log()->error('MDP sync exception: ' . $e->getMessage(), ['source' => 'wicket-gf']);
+            \Wicket()->log()->error('MDP sync exception: ' . $e->getMessage(), ['source' => 'wicket-gf']);
             gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_exception', true, $form['id']);
             gform_add_meta($entry['id'], 'wicket_consent_mdp_sync_exception_message', $e->getMessage(), $form['id']);
         }

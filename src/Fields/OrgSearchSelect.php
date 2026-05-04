@@ -716,7 +716,7 @@ class OrgSearchSelect extends \GF_Field
             'is_submit'          => function_exists('rgpost') ? rgpost('is_submit_' . $safe_form_id) : null,
         ];
 
-        Wicket()->log()->debug(
+        \Wicket()->log()->debug(
             'ORGSS GF debug: ' . $event . ' CONTEXT: ' . wp_json_encode(array_merge($base_context, $context)),
             $base_context
         );
@@ -1399,7 +1399,7 @@ class OrgSearchSelect extends \GF_Field
             // Check if this might be a nonce timeout issue
             $form_nonce = $_POST['gform_submit'] ?? '';
             if (!empty($form_nonce) && !wp_verify_nonce($form_nonce, 'gform_submit_' . $form['id'])) {
-                Wicket()->log()->warning('Possible nonce timeout for form ' . $form['id'] . ' field ' . $this->id, ['source' => 'wicket-gf-org-search']);
+                \Wicket()->log()->warning('Possible nonce timeout for form ' . $form['id'] . ' field ' . $this->id, ['source' => 'wicket-gf-org-search']);
 
                 // Provide user-friendly error message for required fields
                 if ($this->isRequired) {

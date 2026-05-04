@@ -734,7 +734,17 @@ class Wicket_Gf_Main
             return false;
         }
 
-        $unsupported_types = ['captcha', 'html', 'page', 'section'];
+        $unsupported_types = [
+            'captcha',
+            'html',
+            'page',
+            'section',
+            'wicket_user_mdp_tags',
+            'wicket_widget_profile_individual',
+            'wicket_widget_profile_org',
+            'wicket_widget_ai',
+            'wicket_widget_prefs',
+        ];
         $field_type = isset($field->type) ? (string) $field->type : '';
 
         return !in_array($field_type, $unsupported_types, true);
@@ -766,14 +776,6 @@ class Wicket_Gf_Main
                 [
                     'label' => esc_html__('Person Profile', 'wicket-gf'),
                     'value' => 'person_profile',
-                ],
-                [
-                    'label' => esc_html__('Additional Info', 'wicket-gf'),
-                    'value' => 'additional_info',
-                ],
-                [
-                    'label' => esc_html__('Preferences', 'wicket-gf'),
-                    'value' => 'preferences',
                 ],
             ],
             'organization' => [
@@ -1081,9 +1083,14 @@ class Wicket_Gf_Main
                 <style>
                     /* Override GF's field_setting hiding for our global Wicket MDP settings */
                     .wicket_global_custom_settings_enable_mdp_mapping,
+                    .wicket_global_custom_settings_mdp_help,
                     .wicket_global_custom_settings_mdp_target_object,
                     .wicket_global_custom_settings_mdp_target_field {
                         display: block !important;
+                    }
+
+                    .wicket_global_custom_settings_mdp_help .description {
+                        margin: 6px 0 0;
                     }
                 </style>
                 <input type="checkbox" id="wicket_enable_mdp_mapping"
@@ -1092,14 +1099,14 @@ class Wicket_Gf_Main
                 <label for="wicket_enable_mdp_mapping" class="inline"><?php esc_html_e('Enable MDP Mapping', 'wicket-gf'); ?></label>
             </li>
 
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_help field_setting" style="display: none !important;">
+                <span class="description"><?php esc_html_e('Set Entity Type and UUID Source Field in Form Settings before configuring field-level MDP mapping.', 'wicket-gf'); ?></span>
+            </li>
+
             <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_target_object field_setting" style="display: none !important;">
                 <label for="wicket_mdp_target_object"><?php esc_html_e('Target Object', 'wicket-gf'); ?></label>
                 <select id="wicket_mdp_target_object" onchange="SetFieldProperty('wicket_mdp_target_object', this.value);">
                     <option value=""><?php esc_html_e('— Select —', 'wicket-gf'); ?></option>
-                    <option value="person_profile"><?php esc_html_e('Person Profile', 'wicket-gf'); ?></option>
-                    <option value="additional_info"><?php esc_html_e('Additional Info', 'wicket-gf'); ?></option>
-                    <option value="preferences"><?php esc_html_e('Preferences', 'wicket-gf'); ?></option>
-                    <option value="org_profile"><?php esc_html_e('Org Profile', 'wicket-gf'); ?></option>
                 </select>
             </li>
 
@@ -1219,6 +1226,7 @@ class Wicket_Gf_Main
             }
 
             function wicketRefreshMdpFieldSettings(field, currentForm) {
+                var $helpRow         = jQuery('.wicket_global_custom_settings_mdp_help');
                 var $targetObjectRow = jQuery('.wicket_global_custom_settings_mdp_target_object');
                 var $targetFieldRow  = jQuery('.wicket_global_custom_settings_mdp_target_field');
                 var mdpEnabled       = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
@@ -1228,6 +1236,7 @@ class Wicket_Gf_Main
                 var hasFormConfig    = Boolean(formConfig.entityType && formConfig.uuidSourceField);
                 var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
 
+                wicketMdpToggle($helpRow, mdpEnabled && !hasFormConfig);
                 wicketMdpToggle($targetObjectRow, mdpEnabled && hasFormConfig && targetObjectState.hasChoices);
 
                 if (!mdpEnabled || !hasFormConfig || !targetObjectState.hasSelectedValue) {
@@ -1284,7 +1293,7 @@ class Wicket_Gf_Main
 
     public function entries_list_first_column_content($form_id, $field_id, $value, $entry, $query_string)
     {
-        echo 'Sample text.';
+        unset($form_id, $field_id, $value, $entry, $query_string);
     }
 
     public function gf_change_user_name($value)

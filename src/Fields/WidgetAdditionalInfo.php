@@ -332,7 +332,7 @@ jQuery(document).ready(function($) {
     {
         $value = $this->get_value_submission([], true);
 
-        Wicket()->log()->debug('GF AI Widget is_value_submission_empty called for field ' . $this->id . ' with value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
+        \Wicket()->log()->debug('GF AI Widget is_value_submission_empty called for field ' . $this->id . ' with value: ' . var_export($value, true), ['source' => 'gravityforms-state-debug']);
 
         if (is_string($value)) {
             $trimmed = trim($value);
@@ -357,7 +357,7 @@ jQuery(document).ready(function($) {
             return '<p>Widget will show here on the frontend</p>';
         }
 
-        Wicket()->log()->debug('GF AI Widget get_field_input called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
+        \Wicket()->log()->debug('GF AI Widget get_field_input called for field ' . $this->id, ['source' => 'gravityforms-state-debug']);
 
         $id = (int) $this->id;
         $ai_widget_schemas = $this->wwidget_ai_schemas ?? [[]];
@@ -434,7 +434,7 @@ jQuery(document).ready(function($) {
 
     public function validate($value, $form): void
     {
-        Wicket()->log()->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
+        \Wicket()->log()->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
 
         $value_array = json_decode($value, true);
 

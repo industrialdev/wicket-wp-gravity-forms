@@ -250,25 +250,10 @@ jQuery(document).ready(function($) {
     {
         $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
         $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
-        $next_clicked = rgpost('gform_save') === '1' || (rgpost('gform_next_button') !== null);
-        $on_next = ($target_page > $current_page && $next_clicked);
+        $on_next = ($target_page > 0 && $target_page > $current_page);
         $on_submit = ($target_page == 0);
 
         if (!$on_next && !$on_submit) {
-            return;
-        }
-
-        $is_multi_step = false;
-        if (!empty($form['fields']) && is_array($form['fields'])) {
-            foreach ($form['fields'] as $f) {
-                if ((is_object($f) && isset($f->type) && $f->type === 'page') || (is_array($f) && isset($f['type']) && $f['type'] === 'page')) {
-                    $is_multi_step = true;
-                    break;
-                }
-            }
-        }
-
-        if ($on_submit && $is_multi_step) {
             return;
         }
 
