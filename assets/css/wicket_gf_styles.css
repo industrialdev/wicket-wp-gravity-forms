@@ -220,3 +220,23 @@ body:not(.wicket-theme-v2) .gform_wrapper {
     color: var(--wp--preset--gradient--midnight);
   }
 }
+
+/* Ensure GF multi-step controls show interactive cursor */
+.gform_wrapper .gform-page-footer input.gform_previous_button,
+.gform_wrapper .gform-page-footer input.gform_next_button:not(.gform_hidden):not([hidden]),
+.gform_wrapper .gform-page-footer input.gform_submit_button,
+.gform_wrapper .gform-page-footer input.gform_button,
+.gform_wrapper .gform-page-footer input[type="submit"].gform_button,
+.gform_wrapper .gform-page-footer input[data-submission-type="previous"],
+.gform_wrapper .gform-page-footer input[data-submission-type="next"],
+.gform_wrapper .gform-page-footer input[data-submission-type="submit"],
+.gform_wrapper .gform_footer input.gform_button,
+.gform_wrapper .gform_footer button.gform_button {
+  cursor: pointer !important;
+}
+
+.gform_wrapper .gform-page-footer input[disabled],
+.gform_wrapper .gform_footer input[disabled],
+.gform_wrapper .gform_footer button[disabled] {
+  cursor: not-allowed !important;
+}

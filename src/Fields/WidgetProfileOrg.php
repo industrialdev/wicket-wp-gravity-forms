@@ -257,23 +257,25 @@ jQuery(document).ready(function($) {
             return;
         }
 
+        $field_page = isset($this->pageNumber) ? (int) $this->pageNumber : 1;
+        if ($field_page !== $current_page) {
+            return;
+        }
+
         $field_id = $this->id ?? null;
         $validation_flag = $field_id !== null ? rgpost('input_' . $field_id . '_validation') : null;
 
         if ($on_next) {
+            $value_array = is_array(json_decode($value, true)) ? json_decode($value, true) : [];
+            $fields_incomplete_list = $this->get_filtered_incomplete_required_fields($value_array);
+            $resources_incomplete = isset($value_array['incompleteRequiredResources']) && is_array($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
             $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
-            if ($flag_false) {
-                $is_incomplete = true;
-                if (!empty($value)) {
-                    $value_array = is_array(json_decode($value, true)) ? json_decode($value, true) : [];
-                    $fields_incomplete_list = $this->get_filtered_incomplete_required_fields($value_array);
-                    $resources_incomplete = isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
-                    $is_incomplete = count($fields_incomplete_list) > 0 || $resources_incomplete;
-                }
-                if ($is_incomplete) {
-                    $this->failed_validation = true;
-                    $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
-                }
+            $required_and_empty = !empty($this->isRequired) && empty($value);
+            $is_incomplete = $flag_false || count($fields_incomplete_list) > 0 || $resources_incomplete || $required_and_empty;
+
+            if ($is_incomplete) {
+                $this->failed_validation = true;
+                $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
             }
 
             return;

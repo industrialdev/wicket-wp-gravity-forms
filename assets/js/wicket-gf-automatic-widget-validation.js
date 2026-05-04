@@ -20,7 +20,8 @@ const WicketMDPAutoValidation = {
         hasRequiredFields: false,
         incompleteRequiredFields: [],
         incompleteRequiredResources: [],
-        widgetsReady: false
+        widgetsReady: false,
+        hasVisibleWidgetOnCurrentStep: false
     },
 
     /**
@@ -114,11 +115,19 @@ const WicketMDPAutoValidation = {
             'wwidget-component-additional-info-state-changed',
             'wwidget-component-prefs-person-state-changed',
 
-            // Widget save events (includes validation data)
+            // Widget save/delete/validation events (include validation data)
             'wwidget-component-profile-ind-save-success',
             'wwidget-component-profile-org-save-success',
             'wwidget-component-additional-info-save-success',
             'wwidget-component-prefs-person-save-success',
+            'wwidget-component-profile-ind-delete-success',
+            'wwidget-component-profile-org-delete-success',
+            'wwidget-component-additional-info-delete-success',
+            'wwidget-component-prefs-person-delete-success',
+            'wwidget-component-profile-ind-validation-error',
+            'wwidget-component-profile-org-validation-error',
+            'wwidget-component-additional-info-validation-error',
+            'wwidget-component-prefs-person-validation-error',
 
             // Legacy events for compatibility
             'wicket_current_person_data_updated',
@@ -743,6 +752,11 @@ const WicketMDPAutoValidation = {
             });
         }
 
+        if (!this.currentValidationState.hasVisibleWidgetOnCurrentStep) {
+            this.log('Skipping hidden validation flag sync: no visible widget on current step');
+            return;
+        }
+
         // Keep GF per-field validation flags aligned with the latest computed state.
         const hasIncomplete = this.currentValidationState.incompleteRequiredFields.length > 0 ||
             this.currentValidationState.incompleteRequiredResources.length > 0;
@@ -765,12 +779,15 @@ const WicketMDPAutoValidation = {
      * Check if navigation should be blocked based on widget validation
      */
     shouldBlockNavigation() {
-        // Don't block if no widgets are detected
+        // Validate/block only when widget is visible on the current GF step.
+        if (!this.currentValidationState.hasVisibleWidgetOnCurrentStep) {
+            return false;
+        }
+
         if (!this.currentValidationState.widgetsReady) {
             return false;
         }
 
-        // Don't block if no required fields are detected
         if (!this.currentValidationState.hasRequiredFields) {
             return false;
         }
@@ -838,6 +855,7 @@ const WicketMDPAutoValidation = {
                 : [];
 
             this.currentValidationState.widgetsReady = true;
+            this.currentValidationState.hasVisibleWidgetOnCurrentStep = true;
             this.currentValidationState.hasRequiredFields =
                 allIncompleteFields.length > 0 ||
                 existingIncompleteResources.length > 0 ||
@@ -848,11 +866,21 @@ const WicketMDPAutoValidation = {
                 this.log(`Found ${allIncompleteFields.length} incomplete fields in visible widgets`, allIncompleteFields);
             }
         } else {
-            // Reset validation state if no visible widgets
-            this.currentValidationState.widgetsReady = false;
+            const existingIncompleteFields = Array.isArray(this.currentValidationState.incompleteRequiredFields)
+                ? this.currentValidationState.incompleteRequiredFields
+                : [];
+            const existingIncompleteResources = Array.isArray(this.currentValidationState.incompleteRequiredResources)
+                ? this.currentValidationState.incompleteRequiredResources
+                : [];
+            const hasExistingValidationFailures = existingIncompleteFields.length > 0 || existingIncompleteResources.length > 0;
+
+            // No visible widget on the current GF step: do not block navigation on this step.
+            // Keep last-known arrays for diagnostics but mark this step as non-widget.
+            this.currentValidationState.widgetsReady = hasExistingValidationFailures;
+            this.currentValidationState.hasVisibleWidgetOnCurrentStep = false;
             this.currentValidationState.hasRequiredFields = false;
-            this.currentValidationState.incompleteRequiredFields = [];
-            this.currentValidationState.incompleteRequiredResources = [];
+            this.currentValidationState.incompleteRequiredFields = existingIncompleteFields;
+            this.currentValidationState.incompleteRequiredResources = existingIncompleteResources;
         }
     },
 

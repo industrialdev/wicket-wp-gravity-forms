@@ -64,6 +64,17 @@ class Validation
 
             foreach ($form['fields'] as &$field) {
                 if ($field->type == 'wicket_widget_profile_org') {
+                    $field_page = isset($field->pageNumber) ? (int) $field->pageNumber : 1;
+                    if ($field_page !== $current_page) {
+                        \Wicket()->log()->debug('Org validation: Skipping field not on current page', [
+                            'source' => 'gravityforms-state-debug',
+                            'field_id' => $field->id,
+                            'field_page' => $field_page,
+                            'current_page' => $current_page,
+                        ]);
+                        continue;
+                    }
+
                     $org_fields_found++;
                     $field_id = $field->id;
                     $value = rgpost("input_{$field_id}");
@@ -72,26 +83,32 @@ class Validation
                     \Wicket()->log()->debug('Org validation: Found org field ' . $field_id . ', value_length=' . strlen($value) . ', validation_flag=' . var_export($validation_flag, true), ['source' => 'gravityforms-state-debug']);
 
                     if ($is_navigating_forward) {
-                        $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
-                        if ($flag_false) {
-                            $is_incomplete = true;
-                            if (!empty($value)) {
-                                $value_array = json_decode($value, true);
-                                $fields_incomplete = isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
-                                $resources_incomplete = isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
-                                $is_incomplete = ($fields_incomplete || $resources_incomplete);
-                            }
-                            if ($is_incomplete) {
-                                $org_validation_failed = true;
-                                $field->failed_validation = true;
-                                $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
-                                \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (incomplete)', ['source' => 'gravityforms-state-debug']);
-                                break;
-                            }
-                            \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' JSON indicates complete, allowing progression', ['source' => 'gravityforms-state-debug']);
-                            continue;
+                        $value_array = !empty($value) ? json_decode($value, true) : [];
+                        if (!is_array($value_array)) {
+                            $value_array = [];
                         }
-                        \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' validation flag is true/missing, allowing progression', ['source' => 'gravityforms-state-debug']);
+
+                        $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+                        $fields_incomplete = isset($value_array['incompleteRequiredFields']) && is_array($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
+                        $resources_incomplete = isset($value_array['incompleteRequiredResources']) && is_array($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
+                        $required_and_empty = !empty($field->isRequired) && empty($value);
+                        $is_incomplete = $flag_false || $fields_incomplete || $resources_incomplete || $required_and_empty;
+
+                        if ($is_incomplete) {
+                            $org_validation_failed = true;
+                            $field->failed_validation = true;
+                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
+                            \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (forward navigation)', [
+                                'source' => 'gravityforms-state-debug',
+                                'flag_false' => $flag_false,
+                                'fields_incomplete' => $fields_incomplete,
+                                'resources_incomplete' => $resources_incomplete,
+                                'required_and_empty' => $required_and_empty,
+                            ]);
+                            break;
+                        }
+
+                        \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' complete for forward navigation', ['source' => 'gravityforms-state-debug']);
                         continue;
                     }
 
