@@ -19,7 +19,27 @@ class OrgSearchSelect extends \GF_Field
 
     public static function custom_settings($position, $form_id)
     {
-        if ($position == 25) { ?>
+        if ($position == 25) {
+            /*
+             * MAINTENANCE NOTE (2026-05):
+             *
+             * The active-membership modal settings below are currently configured in GF but are not reachable
+             * for end users in the current ORGSS UX when "disable selecting orgs with active membership" is enabled.
+             * Current frontend behavior is inline blocking/warning in search results.
+             *
+             * Modal-only settings currently impacted:
+             * - orgss_active_membership_alert_title
+             * - orgss_active_membership_alert_button_1_*
+             * - orgss_active_membership_alert_button_2_*
+             * - orgss_active_membership_notify_*
+             * - orgss_active_membership_seat_messaging_enabled
+             * - orgss_active_membership_seat_available_*
+             * - orgss_active_membership_seat_unavailable_*
+             * - orgss_active_membership_seat_unavailable_notify_*
+             *
+             * Keep for backward compatibility until modal path is restored or settings are formally deprecated.
+             */
+            ?>
             <?php ob_start(); ?>
 
             <li class="wicket_orgss_setting field_setting" style="display:none;">
@@ -770,6 +790,10 @@ class OrgSearchSelect extends \GF_Field
         $orgss_hide_remove_buttons = false;
         $orgss_hide_select_buttons = false;
         $orgss_display_removal_alert_message = false;
+
+        // NOTE: Most active-membership settings below are currently modal-only and not user-reachable
+        // in the active "disable selecting orgs with active membership" inline-blocking UX.
+        // They remain mapped for backward compatibility and future modal-path restoration/deprecation.
         $orgss_active_membership_alert_title = '';
         $orgss_active_membership_alert_body = '';
         $orgss_active_membership_alert_button_1_text = '';
