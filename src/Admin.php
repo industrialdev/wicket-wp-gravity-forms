@@ -348,7 +348,88 @@ class Admin
 
     public static function register_meta_box($meta_boxes, $entry, $form)
     {
+        $meta_boxes[] = [
+            'title'    => __('MDP Sync Status', 'wicket-gf'),
+            'callback' => [self::class, 'render_mdp_sync_status_meta_box'],
+            'context'  => 'side',
+            'priority' => 'high',
+        ];
+
         return $meta_boxes;
+    }
+
+    /**
+     * Render the MDP Sync Status meta box on the entry detail page.
+     *
+     * @param array $entry GF entry object.
+     * @param array $form  GF form object.
+     */
+    public static function render_mdp_sync_status_meta_box($entry, $form): void
+    {
+        $entry_id = (int) ($entry['id'] ?? 0);
+        if ($entry_id <= 0) {
+            echo '<p>' . esc_html__('No sync data available.', 'wicket-gf') . '</p>';
+            return;
+        }
+
+        // Retrieve sync status from entry meta
+        $meta = gform_get_meta($entry_id, \WicketGF\MdpSyncEngine::get_meta_key());
+
+        if (empty($meta) || !is_array($meta)) {
+            echo '<p>' . esc_html__('No MDP sync record found for this entry.', 'wicket-gf') . '</p>';
+            return;
+        }
+
+        $status  = esc_html($meta['status'] ?? 'unknown');
+ $message = esc_html($meta['message'] ?? '');
+        $time    = esc_html($meta['timestamp'] ?? '');
+        $objects = $meta['objects'] ?? [];
+
+        // Status badge colors
+        $colors = [
+            'success' => '#2ea043',
+            'failed'  => '#d63638',
+            'pending' => '#dba617',
+            'skipped' => '#6c757d',
+        ];
+        $color = $colors[$status] ?? '#6c757d';
+
+        echo '<div style="padding:8px 0;">';
+
+        // Status badge
+        printf(
+            '<span style="display:inline-block;padding:2px 8px;border-radius:3px;color:#fff;background:%s;font-weight:600;font-size:12px;">%s</span>',
+            esc_attr($color),
+            strtoupper($status)
+        );
+
+        // Timestamp
+        if ($time !== '') {
+            printf('<p style="margin:6px 0 0;font-size:12px;color:#666;">%s</p>', $time);
+        }
+
+        // Message
+        if ($message !== '') {
+            printf('<p style="margin:6px 0 0;font-size:13px;">%s</p>', $message);
+        }
+
+        // Objects synced
+        if (!empty($objects) && is_array($objects)) {
+            echo '<ul style="margin:6px 0 0;padding-left:16px;font-size:12px;">';
+            foreach ($objects as $obj => $ok) {
+                $icon = $ok ? '✓' : '✗';
+                $obj_color = $ok ? '#2ea043' : '#d63638';
+                printf(
+                    '<li><span style="color:%s;">%s</span> %s</li>',
+                    esc_attr($obj_color),
+                    $icon,
+                    esc_html($obj)
+                );
+            }
+            echo '</ul>';
+        }
+
+        echo '</div>';
     }
 
     public static function render_custom_meta_box($entry, $form)
