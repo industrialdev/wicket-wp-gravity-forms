@@ -68,6 +68,7 @@ use WicketGF\MappingAddOn;
 use WicketGF\MdpFieldDiscovery;
 use WicketGF\MdpSyncEngine;
 use WicketGF\MdpSyncLogger;
+use WicketGF\MdpSyncLogsPage;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\Validation;
@@ -119,6 +120,12 @@ class Wicket_Gf_Main
      * @var MdpSyncLogger|null
      */
     protected ?MdpSyncLogger $mdp_logger = null;
+
+    /**
+     * MDP sync logs admin page.
+     * @var MdpSyncLogsPage|null
+     */
+    protected ?MdpSyncLogsPage $mdp_logs_page = null;
 
     /**
      * Class variables.
@@ -241,6 +248,9 @@ class Wicket_Gf_Main
 
         // MDP Sync Engine: push mapped field values after submission
         $this->get_mdp_sync()->register();
+
+        // MDP Sync Logs: admin list view under Gravity Forms menu
+        $this->get_mdp_logs_page();
 
         // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
@@ -847,6 +857,20 @@ class Wicket_Gf_Main
             $this->mdp_logger->register();
         }
         return $this->mdp_logger;
+    }
+
+    /**
+     * Get the MDP sync logs admin page (lazy-loaded).
+     *
+     * @return MdpSyncLogsPage
+     */
+    protected function get_mdp_logs_page(): MdpSyncLogsPage
+    {
+        if ($this->mdp_logs_page === null) {
+            $this->mdp_logs_page = new MdpSyncLogsPage($this->get_mdp_logger());
+            $this->mdp_logs_page->register();
+        }
+        return $this->mdp_logs_page;
     }
 
     protected function get_mdp_target_field_values($target_object)
