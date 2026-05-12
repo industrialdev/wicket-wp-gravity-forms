@@ -448,7 +448,19 @@ class MdpSyncEngine
     protected function record_sync_results(int $entry_id, array $results): void
     {
         $status = $results['success'] ? self::STATUS_SUCCESS : self::STATUS_FAILED;
-        $this->record_status($entry_id, $status, $results['message']);
+
+        if ($entry_id <= 0) {
+            return;
+        }
+
+        $meta = [
+            'status' => $status,
+            'message' => $results['message'],
+            'objects' => $results['objects'] ?? [],
+            'timestamp' => current_time('mysql'),
+        ];
+
+        gform_update_meta($entry_id, self::META_KEY, $meta);
     }
 
     /**

@@ -233,7 +233,7 @@ class MdpFieldDiscovery
                     ?? ucwords(str_replace(['_', '-'], ' ', $key));
 
                 $fields[] = [
-                    'value' => 'data_field.' . sanitize_key($key),
+                    'value' => 'data_field.' . sanitize_text_field($key),
                     'label' => sanitize_text_field($label),
                 ];
             }
@@ -311,7 +311,7 @@ class MdpFieldDiscovery
                     : ucwords(str_replace(['_', '-'], ' ', (string) $key));
 
                 $fields[] = [
-                    'value' => 'communications.sublists.' . sanitize_key((string) $key),
+                    'value' => 'communications.sublists.' . sanitize_text_field((string) $key),
                     'label' => sanitize_text_field($label),
                 ];
             }
@@ -367,7 +367,7 @@ class MdpFieldDiscovery
             // Each sublist key becomes a preference option
             foreach (array_keys($sublists) as $key) {
                 $fields[] = [
-                    'value' => 'communications.sublists.' . sanitize_key((string) $key),
+                    'value' => 'communications.sublists.' . sanitize_text_field((string) $key),
                     'label' => sanitize_text_field(ucwords(str_replace(['_', '-'], ' ', (string) $key))),
                 ];
             }
