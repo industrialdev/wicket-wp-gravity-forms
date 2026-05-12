@@ -34,9 +34,9 @@ class MdpFieldDiscovery
     private const CACHE_KEY_PREFS = 'wicket_gf_mdp_preferences';
 
     /**
-     * Cache expiration in seconds (12 hours).
+     * Default cache TTL in seconds (12 hours). Filterable.
      */
-    private const CACHE_TTL = 43200;
+    private const CACHE_TTL_DEFAULT = 43200;
 
     /**
      * Get all target fields grouped by target object.
@@ -148,7 +148,8 @@ class MdpFieldDiscovery
 
         $fields = $this->discoverSchemaFields();
 
-        set_transient(self::CACHE_KEY_SCHEMAS, $fields, self::CACHE_TTL);
+        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
+        set_transient(self::CACHE_KEY_SCHEMAS, $fields, $ttl);
 
         return $fields;
     }
@@ -170,7 +171,8 @@ class MdpFieldDiscovery
 
         $fields = $this->discoverPreferenceFields();
 
-        set_transient(self::CACHE_KEY_PREFS, $fields, self::CACHE_TTL);
+        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
+        set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
 
         return $fields;
     }
@@ -200,6 +202,10 @@ class MdpFieldDiscovery
 
         try {
             $client = wicket_api_client();
+            if (!$client) {
+                return [];
+            }
+
             $response = $client->get('json_schemas');
             $schemas = $response['data'] ?? [];
 
@@ -217,9 +223,9 @@ class MdpFieldDiscovery
 
                 // Try to get a human-readable label from ui_schema or fall back to key
                 $uiSchema = $attrs['ui_schema'] ?? [];
-                $language = function_exists('get_user_locale')
-                    ? strtok(get_user_locale(), '-')
-                    : 'en';
+                // Use English as canonical label source for cache stability.
+                // Prevents locale-dependent cache poisoning across admins.
+                $language = 'en';
 
                 $label = $uiSchema['ui:i18n']['label'][$language]
                     ?? $uiSchema['ui:i18n']['label']['en']
@@ -227,15 +233,13 @@ class MdpFieldDiscovery
                     ?? ucwords(str_replace(['_', '-'], ' ', $key));
 
                 $fields[] = [
-                    'value' => 'data_field.' . $key,
-                    'label' => $label,
+                    'value' => 'data_field.' . sanitize_key($key),
+                    'label' => sanitize_text_field($label),
                 ];
             }
 
             return $fields;
-        } catch (RequestException $e) {
-            return [];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -256,6 +260,9 @@ class MdpFieldDiscovery
 
         try {
             $client = wicket_api_client();
+            if (!$client) {
+                return [];
+            }
 
             // Use the communications config endpoint if available,
             // otherwise fetch a sample person to discover sublists
@@ -266,13 +273,13 @@ class MdpFieldDiscovery
                 if (!empty($config)) {
                     return $this->parsePreferenceConfig($config);
                 }
-            } catch (RequestException $e) {
+            } catch (\Throwable $e) {
                 // Endpoint may not exist; fall through to person-based discovery
             }
 
             // Fallback: discover from a person record's communications sublists
             return $this->discoverPreferencesFromPerson($client);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -304,8 +311,8 @@ class MdpFieldDiscovery
                     : ucwords(str_replace(['_', '-'], ' ', (string) $key));
 
                 $fields[] = [
-                    'value' => 'communications.sublists.' . $key,
-                    'label' => $label,
+                    'value' => 'communications.sublists.' . sanitize_key((string) $key),
+                    'label' => sanitize_text_field($label),
                 ];
             }
         }
@@ -360,8 +367,8 @@ class MdpFieldDiscovery
             // Each sublist key becomes a preference option
             foreach (array_keys($sublists) as $key) {
                 $fields[] = [
-                    'value' => 'communications.sublists.' . $key,
-                    'label' => ucwords(str_replace(['_', '-'], ' ', $key)),
+                    'value' => 'communications.sublists.' . sanitize_key((string) $key),
+                    'label' => sanitize_text_field(ucwords(str_replace(['_', '-'], ' ', (string) $key))),
                 ];
             }
 
