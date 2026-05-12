@@ -66,6 +66,7 @@ use WicketGF\Fields\WidgetProfile;
 use WicketGF\Fields\WidgetProfileOrg;
 use WicketGF\MappingAddOn;
 use WicketGF\MdpFieldDiscovery;
+use WicketGF\MdpSyncEngine;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\Validation;
@@ -105,6 +106,12 @@ class Wicket_Gf_Main
      * @var MdpFieldDiscovery|null
      */
     protected ?MdpFieldDiscovery $mdp_discovery = null;
+
+    /**
+     * MDP sync engine.
+     * @var MdpSyncEngine|null
+     */
+    protected ?MdpSyncEngine $mdp_sync = null;
 
     /**
      * Class variables.
@@ -224,6 +231,9 @@ class Wicket_Gf_Main
         add_filter('gform_form_settings_fields', [$this, 'register_form_settings_fields'], 10, 2);
         add_filter('gform_pre_form_settings_save', [$this, 'sanitize_mdp_form_settings']);
         add_filter('gform_form_update_meta', [$this, 'sanitize_mdp_field_mappings_on_save'], 10, 3);
+
+        // MDP Sync Engine: push mapped field values after submission
+        $this->get_mdp_sync()->register();
 
         // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
@@ -803,6 +813,19 @@ class Wicket_Gf_Main
             $this->mdp_discovery = new MdpFieldDiscovery();
         }
         return $this->mdp_discovery;
+    }
+
+    /**
+     * Get the MDP sync engine (lazy-loaded).
+     *
+     * @return MdpSyncEngine
+     */
+    protected function get_mdp_sync(): MdpSyncEngine
+    {
+        if ($this->mdp_sync === null) {
+            $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery());
+        }
+        return $this->mdp_sync;
     }
 
     protected function get_mdp_target_field_values($target_object)
