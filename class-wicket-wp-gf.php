@@ -65,6 +65,7 @@ use WicketGF\Fields\WidgetPrefs;
 use WicketGF\Fields\WidgetProfile;
 use WicketGF\Fields\WidgetProfileOrg;
 use WicketGF\MappingAddOn;
+use WicketGF\MdpFieldDiscovery;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\Validation;
@@ -98,6 +99,12 @@ class Wicket_Gf_Main
     public $plugin_path = '';
 
     private static bool $live_update_script_enqueued = false;
+
+    /**
+     * MDP field discovery service.
+     * @var MdpFieldDiscovery|null
+     */
+    protected ?MdpFieldDiscovery $mdp_discovery = null;
 
     /**
      * Class variables.
@@ -785,49 +792,34 @@ class Wicket_Gf_Main
      * @param string $target_object The target object key (e.g. 'person_profile').
      * @return string[] Array of valid field value strings.
      */
+    /**
+     * Get the MDP field discovery service (lazy-loaded).
+     *
+     * @return MdpFieldDiscovery
+     */
+    protected function get_mdp_discovery(): MdpFieldDiscovery
+    {
+        if ($this->mdp_discovery === null) {
+            $this->mdp_discovery = new MdpFieldDiscovery();
+        }
+        return $this->mdp_discovery;
+    }
+
     protected function get_mdp_target_field_values($target_object)
     {
-        $fields = $this->get_mdp_target_fields($target_object);
-
-        return array_map(static function ($field) {
-            return (string) ($field['value'] ?? '');
-        }, $fields);
+        return $this->get_mdp_discovery()->getTargetFieldValues($target_object);
     }
 
     /**
      * Return the target field definitions for a given target object.
+     * Delegates to MdpFieldDiscovery for dynamic field discovery.
      *
      * @param string $target_object The target object key.
      * @return array[] Array of ['value' => string, 'label' => string].
      */
     protected function get_mdp_target_fields($target_object)
     {
-        $all_fields = [
-            'person_profile' => [
-                ['value' => 'attributes.given_name',       'label' => __('First Name', 'wicket-gf')],
-                ['value' => 'attributes.family_name',      'label' => __('Last Name', 'wicket-gf')],
-                ['value' => 'attributes.additional_name',  'label' => __('Additional Name', 'wicket-gf')],
-                ['value' => 'attributes.alternate_name',   'label' => __('Alternate Name', 'wicket-gf')],
-                ['value' => 'attributes.maiden_name',      'label' => __('Maiden Name', 'wicket-gf')],
-                ['value' => 'attributes.gender',           'label' => __('Gender', 'wicket-gf')],
-                ['value' => 'attributes.honorific_prefix', 'label' => __('Honorific Prefix', 'wicket-gf')],
-                ['value' => 'attributes.honorific_suffix', 'label' => __('Honorific Suffix', 'wicket-gf')],
-                ['value' => 'attributes.preferred_pronoun','label' => __('Preferred Pronoun', 'wicket-gf')],
-                ['value' => 'attributes.job_title',        'label' => __('Job Title', 'wicket-gf')],
-                ['value' => 'attributes.birth_date',       'label' => __('Birth Date', 'wicket-gf')],
-                ['value' => 'attributes.language',         'label' => __('Language', 'wicket-gf')],
-                ['value' => 'attributes.nickname',         'label' => __('Nickname', 'wicket-gf')],
-                ['value' => 'attributes.job_function',     'label' => __('Job Function', 'wicket-gf')],
-                ['value' => 'attributes.job_level',        'label' => __('Job Level', 'wicket-gf')],
-            ],
-            'org_profile' => [
-                ['value' => 'attributes.legal_name', 'label' => __('Legal Name', 'wicket-gf')],
-            ],
-            'additional_info' => [],
-            'preferences'     => [],
-        ];
-
-        return $all_fields[$target_object] ?? [];
+        return $this->get_mdp_discovery()->getTargetFields($target_object);
     }
 
     /**
@@ -838,12 +830,7 @@ class Wicket_Gf_Main
      */
     protected function get_all_mdp_target_fields()
     {
-        $objects = ['person_profile', 'org_profile', 'additional_info', 'preferences'];
-        $result = [];
-        foreach ($objects as $object) {
-            $result[$object] = $this->get_mdp_target_fields($object);
-        }
-        return $result;
+        return $this->get_mdp_discovery()->getAllTargetFields();
     }
 
     private function get_mdp_uuid_source_field_choices($form)
@@ -928,6 +915,14 @@ class Wicket_Gf_Main
                 [
                     'label' => esc_html__('Person Profile', 'wicket-gf'),
                     'value' => 'person_profile',
+                ],
+                [
+                    'label' => esc_html__('Additional Info', 'wicket-gf'),
+                    'value' => 'additional_info',
+                ],
+                [
+                    'label' => esc_html__('Preferences', 'wicket-gf'),
+                    'value' => 'preferences',
                 ],
             ],
             'organization' => [
