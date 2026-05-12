@@ -12,11 +12,13 @@ defined('ABSPATH') || exit;
 /**
  * MDP Sync Engine.
  *
- * Hooks into gform_after_submission to collect mapped field values,
- * group them by target object/endpoint, build PATCH payloads,
- * and push to the Wicket MDP API.
+ * Hooks into gform_after_submission to schedule async background processing
+ * of mapped field values. Collects, groups by target object/endpoint,
+ * builds PATCH payloads, and pushes to the Wicket MDP API via WP-Cron.
  *
  * Stores sync result as entry meta for traceability.
+ * Flow: after_submission → PENDING entry meta → wp_schedule_single_event
+ *       → cron callback → collect values → push to MDP → SUCCESS/FAILED meta.
  */
 class MdpSyncEngine
 {
@@ -46,47 +48,126 @@ class MdpSyncEngine
     }
 
     /**
-     * Register the gform_after_submission hook.
+     * Cron hook name for async MDP sync processing.
+     */
+    private const CRON_HOOK = 'wicket_gf_mdp_sync_process';
+
+    /**
+     * Register hooks: after_submission (schedules async) + cron callback.
      */
     public function register(): void
     {
-        add_filter('gform_after_submission', [$this, 'process_submission'], 10, 2);
+        add_action('gform_after_submission', [$this, 'schedule_sync'], 10, 2);
+        add_action(self::CRON_HOOK, [$this, 'process_scheduled_sync'], 10, 1);
     }
 
     /**
-     * Process a GF form submission: collect mapped values, push to MDP.
+     * Schedule async MDP sync after form submission.
+     *
+     * Records PENDING status immediately, then schedules background processing.
+     * Falls back to synchronous processing if scheduling fails.
      *
      * @param array $entry The GF entry object.
      * @param array $form  The GF form object.
      */
-    public function process_submission(array $entry, array $form): void
+    public function schedule_sync(array $entry, array $form): void
     {
+        $entry_id = (int) ($entry['id'] ?? 0);
         $form_config = $this->get_form_config($form);
 
         if (!$this->is_sync_eligible($form_config)) {
-            $this->record_status($entry['id'] ?? 0, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
             return;
         }
 
         $mapped_values = $this->collect_mapped_values($form, $entry);
 
         if (empty($mapped_values)) {
-            $this->record_status($entry['id'] ?? 0, self::STATUS_SKIPPED, 'No mapped fields with values');
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values');
             return;
         }
 
-        $grouped = $this->group_by_target_object($mapped_values);
-
-        $entity_type = $form_config['entity_type'];
         $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
-
         if (empty($uuid)) {
-            $this->record_status($entry['id'] ?? 0, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+            return;
+        }
+
+        // Record PENDING status immediately for UI visibility
+        $this->record_status($entry_id, self::STATUS_PENDING, 'Scheduled for async MDP sync');
+
+        // Prepare minimal payload for the cron job
+        $grouped = $this->group_by_target_object($mapped_values);
+        $payload = [
+            'entry_id'    => $entry_id,
+            'form_id'     => (int) ($form['id'] ?? 0),
+            'entity_type' => $form_config['entity_type'],
+            'uuid'        => $uuid,
+            'grouped'     => $grouped,
+        ];
+
+        $scheduled = wp_schedule_single_event(time(), self::CRON_HOOK, [$payload]);
+
+        // Fallback: if scheduling fails, process synchronously
+        if ($scheduled === false) {
+            $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
+            $this->record_sync_results($entry_id, $results);
+        }
+    }
+
+    /**
+     * Cron callback: process a scheduled MDP sync.
+     *
+     * @param array $payload Scheduled sync data.
+     */
+    public function process_scheduled_sync(array $payload): void
+    {
+        $entry_id = (int) ($payload['entry_id'] ?? 0);
+        $entity_type = (string) ($payload['entity_type'] ?? '');
+        $uuid = (string) ($payload['uuid'] ?? '');
+        $grouped = (array) ($payload['grouped'] ?? []);
+
+        if ($entry_id <= 0 || $uuid === '' || empty($grouped)) {
+            $this->record_status($entry_id, self::STATUS_FAILED, 'Invalid scheduled sync payload');
             return;
         }
 
         $results = $this->push_to_mdp($entity_type, $uuid, $grouped);
-        $this->record_sync_results($entry['id'] ?? 0, $results);
+        $this->record_sync_results($entry_id, $results);
+    }
+
+    /**
+     * Synchronous processing entry point (kept for direct calls / tests).
+     *
+     * @param array $entry The GF entry object.
+     * @param array $form  The GF form object.
+     */
+    public function process_submission(array $entry, array $form): void
+    {
+        $entry_id = (int) ($entry['id'] ?? 0);
+        $form_config = $this->get_form_config($form);
+
+        if (!$this->is_sync_eligible($form_config)) {
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+            return;
+        }
+
+        $mapped_values = $this->collect_mapped_values($form, $entry);
+
+        if (empty($mapped_values)) {
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values');
+            return;
+        }
+
+        $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
+        if (empty($uuid)) {
+            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+            return;
+        }
+
+        $grouped = $this->group_by_target_object($mapped_values);
+        $results = $this->push_to_mdp($form_config['entity_type'], $uuid, $grouped);
+        $this->record_sync_results($entry_id, $results);
     }
 
     /**
