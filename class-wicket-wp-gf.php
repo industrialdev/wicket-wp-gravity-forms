@@ -216,6 +216,7 @@ class Wicket_Gf_Main
         add_action('gform_tooltips', [$this, 'register_tooltips']);
         add_filter('gform_form_settings_fields', [$this, 'register_form_settings_fields'], 10, 2);
         add_filter('gform_pre_form_settings_save', [$this, 'sanitize_mdp_form_settings']);
+        add_filter('gform_form_update_meta', [$this, 'sanitize_mdp_field_mappings_on_save'], 10, 3);
 
         // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
@@ -694,6 +695,157 @@ class Wicket_Gf_Main
         return $form;
     }
 
+    /**
+     * Server-side safety net: sanitize field-level MDP mapping properties
+     * before the form is saved to the database.
+     *
+     * Mirrors the JS-side gform_pre_form_editor_save filter.
+     * Handles edge cases where JS validation may be bypassed (import, API).
+     *
+     * @param mixed  $meta      Form meta (form object) being saved.
+     * @param int    $form_id   The form ID.
+     * @param string $meta_name The type of meta ('display_meta', 'notifications', 'confirmations').
+     * @return mixed Sanitized form meta.
+     */
+    public function sanitize_mdp_field_mappings_on_save($meta, $form_id, $meta_name)
+    {
+        unset($form_id);
+
+        if ($meta_name !== 'display_meta') {
+            return $meta;
+        }
+
+        if (!is_array($meta) || empty($meta['fields']) || !is_array($meta['fields'])) {
+            return $meta;
+        }
+
+        $uuid_source = isset($meta['wicket_mdp_uuid_source_field'])
+            ? (string) $meta['wicket_mdp_uuid_source_field']
+            : '';
+
+        foreach ($meta['fields'] as $field) {
+            if (!is_object($field)) {
+                continue;
+            }
+
+            $mdp_enabled = isset($field->wicket_enable_mdp_mapping)
+                && $field->wicket_enable_mdp_mapping;
+
+            if (!$mdp_enabled) {
+                // Strip MDP properties from disabled fields
+                $field->wicket_mdp_target_object = '';
+                $field->wicket_mdp_target_field  = '';
+                continue;
+            }
+
+            // If no form-level UUID source, strip field-level MDP entirely
+            if ($uuid_source === '') {
+                $field->wicket_enable_mdp_mapping = false;
+                $field->wicket_mdp_target_object  = '';
+                $field->wicket_mdp_target_field   = '';
+                continue;
+            }
+
+            $target_object = isset($field->wicket_mdp_target_object)
+                ? (string) $field->wicket_mdp_target_object
+                : '';
+
+            // Get available target fields for this object
+            $available_fields = $this->get_mdp_target_field_values($target_object);
+
+            // If target object is empty, strip any stale target field
+            if ($target_object === '') {
+                $field->wicket_mdp_target_field = '';
+                continue;
+            }
+
+            // If target object is unsupported (no fields), strip
+            if (empty($available_fields)) {
+                $field->wicket_mdp_target_object = '';
+                $field->wicket_mdp_target_field  = '';
+                continue;
+            }
+
+            // If target field is invalid for the object, strip it
+            $target_field = isset($field->wicket_mdp_target_field)
+                ? (string) $field->wicket_mdp_target_field
+                : '';
+
+            if ($target_field !== '' && !in_array($target_field, $available_fields, true)) {
+                $field->wicket_mdp_target_field = '';
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
+     * Return the list of valid target field values for a given target object.
+     *
+     * @param string $target_object The target object key (e.g. 'person_profile').
+     * @return string[] Array of valid field value strings.
+     */
+    protected function get_mdp_target_field_values($target_object)
+    {
+        $fields = $this->get_mdp_target_fields($target_object);
+
+        return array_map(static function ($field) {
+            return (string) ($field['value'] ?? '');
+        }, $fields);
+    }
+
+    /**
+     * Return the target field definitions for a given target object.
+     *
+     * @param string $target_object The target object key.
+     * @return array[] Array of ['value' => string, 'label' => string].
+     */
+    protected function get_mdp_target_fields($target_object)
+    {
+        $all_fields = [
+            'person_profile' => [
+                ['value' => 'attributes.given_name',       'label' => __('First Name', 'wicket-gf')],
+                ['value' => 'attributes.family_name',      'label' => __('Last Name', 'wicket-gf')],
+                ['value' => 'attributes.additional_name',  'label' => __('Additional Name', 'wicket-gf')],
+                ['value' => 'attributes.alternate_name',   'label' => __('Alternate Name', 'wicket-gf')],
+                ['value' => 'attributes.maiden_name',      'label' => __('Maiden Name', 'wicket-gf')],
+                ['value' => 'attributes.gender',           'label' => __('Gender', 'wicket-gf')],
+                ['value' => 'attributes.honorific_prefix', 'label' => __('Honorific Prefix', 'wicket-gf')],
+                ['value' => 'attributes.honorific_suffix', 'label' => __('Honorific Suffix', 'wicket-gf')],
+                ['value' => 'attributes.preferred_pronoun','label' => __('Preferred Pronoun', 'wicket-gf')],
+                ['value' => 'attributes.job_title',        'label' => __('Job Title', 'wicket-gf')],
+                ['value' => 'attributes.birth_date',       'label' => __('Birth Date', 'wicket-gf')],
+                ['value' => 'attributes.language',         'label' => __('Language', 'wicket-gf')],
+                ['value' => 'attributes.nickname',         'label' => __('Nickname', 'wicket-gf')],
+                ['value' => 'attributes.job_function',     'label' => __('Job Function', 'wicket-gf')],
+                ['value' => 'attributes.job_level',        'label' => __('Job Level', 'wicket-gf')],
+            ],
+            'org_profile' => [
+                ['value' => 'attributes.legal_name', 'label' => __('Legal Name', 'wicket-gf')],
+            ],
+            'additional_info' => [],
+            'preferences'     => [],
+        ];
+
+        return $all_fields[$target_object] ?? [];
+    }
+
+    /**
+     * Return all target field definitions grouped by target object.
+     * Used as single source of truth for JS injection.
+     *
+     * @return array<string, array<array{value: string, label: string}>>
+     */
+    protected function get_all_mdp_target_fields()
+    {
+        $objects = ['person_profile', 'org_profile', 'additional_info', 'preferences'];
+        $result = [];
+        foreach ($objects as $object) {
+            $result[$object] = $this->get_mdp_target_fields($object);
+        }
+        return $result;
+    }
+
     private function get_mdp_uuid_source_field_choices($form)
     {
         $choices = [
@@ -1128,32 +1280,9 @@ class Wicket_Gf_Main
         <script type='text/javascript'>
             var wicketMdpTargetObjects = <?php echo json_encode($this->get_mdp_target_object_choices()); ?>;
 
-            // Static field definitions per target object (sourced from MDP API PATCH schema).
-            // Additional Info and Preferences are schema-driven; Task 2.1 will replace those with dynamic discovery.
-            var wicketMdpTargetFields = {
-                person_profile: [
-                    { value: 'attributes.given_name',       label: '<?php esc_html_e('First Name', 'wicket-gf'); ?>' },
-                    { value: 'attributes.family_name',      label: '<?php esc_html_e('Last Name', 'wicket-gf'); ?>' },
-                    { value: 'attributes.additional_name',  label: '<?php esc_html_e('Additional Name', 'wicket-gf'); ?>' },
-                    { value: 'attributes.alternate_name',   label: '<?php esc_html_e('Alternate Name', 'wicket-gf'); ?>' },
-                    { value: 'attributes.maiden_name',      label: '<?php esc_html_e('Maiden Name', 'wicket-gf'); ?>' },
-                    { value: 'attributes.gender',           label: '<?php esc_html_e('Gender', 'wicket-gf'); ?>' },
-                    { value: 'attributes.honorific_prefix', label: '<?php esc_html_e('Honorific Prefix', 'wicket-gf'); ?>' },
-                    { value: 'attributes.honorific_suffix', label: '<?php esc_html_e('Honorific Suffix', 'wicket-gf'); ?>' },
-                    { value: 'attributes.preferred_pronoun',label: '<?php esc_html_e('Preferred Pronoun', 'wicket-gf'); ?>' },
-                    { value: 'attributes.job_title',        label: '<?php esc_html_e('Job Title', 'wicket-gf'); ?>' },
-                    { value: 'attributes.birth_date',       label: '<?php esc_html_e('Birth Date', 'wicket-gf'); ?>' },
-                    { value: 'attributes.language',         label: '<?php esc_html_e('Language', 'wicket-gf'); ?>' },
-                    { value: 'attributes.nickname',         label: '<?php esc_html_e('Nickname', 'wicket-gf'); ?>' },
-                    { value: 'attributes.job_function',     label: '<?php esc_html_e('Job Function', 'wicket-gf'); ?>' },
-                    { value: 'attributes.job_level',        label: '<?php esc_html_e('Job Level', 'wicket-gf'); ?>' }
-                ],
-                additional_info: [],
-                preferences:     [],
-                org_profile: [
-                    { value: 'attributes.legal_name', label: '<?php esc_html_e('Legal Name', 'wicket-gf'); ?>' }
-                ]
-            };
+            // Field definitions sourced from PHP single source of truth (get_mdp_target_fields).
+            // Task 2.1 will replace additional_info/preferences with dynamic discovery.
+            var wicketMdpTargetFields = <?php echo json_encode($this->get_all_mdp_target_fields()); ?>;
 
             // Toggle a conditional MDP setting row. Uses setProperty('important') so it beats
             // the 'display: block !important' class rule that keeps these rows visible to GF.
@@ -1286,6 +1415,145 @@ class Wicket_Gf_Main
                 jQuery('#wicket_mdp_target_field').val('');
                 SetFieldProperty('wicket_mdp_target_field', '');
                 wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
+            });
+
+            /**
+             * Task 1.6: Validate MDP field mappings before saving the form.
+             * Returns an error string to block save, or empty string to allow.
+             */
+            gform.addFilter('gform_validation_error_form_editor', function(error, form) {
+                var mdpErrors = [];
+                var formConfig = wicketGetMdpFormConfig(form);
+
+                if (!form || !form.fields) {
+                    return error;
+                }
+
+                for (var i = 0; i < form.fields.length; i++) {
+                    var field = form.fields[i];
+                    var mdpEnabled = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
+
+                    if (!mdpEnabled) {
+                        continue;
+                    }
+
+                    var fieldLabel = rgar(field, 'label') || '<?php esc_html_e('Unknown field', 'wicket-gf'); ?>';
+                    var fieldAdminLabel = rgar(field, 'adminLabel') || '';
+                    var displayName = fieldAdminLabel || fieldLabel;
+                    var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
+                    var targetField  = rgar(field, 'wicket_mdp_target_field') || '';
+
+                    // Rule 1: MDP enabled but form has no entity type
+                    if (!formConfig.entityType) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('Select an Entity Type in Form Settings to enable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 2: MDP enabled but form has no UUID source
+                    if (!formConfig.uuidSourceField) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('Select a UUID field in Form Settings to enable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 3: MDP enabled but no Target Object selected
+                    if (!targetObject) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('Select a Target Object or disable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 4: Target Object has no available fields (unsupported)
+                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+                    if (availableFields.length === 0) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('The selected Target Object is not yet supported. Disable MDP mapping or choose a different Target Object.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 5: Target Object selected but no Target Field
+                    if (targetObject && !targetField) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('Select a Target Field or disable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 5: Target Field value is not in available fields for selected object
+                    if (targetField) {
+                        var fieldFound = false;
+                        for (var j = 0; j < availableFields.length; j++) {
+                            if (availableFields[j].value === targetField) {
+                                fieldFound = true;
+                                break;
+                            }
+                        }
+                        if (!fieldFound) {
+                            mdpErrors.push(displayName + ': <?php esc_html_e('The selected Target Field is not valid for the chosen Target Object. Please re-select.', 'wicket-gf'); ?>');
+                        }
+                    }
+                }
+
+                if (mdpErrors.length > 0) {
+                    var mdpMessage = '<?php esc_html_e('MDP Mapping Errors:', 'wicket-gf'); ?>\n\n' + mdpErrors.join('\n');
+                    error = error ? error + '\n\n' + mdpMessage : mdpMessage;
+                }
+
+                return error;
+            });
+
+            /**
+             * Task 1.6: Auto-clear invalid field mappings before saving.
+             * If a field has an unsupported config, strip it so the form data is clean.
+             */
+            gform.addFilter('gform_pre_form_editor_save', function(form) {
+                if (!form || !form.fields) {
+                    return form;
+                }
+
+                var formConfig = wicketGetMdpFormConfig(form);
+
+                for (var i = 0; i < form.fields.length; i++) {
+                    var field = form.fields[i];
+                    var mdpEnabled = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
+
+                    if (!mdpEnabled) {
+                        // Strip MDP properties from disabled fields
+                        field.wicket_mdp_target_object = '';
+                        field.wicket_mdp_target_field  = '';
+                        continue;
+                    }
+
+                    // If no form-level UUID source, strip field-level MDP entirely
+                    if (!formConfig.uuidSourceField) {
+                        field.wicket_enable_mdp_mapping = false;
+                        field.wicket_mdp_target_object  = '';
+                        field.wicket_mdp_target_field   = '';
+                        continue;
+                    }
+
+                    var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
+                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+
+                    // If target object is unsupported (no fields), strip
+                    if (targetObject && availableFields.length === 0) {
+                        field.wicket_mdp_target_object = '';
+                        field.wicket_mdp_target_field  = '';
+                        continue;
+                    }
+
+                    // If target field is invalid for the object, strip it
+                    var targetField = rgar(field, 'wicket_mdp_target_field') || '';
+                    if (targetField && availableFields.length > 0) {
+                        var fieldFound = false;
+                        for (var j = 0; j < availableFields.length; j++) {
+                            if (availableFields[j].value === targetField) {
+                                fieldFound = true;
+                                break;
+                            }
+                        }
+                        if (!fieldFound) {
+                            field.wicket_mdp_target_field = '';
+                        }
+                    }
+                }
+
+                return form;
             });
         </script>
         <?php
