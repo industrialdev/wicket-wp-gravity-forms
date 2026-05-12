@@ -28,6 +28,10 @@ class Admin
         add_option('wicket_gf_slug_mapping', '');
         register_setting('wicket_gf_options_group', 'wicket_gf_slug_mapping', ['sanitize_callback' => [self::class, 'sanitize_slug_mapping']]);
         register_setting('wicket_gf_options_group', 'wicket_gf_pagination_sidebar_layout', null);
+        register_setting('wicket_gf_options_group', \WicketGF\MdpSyncLogger::get_retention_option_key(), [
+            'sanitize_callback' => 'absint',
+            'default' => 30,
+        ]);
     }
 
     public static function register_options_page()
@@ -324,6 +328,15 @@ class Admin
                     id="wicket_gf_pagination_sidebar_layout"
                     <?php checked(get_option('wicket_gf_pagination_sidebar_layout'), 'on'); ?>>
                 <label for="wicket_gf_pagination_sidebar_layout" class="inline">Use Sidebar Pagination Layout</label>
+            </div>
+
+            <h3><?php _e('MDP Sync Logging', 'wicket-gf'); ?></h3>
+            <div class="wicket_pagination_settings">
+                <label for="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"><?php _e('Log Retention (days, 0 = keep forever)', 'wicket-gf'); ?></label>
+                <input type="number" name="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
+                    id="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
+                    value="<?php echo esc_attr(get_option(\WicketGF\MdpSyncLogger::get_retention_option_key(), 30)); ?>"
+                    min="0" max="365" class="small-text" />
             </div>
 
             <?php submit_button(); ?>

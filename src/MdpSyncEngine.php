@@ -42,9 +42,17 @@ class MdpSyncEngine
      */
     private MdpFieldDiscovery $discovery;
 
-    public function __construct(MdpFieldDiscovery $discovery)
+    /**
+     * Optional sync logger.
+     *
+     * @var MdpSyncLogger|null
+     */
+    private ?MdpSyncLogger $logger = null;
+
+    public function __construct(MdpFieldDiscovery $discovery, ?MdpSyncLogger $logger = null)
     {
         $this->discovery = $discovery;
+        $this->logger = $logger;
     }
 
     /**
@@ -73,34 +81,38 @@ class MdpSyncEngine
     public function schedule_sync(array $entry, array $form): void
     {
         $entry_id = (int) ($entry['id'] ?? 0);
+        $form_id = (int) ($form['id'] ?? 0);
         $form_config = $this->get_form_config($form);
+        $log_ctx = ['form_id' => $form_id, 'entity_type' => $form_config['entity_type']];
 
         if (!$this->is_sync_eligible($form_config)) {
-            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config', $log_ctx);
             return;
         }
 
         $mapped_values = $this->collect_mapped_values($form, $entry);
 
         if (empty($mapped_values)) {
-            $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values');
+            $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values', $log_ctx);
             return;
         }
 
         $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
         if (empty($uuid)) {
-            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field', $log_ctx);
             return;
         }
 
+        $log_ctx['uuid'] = $uuid;
+
         // Record PENDING status immediately for UI visibility
-        $this->record_status($entry_id, self::STATUS_PENDING, 'Scheduled for async MDP sync');
+        $this->record_status($entry_id, self::STATUS_PENDING, 'Scheduled for async MDP sync', $log_ctx);
 
         // Prepare minimal payload for the cron job
         $grouped = $this->group_by_target_object($mapped_values);
         $payload = [
             'entry_id'    => $entry_id,
-            'form_id'     => (int) ($form['id'] ?? 0),
+            'form_id'     => $form_id,
             'entity_type' => $form_config['entity_type'],
             'uuid'        => $uuid,
             'grouped'     => $grouped,
@@ -111,7 +123,7 @@ class MdpSyncEngine
         // Fallback: if scheduling fails, process synchronously
         if ($scheduled === false) {
             $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
-            $this->record_sync_results($entry_id, $results);
+            $this->record_sync_results($entry_id, $results, $log_ctx);
         }
     }
 
@@ -123,17 +135,20 @@ class MdpSyncEngine
     public function process_scheduled_sync(array $payload): void
     {
         $entry_id = (int) ($payload['entry_id'] ?? 0);
+        $form_id = (int) ($payload['form_id'] ?? 0);
         $entity_type = (string) ($payload['entity_type'] ?? '');
         $uuid = (string) ($payload['uuid'] ?? '');
         $grouped = (array) ($payload['grouped'] ?? []);
 
+        $log_ctx = ['form_id' => $form_id, 'entity_type' => $entity_type, 'uuid' => $uuid];
+
         if ($entry_id <= 0 || $uuid === '' || empty($grouped)) {
-            $this->record_status($entry_id, self::STATUS_FAILED, 'Invalid scheduled sync payload');
+            $this->record_status($entry_id, self::STATUS_FAILED, 'Invalid scheduled sync payload', $log_ctx);
             return;
         }
 
         $results = $this->push_to_mdp($entity_type, $uuid, $grouped);
-        $this->record_sync_results($entry_id, $results);
+        $this->record_sync_results($entry_id, $results, $log_ctx);
     }
 
     /**
@@ -505,7 +520,7 @@ class MdpSyncEngine
      * @param string $status   One of the STATUS_* constants.
      * @param string $message  Human-readable status message.
      */
-    protected function record_status(int $entry_id, string $status, string $message): void
+    protected function record_status(int $entry_id, string $status, string $message, array $log_context = []): void
     {
         if ($entry_id <= 0) {
             return;
@@ -518,6 +533,15 @@ class MdpSyncEngine
         ];
 
         gform_update_meta($entry_id, self::META_KEY, $meta);
+
+        $this->write_log(
+            (int) ($log_context['form_id'] ?? 0),
+            $entry_id,
+            (string) ($log_context['entity_type'] ?? ''),
+            (string) ($log_context['uuid'] ?? ''),
+            $status,
+            $message
+        );
     }
 
     /**
@@ -526,7 +550,7 @@ class MdpSyncEngine
      * @param int   $entry_id GF entry ID.
      * @param array $results  Result from push_to_mdp().
      */
-    protected function record_sync_results(int $entry_id, array $results): void
+    protected function record_sync_results(int $entry_id, array $results, array $log_context = []): void
     {
         $status = $results['success'] ? self::STATUS_SUCCESS : self::STATUS_FAILED;
 
@@ -542,6 +566,41 @@ class MdpSyncEngine
         ];
 
         gform_update_meta($entry_id, self::META_KEY, $meta);
+
+        $this->write_log(
+            (int) ($log_context['form_id'] ?? 0),
+            $entry_id,
+            (string) ($log_context['entity_type'] ?? ''),
+            (string) ($log_context['uuid'] ?? ''),
+            $status,
+            $results['message']
+        );
+    }
+
+    /**
+     * Write to the sync log if logger is available.
+     *
+     * @param int    $form_id     GF form ID.
+     * @param int    $entry_id    GF entry ID.
+     * @param string $entity_type Entity type.
+     * @param string $uuid        Entity UUID.
+     * @param string $status      Sync status.
+     * @param string $message     Status message.
+     */
+    private function write_log(int $form_id, int $entry_id, string $entity_type, string $uuid, string $status, string $message): void
+    {
+        if ($this->logger === null) {
+            return;
+        }
+
+        $this->logger->log([
+            'form_id'     => $form_id,
+            'entry_id'    => $entry_id,
+            'entity_type' => $entity_type,
+            'uuid'        => $uuid,
+            'status'      => $status,
+            'message'     => $message,
+        ]);
     }
 
     /**

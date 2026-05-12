@@ -67,6 +67,7 @@ use WicketGF\Fields\WidgetProfileOrg;
 use WicketGF\MappingAddOn;
 use WicketGF\MdpFieldDiscovery;
 use WicketGF\MdpSyncEngine;
+use WicketGF\MdpSyncLogger;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\Validation;
@@ -112,6 +113,12 @@ class Wicket_Gf_Main
      * @var MdpSyncEngine|null
      */
     protected ?MdpSyncEngine $mdp_sync = null;
+
+    /**
+     * MDP sync logger.
+     * @var MdpSyncLogger|null
+     */
+    protected ?MdpSyncLogger $mdp_logger = null;
 
     /**
      * Class variables.
@@ -823,9 +830,23 @@ class Wicket_Gf_Main
     protected function get_mdp_sync(): MdpSyncEngine
     {
         if ($this->mdp_sync === null) {
-            $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery());
+            $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery(), $this->get_mdp_logger());
         }
         return $this->mdp_sync;
+    }
+
+    /**
+     * Get the MDP sync logger (lazy-loaded).
+     *
+     * @return MdpSyncLogger
+     */
+    protected function get_mdp_logger(): MdpSyncLogger
+    {
+        if ($this->mdp_logger === null) {
+            $this->mdp_logger = new MdpSyncLogger();
+            $this->mdp_logger->register();
+        }
+        return $this->mdp_logger;
     }
 
     protected function get_mdp_target_field_values($target_object)
