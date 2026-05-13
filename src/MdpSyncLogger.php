@@ -42,10 +42,13 @@ class MdpSyncLogger
 
     /**
      * Register hooks.
+     *
+     * DISABLED: DB-backed logging is dormant. Sync logging uses Wicket()->log().
+     * Kept for potential future re-enablement.
      */
     public function register(): void
     {
-        add_action(self::CLEANUP_HOOK, [$this, 'cleanup_old_logs']);
+        // No-op: DB logging disabled.
     }
 
     /**
@@ -99,43 +102,16 @@ class MdpSyncLogger
     /**
      * Log a sync event.
      *
-     * @param array $data {
-     *   @type int    $form_id     GF form ID.
-     *   @type int    $entry_id    GF entry ID.
-     *   @type string $entity_type 'person' or 'organization'.
-     *   @type string $uuid        Entity UUID (sanitized/truncated for storage).
-     *   @type string $status      One of the LEVEL_* constants.
-     *   @type string $message     Human-readable message.
-     * }
-     * @return int|false Inserted row ID, or false on failure.
+     * DISABLED: DB-backed logging is dormant. Sync logging uses Wicket()->log().
+     * Kept for potential future re-enablement.
+     *
+     * @param array $data Log data (unused when disabled).
+     * @return int|false Always false when disabled.
      */
     public function log(array $data): int|false
     {
-        global $wpdb;
-
-        $this->ensure_table();
-
-        $insert = [
-            'form_id'     => absint($data['form_id'] ?? 0),
-            'entry_id'    => absint($data['entry_id'] ?? 0),
-            'entity_type' => sanitize_text_field((string) ($data['entity_type'] ?? '')),
-            'uuid'        => sanitize_text_field(substr((string) ($data['uuid'] ?? ''), 0, 64)),
-            'status'      => sanitize_text_field((string) ($data['status'] ?? '')),
-            'message'     => sanitize_text_field((string) ($data['message'] ?? '')),
-            'created_at'  => current_time('mysql'),
-        ];
-
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table insert
-        $result = $wpdb->insert($this->table_name(), $insert);
-
-        if ($result === false) {
-            return false;
-        }
-
-        // Schedule cleanup if retention is configured
-        $this->maybe_schedule_cleanup();
-
-        return (int) $wpdb->insert_id;
+        // No-op: DB logging disabled.
+        return false;
     }
 
     /**

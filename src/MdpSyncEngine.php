@@ -42,17 +42,9 @@ class MdpSyncEngine
      */
     private MdpFieldDiscovery $discovery;
 
-    /**
-     * Optional sync logger.
-     *
-     * @var MdpSyncLogger|null
-     */
-    private ?MdpSyncLogger $logger = null;
-
-    public function __construct(MdpFieldDiscovery $discovery, ?MdpSyncLogger $logger = null)
+    public function __construct(MdpFieldDiscovery $discovery)
     {
         $this->discovery = $discovery;
-        $this->logger = $logger;
     }
 
     /**
@@ -573,12 +565,16 @@ class MdpSyncEngine
             (string) ($log_context['entity_type'] ?? ''),
             (string) ($log_context['uuid'] ?? ''),
             $status,
-            $results['message']
+            $results['message'],
+            $results['objects'] ?? []
         );
     }
 
     /**
-     * Write to the sync log if logger is available.
+     * Write to the centralized Wicket log (Wicket()->log()).
+     *
+     * Uses the standard file-based logger from wicket-wp-base-plugin.
+     * Falls back silently if Wicket() is not available.
      *
      * @param int    $form_id     GF form ID.
      * @param int    $entry_id    GF entry ID.
@@ -587,20 +583,35 @@ class MdpSyncEngine
      * @param string $status      Sync status.
      * @param string $message     Status message.
      */
-    private function write_log(int $form_id, int $entry_id, string $entity_type, string $uuid, string $status, string $message): void
+    private function write_log(int $form_id, int $entry_id, string $entity_type, string $uuid, string $status, string $message, array $target_objects = []): void
     {
-        if ($this->logger === null) {
+        if (!function_exists('Wicket')) {
             return;
         }
 
-        $this->logger->log([
+        $context = [
+            'source'      => 'wicket-gf-mdp-sync',
             'form_id'     => $form_id,
             'entry_id'    => $entry_id,
             'entity_type' => $entity_type,
-            'uuid'        => $uuid,
             'status'      => $status,
-            'message'     => $message,
-        ]);
+        ];
+
+        if ($uuid !== '') {
+            $context['uuid'] = $uuid;
+        }
+
+        if (!empty($target_objects)) {
+            $context['target_objects'] = array_keys($target_objects);
+        }
+
+        $level = match ($status) {
+            self::STATUS_FAILED  => 'error',
+            self::STATUS_SKIPPED => 'warning',
+            default              => 'info',
+        };
+
+        Wicket()->log()->{$level}($message, $context);
     }
 
     /**

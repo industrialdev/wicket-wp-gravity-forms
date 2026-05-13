@@ -27,9 +27,15 @@ class MdpSyncLogsPage
     /**
      * Register hooks.
      */
+    /**
+     * Register hooks.
+     *
+     * DISABLED: Admin logs list page is dormant. Sync logging uses Wicket()->log().
+     * Kept for potential future re-enablement.
+     */
     public function register(): void
     {
-        \add_action('admin_menu', [$this, 'add_menu_page']);
+        // No-op: admin logs page disabled.
     }
 
     /**

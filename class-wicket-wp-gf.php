@@ -249,8 +249,8 @@ class Wicket_Gf_Main
         // MDP Sync Engine: push mapped field values after submission
         $this->get_mdp_sync()->register();
 
-        // MDP Sync Logs: admin list view under Gravity Forms menu
-        $this->get_mdp_logs_page();
+        // NOTE: DB-backed MdpSyncLogger and MdpSyncLogsPage are disabled.
+        // Sync logging now uses Wicket()->log() (see MdpSyncEngine::write_log()).
 
         // Bootstrap the GF Addon for field mapping
         if (class_exists('GFForms') && method_exists('GFForms', 'include_feed_addon_framework')) {
@@ -840,7 +840,7 @@ class Wicket_Gf_Main
     protected function get_mdp_sync(): MdpSyncEngine
     {
         if ($this->mdp_sync === null) {
-            $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery(), $this->get_mdp_logger());
+            $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery());
         }
         return $this->mdp_sync;
     }
@@ -848,13 +848,16 @@ class Wicket_Gf_Main
     /**
      * Get the MDP sync logger (lazy-loaded).
      *
+     * DISABLED: DB-backed logger is dormant. Sync logging uses Wicket()->log().
+     * Kept for potential future re-enablement.
+     *
      * @return MdpSyncLogger
      */
     protected function get_mdp_logger(): MdpSyncLogger
     {
         if ($this->mdp_logger === null) {
             $this->mdp_logger = new MdpSyncLogger();
-            $this->mdp_logger->register();
+            // Intentionally not calling register() — DB logging disabled.
         }
         return $this->mdp_logger;
     }
@@ -862,13 +865,16 @@ class Wicket_Gf_Main
     /**
      * Get the MDP sync logs admin page (lazy-loaded).
      *
+     * DISABLED: Admin logs list page is dormant. Sync logging uses Wicket()->log().
+     * Kept for potential future re-enablement.
+     *
      * @return MdpSyncLogsPage
      */
     protected function get_mdp_logs_page(): MdpSyncLogsPage
     {
         if ($this->mdp_logs_page === null) {
             $this->mdp_logs_page = new MdpSyncLogsPage($this->get_mdp_logger());
-            $this->mdp_logs_page->register();
+            // Intentionally not calling register() — admin logs page disabled.
         }
         return $this->mdp_logs_page;
     }
