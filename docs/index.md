@@ -6,6 +6,7 @@
 
 ## Engineering Docs (Developers & Agents)
 - [Field Architecture](engineering/field-architecture.md) — How custom fields are structured, registered, and configured
+- [Field & Form Slug System](engineering/field-slugs.md) — Slug helpers, form slug storage, field slug UI, AJAX validation
 - [Hooks: Filters & Actions](engineering/hooks.md) — All filters, actions, and Gravity Forms hooks used
 
 ## Guides (End Users)
