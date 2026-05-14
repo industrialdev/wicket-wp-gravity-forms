@@ -32,7 +32,7 @@ class Validation
      */
     public function log_pre_submit_context(array $form): array
     {
-        $form_id     = $form['id'] ?? 'unknown';
+        $form_id = $form['id'] ?? 'unknown';
         $target_page = rgpost('gform_target_page_number_' . $form_id);
         $target_page = $target_page !== false ? (int) $target_page : 0;
 
@@ -43,7 +43,7 @@ class Validation
         // Collect only the profile fields we care about.
         $profile_fields = array_filter(
             $form['fields'],
-            fn($f) => in_array($f->type ?? '', self::PROFILE_FIELD_TYPES, true)
+            fn ($f) => in_array($f->type ?? '', self::PROFILE_FIELD_TYPES, true)
         );
 
         if (empty($profile_fields)) {
@@ -53,10 +53,10 @@ class Validation
         $current_page = rgpost('gform_source_page_number_' . $form_id);
         $current_page = $current_page !== false ? (int) $current_page : 1;
 
-        $log    = \Wicket()->log();
+        $log = \Wicket()->log();
         $source = 'wicket-gf-form-submit';
-        $user   = wp_get_current_user();
-        $login  = $user && $user->user_login ? $user->user_login : 'guest';
+        $user = wp_get_current_user();
+        $login = $user && $user->user_login ? $user->user_login : 'guest';
 
         $log->info(
             sprintf(
@@ -69,20 +69,20 @@ class Validation
         );
 
         foreach ($profile_fields as $field) {
-            $field_id        = $field->id;
-            $field_type      = $field->type ?? 'unknown';
-            $field_label     = substr((string) ($field->label ?? ''), 0, 60);
-            $field_page      = (int) ($field->pageNumber ?? 1);
-            $is_required     = !empty($field->isRequired);
-            $raw_value       = rgpost('input_' . $field_id);
+            $field_id = $field->id;
+            $field_type = $field->type ?? 'unknown';
+            $field_label = substr((string) ($field->label ?? ''), 0, 60);
+            $field_page = (int) ($field->pageNumber ?? 1);
+            $is_required = !empty($field->isRequired);
+            $raw_value = rgpost('input_' . $field_id);
             $validation_flag = rgpost('input_' . $field_id . '_validation');
 
-            $incomplete_fields    = [];
+            $incomplete_fields = [];
             $incomplete_resources = [];
             if (!empty($raw_value)) {
                 $decoded = json_decode((string) $raw_value, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $incomplete_fields    = $decoded['incompleteRequiredFields']    ?? [];
+                    $incomplete_fields = $decoded['incompleteRequiredFields'] ?? [];
                     $incomplete_resources = $decoded['incompleteRequiredResources'] ?? [];
                 }
             }
@@ -109,7 +109,7 @@ class Validation
 
     public function validate_org_profile($validation_result)
     {
-        $form    = $validation_result['form'];
+        $form = $validation_result['form'];
         $form_id = $form['id'] ?? 'unknown';
 
         \Wicket()->log()->debug('Org validation called for form ' . $form_id, ['source' => 'gravityforms-state-debug']);
@@ -119,12 +119,12 @@ class Validation
             $failed_fields = [];
             foreach ($form['fields'] as $field) {
                 if (isset($field->failed_validation) && $field->failed_validation) {
-                    $label        = substr((string) ($field->label ?? ''), 0, 50);
-                    $admin_label  = (string) ($field->adminLabel ?? '');
-                    $field_page   = (int) ($field->pageNumber ?? 1);
-                    $value        = rgpost('input_' . $field->id);
-                    $value_sum    = $this->summarize_value($value);
-                    $val_msg      = (string) ($field->validation_message ?? '');
+                    $label = substr((string) ($field->label ?? ''), 0, 50);
+                    $admin_label = (string) ($field->adminLabel ?? '');
+                    $field_page = (int) ($field->pageNumber ?? 1);
+                    $value = rgpost('input_' . $field->id);
+                    $value_sum = $this->summarize_value($value);
+                    $val_msg = (string) ($field->validation_message ?? '');
                     $failed_fields[] = sprintf(
                         'Field %s (type=%s label="%s" admin="%s" page=%d required=%s value=%s msg="%s")',
                         $field->id,
@@ -142,7 +142,7 @@ class Validation
         }
 
         $current_page = rgpost('gform_source_page_number_' . $form['id']) ? (int) rgpost('gform_source_page_number_' . $form['id']) : 1;
-        $target_page  = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
+        $target_page = rgpost('gform_target_page_number_' . $form['id']) ? (int) rgpost('gform_target_page_number_' . $form['id']) : 0;
 
         \Wicket()->log()->debug('Org validation pages: current=' . $current_page . ' target=' . $target_page, ['source' => 'gravityforms-state-debug']);
 
@@ -156,7 +156,7 @@ class Validation
 
         if ($should_validate) {
             \Wicket()->log()->debug('Org validation: Starting field validation', ['source' => 'gravityforms-state-debug']);
-            $org_fields_found   = 0;
+            $org_fields_found = 0;
             $org_validation_failed = false;
 
             foreach ($form['fields'] as &$field) {
@@ -173,8 +173,8 @@ class Validation
                     }
 
                     $org_fields_found++;
-                    $field_id        = $field->id;
-                    $value           = rgpost("input_{$field_id}");
+                    $field_id = $field->id;
+                    $value = rgpost("input_{$field_id}");
                     $validation_flag = rgpost("input_{$field_id}_validation");
 
                     \Wicket()->log()->debug('Org validation: Found org field ' . $field_id . ', value_length=' . strlen($value) . ', validation_flag=' . var_export($validation_flag, true), ['source' => 'gravityforms-state-debug']);
@@ -185,14 +185,14 @@ class Validation
                             $value_array = [];
                         }
 
-                        $flag_false          = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
-                        $fields_incomplete   = isset($value_array['incompleteRequiredFields']) && is_array($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
+                        $flag_false = ($validation_flag === false || $validation_flag === 'false' || $validation_flag === '0');
+                        $fields_incomplete = isset($value_array['incompleteRequiredFields']) && is_array($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0;
                         $resources_incomplete = isset($value_array['incompleteRequiredResources']) && is_array($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0;
-                        $required_and_empty  = !empty($field->isRequired) && empty($value);
-                        $is_incomplete       = $flag_false || $fields_incomplete || $resources_incomplete || $required_and_empty;
+                        $required_and_empty = !empty($field->isRequired) && empty($value);
+                        $is_incomplete = $flag_false || $fields_incomplete || $resources_incomplete || $required_and_empty;
 
                         if ($is_incomplete) {
-                            $org_validation_failed    = true;
+                            $org_validation_failed = true;
                             $field->failed_validation = true;
                             $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
                             \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (forward navigation)', [
@@ -213,21 +213,21 @@ class Validation
                         $value_array = json_decode($value, true);
 
                         if (isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0) {
-                            $org_validation_failed    = true;
+                            $org_validation_failed = true;
                             $field->failed_validation = true;
                             $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please complete all required fields in the organization profile.';
                             break;
                         }
 
                         if (isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
-                            $org_validation_failed    = true;
+                            $org_validation_failed = true;
                             $field->failed_validation = true;
                             $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
                             break;
                         }
                     } else {
                         if ($field->isRequired) {
-                            $org_validation_failed    = true;
+                            $org_validation_failed = true;
                             $field->failed_validation = true;
                             $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Organization profile is required.';
                             \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' is required but empty, failing validation', ['source' => 'gravityforms-state-debug']);

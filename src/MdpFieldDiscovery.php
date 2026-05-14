@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace WicketGF;
 
-use GuzzleHttp\Exception\RequestException;
-
 // No direct access
 defined('ABSPATH') || exit;
 
@@ -50,6 +48,7 @@ class MdpFieldDiscovery
         foreach ($objects as $object) {
             $result[$object] = $this->getTargetFields($object);
         }
+
         return $result;
     }
 
@@ -79,8 +78,9 @@ class MdpFieldDiscovery
     public function getTargetFieldValues(string $target_object): array
     {
         $fields = $this->getTargetFields($target_object);
+
         return array_map(
-            static fn(array $f): string => $f['value'],
+            static fn (array $f): string => $f['value'],
             $fields
         );
     }
@@ -103,7 +103,7 @@ class MdpFieldDiscovery
             ['value' => 'attributes.gender',           'label' => __('Gender', 'wicket-gf')],
             ['value' => 'attributes.honorific_prefix', 'label' => __('Honorific Prefix', 'wicket-gf')],
             ['value' => 'attributes.honorific_suffix', 'label' => __('Honorific Suffix', 'wicket-gf')],
-            ['value' => 'attributes.preferred_pronoun','label' => __('Preferred Pronoun', 'wicket-gf')],
+            ['value' => 'attributes.preferred_pronoun', 'label' => __('Preferred Pronoun', 'wicket-gf')],
             ['value' => 'attributes.job_title',        'label' => __('Job Title', 'wicket-gf')],
             ['value' => 'attributes.birth_date',       'label' => __('Birth Date', 'wicket-gf')],
             ['value' => 'attributes.language',         'label' => __('Language', 'wicket-gf')],

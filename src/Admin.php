@@ -17,7 +17,7 @@ class Admin
 
     public static function add_settings_link($links)
     {
-        $settings_link = '<a href="admin.php?page=wicket_gf">' . __('Settings') . '</a>';
+        $settings_link = '<a href="admin.php?page=gf_settings&subview=wicket">' . __('Settings') . '</a>';
         array_push($links, $settings_link);
 
         return $links;
@@ -37,62 +37,100 @@ class Admin
 
     public static function register_options_page()
     {
-        add_submenu_page('gf_edit_forms', __('Wicket Settings', 'wicket-gf'), __('Wicket Settings', 'wicket-gf'), 'manage_options', 'wicket_gf', [self::class, 'options_page']);
+        add_submenu_page('gf_edit_forms', __('Wicket Slugs', 'wicket-gf'), __('Wicket Slugs', 'wicket-gf'), 'manage_options', 'wicket_gf', [self::class, 'options_page_redirect']);
     }
 
-    public static function options_page()
+    /**
+     * Redirect the legacy Wicket Slugs page to the GF Settings Wicket tab.
+     */
+    public static function options_page_redirect()
+    {
+        wp_safe_redirect(admin_url('admin.php?page=gf_settings&subview=wicket'));
+        exit;
+    }
+
+    /**
+     * Add the Wicket tab to Gravity Forms global settings navigation.
+     *
+     * @param array $setting_tabs Existing settings tabs.
+     * @return array Modified tabs.
+     */
+    public static function register_gf_settings_tab($setting_tabs)
+    {
+        $setting_tabs['19'] = [
+            'name'  => 'wicket',
+            'label' => __('Wicket', 'wicket-gf'),
+            'icon'  => 'gform-icon--cog',
+        ];
+
+        return $setting_tabs;
+    }
+
+    /**
+     * Render the Wicket settings page inside GF global settings.
+     */
+    public static function render_gf_settings_page()
     { ?>
-<div class="wrap">
-    <style>
-        .wicket-gf-mapping-row {
-            display: flex;
-            margin-bottom: 8px;
-            align-items: center;
-        }
-        .wicket-gf-mapping-row input[type="text"] {
-            margin-right: 8px;
-            flex: 1;
-            max-width: 200px;
-        }
-        .wicket-gf-mapping-row button {
-            margin-right: 4px;
-            min-width: 30px;
-        }
-        .wicket_pagination_settings {
-            margin-bottom: 15px;
-        }
-        .wicket_pagination_settings label {
-            margin-left: 8px;
-        }
-        #validation-message {
-            color: #d63638;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        #mapping-ui h3 {
-            margin-top: 25px;
-            margin-bottom: 10px;
-        }
-        #mapping-ui p {
-            margin-bottom: 10px;
-        }
-        #mapping-ui form {
-            margin-top: 20px;
-        }
-    </style>
+<form id="gform-settings" class="gform_settings_form" method="post" action="options.php">
+    <?php settings_fields('wicket_gf_options_group'); ?>
 
-    <h1><?php _e('Wicket Gravity Forms', 'wicket-gf'); ?></h1>
+    <fieldset class="gform-settings-panel gform-settings-panel--full gform-settings-panel--with-title">
+        <legend class="gform-settings-panel__title gform-settings-panel__title--header"><?php esc_html_e('Wicket Settings', 'wicket-gf'); ?></legend>
+        <div class="gform-settings-panel__content">
 
-    <h2><?php _e('Form Slug ID Mapping', 'wicket-gf'); ?></h2>
+        <style>
+            .wicket-gf-mapping-row {
+                display: flex;
+                margin-bottom: 8px;
+                align-items: center;
+                gap: 6px;
+            }
+            .wicket-gf-mapping-row input[type="text"] {
+                flex: 1;
+                max-width: 220px;
+                min-width: 120px;
+            }
+            .wicket-gf-mapping-row .button {
+                min-width: 30px;
+                flex-shrink: 0;
+            }
+            .wicket_pagination_settings {
+                margin-bottom: 15px;
+            }
+            .wicket_pagination_settings label {
+                margin-left: 8px;
+            }
+            #validation-message {
+                color: #d63638;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }
+            #mapping-ui h3 {
+                margin-top: 25px;
+                margin-bottom: 10px;
+            }
+            #mapping-ui p {
+                margin-bottom: 10px;
+            }
+            #mapping-ui form {
+                margin-top: 20px;
+            }
+        </style>
 
-    <p>
-        <?php _e('The mappings below tell the rest of the site which form slugs correspond to which Gravity
-                        Form IDs, allowing you to import and update forms easily by simply changing the ID here.', 'wicket-gf'); ?>
-    </p>
+        <h3><?php esc_html_e('Form Slug ID Mapping', 'wicket-gf'); ?></h3>
 
-    <p>
-        <?php _e('This makes it easy to reference forms by their slug in coding using the <code>wicket_gf_get_form_id_by_slug()</code> function.', 'wicket-gf'); ?>
-    </p>
+        <div class="notice notice-info inline" style="margin: 10px 0; padding: 10px 12px; border-left-color: #72aee6;">
+            <p><strong><?php esc_html_e('Form slugs can now be set directly in the form editor.', 'wicket-gf'); ?></strong></p>
+            <p><?php esc_html_e('Go to any form → Settings → Wicket Settings and set the Form Slug field. This page remains as a fallback for existing mappings but will be removed in a future version.', 'wicket-gf'); ?></p>
+        </div>
+
+        <p>
+            <?php esc_html_e('The mappings below tell the rest of the site which form slugs correspond to which Gravity Form IDs, allowing you to import and update forms easily by simply changing the ID here.', 'wicket-gf'); ?>
+        </p>
+
+        <p>
+            <?php esc_html_e('This makes it easy to reference forms by their slug in coding using the', 'wicket-gf'); ?> <code>wicket_gf_get_form_id_by_slug()</code> <?php esc_html_e('function.', 'wicket-gf'); ?>
+        </p>
 
         <?php
         $current_mappings_json = get_option('wicket_gf_slug_mapping');
@@ -115,8 +153,6 @@ class Admin
         ?>
 
     <div id="mapping-ui">
-        <form id="wicket-gf-settings-form" method="post" action="options.php">
-            <?php settings_fields('wicket_gf_options_group'); ?>
 
             <div id="mapping-rows"></div>
 
@@ -299,8 +335,7 @@ class Admin
                                 }
                             }
 
-                            const submitButton = document.querySelector(
-                                '#wicket-gf-settings-form input[type="submit"]');
+                            const submitButton = document.querySelector('#gform-settings-save');
                             if (submitButton) {
                                 submitButton.disabled = !this.isValid;
                             }
@@ -333,20 +368,27 @@ class Admin
 
             <?php
             // DISABLED: DB-backed MDP Sync Logging UI (sync logging now uses Wicket()->log())
-            // <h3><?php _e('MDP Sync Logging', 'wicket-gf'); ?></h3>
-            // <div class="wicket_pagination_settings">
-            //     <label for="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"><?php _e('Log Retention (days, 0 = keep forever)', 'wicket-gf'); ?></label>
-            //     <input type="number" name="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
-            //         id="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
-            //         value="<?php echo esc_attr(get_option(\WicketGF\MdpSyncLogger::get_retention_option_key(), 30)); ?>"
-            //         min="0" max="365" class="small-text" />
-            // </div>
-            ?>
+            /*
+            <h3><?php _e('MDP Sync Logging', 'wicket-gf'); ?></h3>
+            <div class="wicket_pagination_settings">
+                <label for="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"><?php _e('Log Retention (days, 0 = keep forever)', 'wicket-gf'); ?></label>
+                <input type="number" name="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
+                    id="<?php echo esc_attr(\WicketGF\MdpSyncLogger::get_retention_option_key()); ?>"
+                    value="<?php echo esc_attr(get_option(\WicketGF\MdpSyncLogger::get_retention_option_key(), 30)); ?>"
+                    min="0" max="365" class="small-text" />
+            </div>
+            */
+        ?>
 
-            <?php submit_button(); ?>
-        </form>
+        </div>
+    </fieldset>
+
+    <div class="gform-settings-save-container">
+        <button type="submit" id="gform-settings-save" class="primary button large">
+            <?php esc_html_e('Save Settings', 'gravityforms'); ?> &nbsp;&rarr;
+        </button>
     </div>
-</div>
+</form>
 <?php
     }
 
@@ -373,20 +415,22 @@ class Admin
         $entry_id = (int) ($entry['id'] ?? 0);
         if ($entry_id <= 0) {
             echo '<p>' . esc_html__('No sync data available.', 'wicket-gf') . '</p>';
+
             return;
         }
 
         // Retrieve sync status from entry meta
-        $meta = gform_get_meta($entry_id, \WicketGF\MdpSyncEngine::get_meta_key());
+        $meta = gform_get_meta($entry_id, MdpSyncEngine::get_meta_key());
 
         if (empty($meta) || !is_array($meta)) {
             echo '<p>' . esc_html__('No MDP sync record found for this entry.', 'wicket-gf') . '</p>';
+
             return;
         }
 
-        $status  = esc_html($meta['status'] ?? 'unknown');
- $message = esc_html($meta['message'] ?? '');
-        $time    = esc_html($meta['timestamp'] ?? '');
+        $status = esc_html($meta['status'] ?? 'unknown');
+        $message = esc_html($meta['message'] ?? '');
+        $time = esc_html($meta['timestamp'] ?? '');
         $objects = $meta['objects'] ?? [];
 
         // Status badge colors

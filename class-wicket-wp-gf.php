@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.4.4
+ * Version:           2.4.5
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -242,6 +242,8 @@ class Wicket_Gf_Main
         add_action('gform_field_standard_settings', [$this, 'register_field_settings'], 25, 2);
         add_action('gform_editor_js', [$this, 'gf_editor_script']);
         add_action('gform_tooltips', [$this, 'register_tooltips']);
+        add_filter('gform_form_settings_menu', [$this, 'register_wicket_settings_tab']);
+        add_action('gform_form_settings_page_wicket_settings', [$this, 'render_wicket_settings_page']);
         add_filter('gform_form_settings_fields', [$this, 'register_form_settings_fields'], 10, 2);
         add_filter('gform_pre_form_settings_save', [$this, 'sanitize_mdp_form_settings']);
         add_filter('gform_form_update_meta', [$this, 'sanitize_mdp_field_mappings_on_save'], 10, 3);
@@ -270,7 +272,20 @@ class Wicket_Gf_Main
         // Register Rest Routes
         add_action('rest_api_init', [$this, 'register_rest_routes']);
 
-        // Add Options Page for plugin
+        // Flush slug transient cache when any form is saved
+        add_action('gform_after_save_form', [$this, 'flush_slug_cache_on_save'], 10, 2);
+
+        // Clear slug collisions on form import
+        add_action('gform_after_import_form', [$this, 'clear_imported_slug_collision']);
+
+        // AJAX handler for field slug validation
+        add_action('wp_ajax_wicket_gf_validate_field_slug', [$this, 'ajax_validate_field_slug']);
+
+        // Register Wicket tab in GF global settings navigation
+        add_filter('gform_settings_menu', [Admin::class, 'register_gf_settings_tab']);
+        add_action('gform_settings_wicket', [Admin::class, 'render_gf_settings_page']);
+
+        // Add Options Page for plugin (legacy URL redirects to GF settings)
         add_action('admin_menu', [Admin::class, 'register_options_page'], 20);
         add_action('admin_init', [Admin::class, 'register_settings']);
 
@@ -672,43 +687,173 @@ class Wicket_Gf_Main
 
     public function register_form_settings_fields($fields, $form)
     {
-        $fields['wicket_mdp'] = [
-            'title'       => esc_html__('Wicket MDP Mapping', 'wicket-gf'),
-            'description' => esc_html__('Configure the target entity type and the form field that supplies the MDP UUID for mapped updates.', 'wicket-gf'),
-            'fields'      => [
-                [
-                    'name'    => 'wicket_mdp_entity_type',
-                    'type'    => 'select',
-                    'label'   => esc_html__('Entity Type', 'wicket-gf'),
-                    'choices' => [
-                        [
-                            'label' => esc_html__('— Select —', 'wicket-gf'),
-                            'value' => '',
-                        ],
-                        [
-                            'label' => esc_html__('Person', 'wicket-gf'),
-                            'value' => 'person',
-                        ],
-                        [
-                            'label' => esc_html__('Org', 'wicket-gf'),
-                            'value' => 'organization',
-                        ],
+        // Wicket settings moved to dedicated "Wicket" tab in settings navigation.
+        // Keep the filter registered so nothing breaks, but inject no sections.
+        return $fields;
+    }
+
+    /**
+     * Register the "Wicket" tab in the form settings navigation.
+     *
+     * @param array $tabs Existing settings tabs.
+     * @return array Modified tabs.
+     */
+    public function register_wicket_settings_tab(array $tabs): array
+    {
+        $tabs['50'] = [
+            'name'         => 'wicket_settings',
+            'label'        => __('Wicket', 'wicket-gf'),
+            'icon'         => 'dashicons-admin-generic',
+            'query'        => ['fid' => null],
+            'capabilities' => ['gravityforms_edit_forms'],
+        ];
+
+        return $tabs;
+    }
+
+    /**
+     * Render the Wicket settings page as a custom subview using GF's Settings API.
+     *
+     * Uses Gravity_Forms\Gravity_Forms\Settings\Settings for consistent look and feel.
+     */
+    public function render_wicket_settings_page(): void
+    {
+        $form_id = absint(rgget('id'));
+        $form = GFAPI::get_form($form_id);
+        if (!$form) {
+            echo '<p>' . esc_html__('Form not found.', 'wicket-gf') . '</p>';
+
+            return;
+        }
+
+        $entity_choices = [
+            ['label' => esc_html__('— Select —', 'wicket-gf'), 'value' => ''],
+            ['label' => esc_html__('Person', 'wicket-gf'), 'value' => 'person'],
+            ['label' => esc_html__('Org', 'wicket-gf'), 'value' => 'organization'],
+        ];
+
+        $uuid_choices = $this->get_mdp_uuid_source_field_choices($form);
+
+        $settings_fields = [
+            'wicket_form_id' => [
+                'title'  => esc_html__('Form Identification', 'wicket-gf'),
+                'fields' => [
+                    [
+                        'name'        => 'wicket_mdp_form_slug',
+                        'type'        => 'text',
+                        'label'       => esc_html__('Form Slug', 'wicket-gf'),
+                        'description' => esc_html__('A unique identifier for this form. Used to reference this form in code via wicket_gf_get_form_id_by_slug(). Must be unique across all forms.', 'wicket-gf'),
+                        'class'       => 'medium',
                     ],
                 ],
-                [
-                    'name'    => 'wicket_mdp_uuid_source_field',
-                    'type'    => 'select',
-                    'label'   => esc_html__('UUID Source Field', 'wicket-gf'),
-                    'choices' => $this->get_mdp_uuid_source_field_choices($form),
+            ],
+            'wicket_mdp' => [
+                'title'  => esc_html__('MDP Mapping', 'wicket-gf'),
+                'fields' => [
+                    [
+                        'name'    => 'wicket_mdp_entity_type',
+                        'type'    => 'select',
+                        'label'   => esc_html__('Entity Type', 'wicket-gf'),
+                        'choices' => $entity_choices,
+                    ],
+                    [
+                        'name'    => 'wicket_mdp_uuid_source_field',
+                        'type'    => 'select',
+                        'label'   => esc_html__('UUID Source Field', 'wicket-gf'),
+                        'choices' => $uuid_choices,
+                        'description' => esc_html__('The form field that supplies the MDP UUID for mapped updates.', 'wicket-gf'),
+                    ],
                 ],
             ],
         ];
 
-        return $fields;
+        $initial_values = [
+            'wicket_mdp_form_slug'        => $form['wicket_mdp_form_slug'] ?? '',
+            'wicket_mdp_entity_type'       => $form['wicket_mdp_entity_type'] ?? '',
+            'wicket_mdp_uuid_source_field' => $form['wicket_mdp_uuid_source_field'] ?? '',
+        ];
+
+        $renderer = new Gravity_Forms\Gravity_Forms\Settings\Settings([
+            'fields'         => array_values($settings_fields),
+            'initial_values' => $initial_values,
+            'save_callback'  => function ($values) use ($form, $form_id) {
+                $slug = sanitize_title((string) ($values['wicket_mdp_form_slug'] ?? ''));
+                $entity_type = (string) ($values['wicket_mdp_entity_type'] ?? '');
+                $uuid_source = (string) ($values['wicket_mdp_uuid_source_field'] ?? '');
+
+                if (!in_array($entity_type, ['', 'person', 'organization'], true)) {
+                    $entity_type = '';
+                }
+
+                $allowed_uuid = array_map(static function ($choice) {
+                    return (string) ($choice['value'] ?? '');
+                }, $this->get_mdp_uuid_source_field_choices($form));
+                if (!in_array($uuid_source, $allowed_uuid, true)) {
+                    $uuid_source = '';
+                }
+
+                if ($slug !== '') {
+                    $all_forms = GFAPI::get_forms();
+                    if (is_array($all_forms)) {
+                        foreach ($all_forms as $other) {
+                            if ((int) $other['id'] === $form_id) {
+                                continue;
+                            }
+                            if (($other['wicket_mdp_form_slug'] ?? '') === $slug) {
+                                GFCommon::add_error_message(sprintf(
+                                    esc_html__('Form slug “%s” is already in use by another form. Slug has been cleared.', 'wicket-gf'),
+                                    esc_html(sanitize_title((string) ($values['wicket_mdp_form_slug'] ?? '')))
+                                ));
+                                $slug = '';
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                $form['wicket_mdp_form_slug'] = $slug;
+                $form['wicket_mdp_entity_type'] = $entity_type;
+                $form['wicket_mdp_uuid_source_field'] = $uuid_source;
+
+                GFAPI::update_form($form, $form_id);
+                wicket_gf_flush_slug_cache();
+            },
+        ]);
+
+        GFFormSettings::page_header(__('Wicket Settings', 'wicket-gf'));
+        $renderer->render();
+        GFFormSettings::page_footer();
     }
 
     public function sanitize_mdp_form_settings($form)
     {
+        // Sanitize form slug
+        $slug = isset($form['wicket_mdp_form_slug']) ? (string) $form['wicket_mdp_form_slug'] : '';
+        $slug = sanitize_title($slug);
+        if ($slug !== '') {
+            // Check uniqueness against all other forms in the DB
+            $all_forms = GFAPI::get_forms();
+            if (is_array($all_forms)) {
+                foreach ($all_forms as $other) {
+                    if ((int) $other['id'] === (int) $form['id']) {
+                        continue;
+                    }
+                    $other_slug = $other['wicket_mdp_form_slug'] ?? '';
+                    if ($other_slug === $slug) {
+                        // Collision — clear the slug and add error
+                        $slug = '';
+                        GFCommon::add_error_message(sprintf(
+                            /* translators: %s: the slug that was already taken */
+                            esc_html__('Form slug "%s" is already in use by another form. Slug has been cleared.', 'wicket-gf'),
+                            esc_html(sanitize_title((string) ($form['wicket_mdp_form_slug'] ?? '')))
+                        ));
+                        break;
+                    }
+                }
+            }
+        }
+        $form['wicket_mdp_form_slug'] = $slug;
+
         $entity_type = isset($form['wicket_mdp_entity_type']) ? (string) $form['wicket_mdp_entity_type'] : '';
         if (!in_array($entity_type, ['', 'person', 'organization'], true)) {
             $form['wicket_mdp_entity_type'] = '';
@@ -768,15 +913,15 @@ class Wicket_Gf_Main
             if (!$mdp_enabled) {
                 // Strip MDP properties from disabled fields
                 $field->wicket_mdp_target_object = '';
-                $field->wicket_mdp_target_field  = '';
+                $field->wicket_mdp_target_field = '';
                 continue;
             }
 
             // If no form-level UUID source, strip field-level MDP entirely
             if ($uuid_source === '') {
                 $field->wicket_enable_mdp_mapping = false;
-                $field->wicket_mdp_target_object  = '';
-                $field->wicket_mdp_target_field   = '';
+                $field->wicket_mdp_target_object = '';
+                $field->wicket_mdp_target_field = '';
                 continue;
             }
 
@@ -796,7 +941,7 @@ class Wicket_Gf_Main
             // If target object is unsupported (no fields), strip
             if (empty($available_fields)) {
                 $field->wicket_mdp_target_object = '';
-                $field->wicket_mdp_target_field  = '';
+                $field->wicket_mdp_target_field = '';
                 continue;
             }
 
@@ -807,6 +952,24 @@ class Wicket_Gf_Main
 
             if ($target_field !== '' && !in_array($target_field, $available_fields, true)) {
                 $field->wicket_mdp_target_field = '';
+            }
+        }
+
+        // Slug dedup: if multiple fields share a slug, strip from all but the first
+        if (isset($meta['fields'])) {
+            $seen_slugs = [];
+            foreach ($meta['fields'] as $field) {
+                $slug = $field->wicket_field_slug ?? '';
+                if ($slug === '') {
+                    continue;
+                }
+                $slug = sanitize_title($slug);
+                $field->wicket_field_slug = $slug;
+                if (isset($seen_slugs[$slug])) {
+                    $field->wicket_field_slug = '';
+                } else {
+                    $seen_slugs[$slug] = true;
+                }
             }
         }
 
@@ -829,6 +992,7 @@ class Wicket_Gf_Main
         if ($this->mdp_discovery === null) {
             $this->mdp_discovery = new MdpFieldDiscovery();
         }
+
         return $this->mdp_discovery;
     }
 
@@ -842,6 +1006,7 @@ class Wicket_Gf_Main
         if ($this->mdp_sync === null) {
             $this->mdp_sync = new MdpSyncEngine($this->get_mdp_discovery());
         }
+
         return $this->mdp_sync;
     }
 
@@ -859,6 +1024,7 @@ class Wicket_Gf_Main
             $this->mdp_logger = new MdpSyncLogger();
             // Intentionally not calling register() — DB logging disabled.
         }
+
         return $this->mdp_logger;
     }
 
@@ -876,6 +1042,7 @@ class Wicket_Gf_Main
             $this->mdp_logs_page = new MdpSyncLogsPage($this->get_mdp_logger());
             // Intentionally not calling register() — admin logs page disabled.
         }
+
         return $this->mdp_logs_page;
     }
 
@@ -1286,8 +1453,56 @@ class Wicket_Gf_Main
     public static function gf_editor_global_custom_fields($position, $form_id)
     {
         // Create settings on position 25 (right after Field Label)
-        if ($position == 25) {
+        if ($position === 25) {
             ob_start(); ?>
+
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_field_slug field_setting">
+                <style>
+                    .wicket_global_custom_settings_field_slug { display: block !important; }
+                    .wicket-field-slug-view { display: flex; align-items: center; gap: 6px; margin-top: 4px; width: 100%; }
+                    .wicket-field-slug-display { font-family: monospace; padding: 3px 8px; border-radius: 3px; font-size: 12px; border: 1px solid; flex: 1; }
+                    .wicket-field-slug-empty { color: #999; background: #f6f7f7; border-color: #dcdcde; font-style: italic; }
+                    .wicket-field-slug-set { color: #007a1e; background: #e6f5e8; border-color: #68bb6c; }
+                    .wicket-field-slug-edit-btn { cursor: pointer; background: none; border: none; color: #2271b1; padding: 2px; line-height: 1; vertical-align: middle; }
+                    .wicket-field-slug-edit-btn:hover { color: #135e96; }
+                    .wicket-field-slug-edit-btn .dashicons { font-size: 16px; width: 16px; height: 16px; }
+                    .wicket-field-slug-copy-btn { cursor: pointer; background: none; border: none; color: #2271b1; padding: 2px; line-height: 1; vertical-align: middle; }
+                    .wicket-field-slug-copy-btn:hover { color: #135e96; }
+                    .wicket-field-slug-copy-btn .dashicons { font-size: 16px; width: 16px; height: 16px; }
+                    .wicket-field-slug-edit { display: none; align-items: center; gap: 4px; margin-top: 4px; }
+                    .wicket-field-slug-edit.active { display: flex; }
+                    .wicket-field-slug-input { flex: 1; font-family: monospace; font-size: 12px; padding: 3px 6px; min-width: 120px; }
+                    .wicket-field-slug-status { font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
+                    .wicket-field-slug-status.valid { color: #00a32a; }
+                    .wicket-field-slug-status.invalid { color: #d63638; }
+                    .wicket-field-slug-status.checking { color: #dba617; }
+                    .wicket-field-slug-actions .button { padding: 0 4px; line-height: 22px; min-height: 22px; }
+                    .wicket-field-slug-actions .dashicons { font-size: 16px; width: 16px; height: 16px; line-height: 22px; }
+                </style>
+                <label for="wicket_field_slug_input"><?php esc_html_e('Field Slug', 'wicket-gf'); ?></label>
+                <div class="wicket-field-slug-view">
+                    <span class="wicket-field-slug-display wicket-field-slug-empty" id="wicket_field_slug_display">—</span>
+                    <button type="button" class="wicket-field-slug-copy-btn" title="<?php esc_attr_e('Copy slug', 'wicket-gf'); ?>">
+                        <span class="dashicons dashicons-admin-page"></span>
+                    </button>
+                    <button type="button" class="wicket-field-slug-edit-btn" title="<?php esc_attr_e('Edit field slug', 'wicket-gf'); ?>">
+                        <span class="dashicons dashicons-edit"></span>
+                    </button>
+                </div>
+                <div class="wicket-field-slug-edit" id="wicket_field_slug_edit">
+                    <input type="text" id="wicket_field_slug_input" class="wicket-field-slug-input"
+                           placeholder="<?php esc_attr_e('e.g. first-name', 'wicket-gf'); ?>" />
+                    <div class="wicket-field-slug-actions">
+                        <button type="button" class="button button-small wicket-field-slug-confirm" title="<?php esc_attr_e('Confirm', 'wicket-gf'); ?>">
+                            <span class="dashicons dashicons-yes"></span>
+                        </button>
+                        <button type="button" class="button button-small wicket-field-slug-cancel" title="<?php esc_attr_e('Cancel', 'wicket-gf'); ?>">
+                            <span class="dashicons dashicons-no"></span>
+                        </button>
+                    </div>
+                    <span class="wicket-field-slug-status" id="wicket_field_slug_status"></span>
+                </div>
+            </li>
 
             <li class="wicket_global_custom_settings wicket_global_custom_settings_hide_label field_setting">
                 <style>
@@ -1352,6 +1567,191 @@ class Wicket_Gf_Main
             // Field definitions sourced from PHP single source of truth (get_mdp_target_fields).
             // Task 2.1 will replace additional_info/preferences with dynamic discovery.
             var wicketMdpTargetFields = <?php echo json_encode($this->get_all_mdp_target_fields()); ?>;
+
+            // Field Slug Configuration
+            var wicketFieldSlugConfig = {
+                ajaxUrl: '<?php echo esc_url(admin_url('admin-ajax.php')); ?>',
+                nonce: '<?php echo wp_create_nonce('wicket_gf_field_slug'); ?>',
+                formId: <?php echo isset($_GET['id']) ? absint($_GET['id']) : 0; ?>
+            };
+
+            var wicketSlugUI = {
+                load: function(slug) {
+                    slug = slug || '';
+                    var $display = jQuery('#wicket_field_slug_display');
+                    if (slug) {
+                        $display.text(slug).removeClass('wicket-field-slug-empty').addClass('wicket-field-slug-set');
+                    } else {
+                        $display.text('\u2014').removeClass('wicket-field-slug-set').addClass('wicket-field-slug-empty');
+                    }
+                    this.hideEdit();
+                },
+                showEdit: function() {
+                    var field = GetSelectedField();
+                    var currentSlug = rgar(field, 'wicket_field_slug') || '';
+                    jQuery('.wicket-field-slug-view').hide();
+                    jQuery('#wicket_field_slug_edit').addClass('active');
+                    jQuery('#wicket_field_slug_input').val(currentSlug).focus();
+                    jQuery('#wicket_field_slug_status').text('');
+                },
+                hideEdit: function() {
+                    jQuery('.wicket-field-slug-view').show();
+                    jQuery('#wicket_field_slug_edit').removeClass('active');
+                    jQuery('#wicket_field_slug_status').text('');
+                },
+                confirm: function() {
+                    var self = this;
+                    var slug = jQuery('#wicket_field_slug_input').val().trim();
+                    var field = GetSelectedField();
+                    var $status = jQuery('#wicket_field_slug_status');
+
+                    if (!slug) {
+                        SetFieldProperty('wicket_field_slug', '');
+                        this.load('');
+                        return;
+                    }
+
+                    // Normalize: lowercase, hyphens only
+                    slug = slug.toLowerCase().replace(/[^a-z0-9\-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                    jQuery('#wicket_field_slug_input').val(slug);
+
+                    if (!slug) {
+                        SetFieldProperty('wicket_field_slug', '');
+                        this.load('');
+                        return;
+                    }
+
+                    // JS-side uniqueness check (against in-memory form)
+                    var form = window.form || {};
+                    if (form.fields) {
+                        for (var i = 0; i < form.fields.length; i++) {
+                            var f = form.fields[i];
+                            if (f.id === field.id) continue;
+                            if (f.wicket_field_slug === slug) {
+                                $status.removeClass('valid checking').addClass('invalid').text('<?php esc_html_e('Already in use', 'wicket-gf'); ?>');
+                                return;
+                            }
+                        }
+                    }
+
+                    // AJAX validation against DB
+                    $status.removeClass('valid invalid').addClass('checking').text('<?php esc_html_e('Checking...', 'wicket-gf'); ?>');
+
+                    jQuery.post(wicketFieldSlugConfig.ajaxUrl, {
+                        action: 'wicket_gf_validate_field_slug',
+                        nonce: wicketFieldSlugConfig.nonce,
+                        form_id: wicketFieldSlugConfig.formId,
+                        field_id: field.id,
+                        slug: slug
+                    }, function(response) {
+                        if (response.success && response.data.valid) {
+                            SetFieldProperty('wicket_field_slug', slug);
+                            self.load(slug);
+                        } else {
+                            $status.removeClass('valid checking').addClass('invalid').text(response.data.message || '<?php esc_html_e('Already in use', 'wicket-gf'); ?>');
+                        }
+                    }).fail(function() {
+                        // AJAX failed - trust JS-side validation, set with caveat
+                        SetFieldProperty('wicket_field_slug', slug);
+                        slugUI.load(slug);
+                        $status.removeClass('invalid checking').addClass('valid').text('<?php esc_html_e('Saved (server check unavailable)', 'wicket-gf'); ?>');
+                    });
+                },
+                init: function() {
+                    var slugUI = this;
+                    // Direct bindings (not delegated) — GF stops click propagation on .field_setting <li>s
+                    jQuery('.wicket-field-slug-copy-btn').on('click', function(e) {
+                        e.stopPropagation();
+                        var slug = jQuery('#wicket_field_slug_display').text();
+                        if (slug && slug !== '\u2014') {
+                            navigator.clipboard.writeText(slug).then(function() {
+                                var $icon = jQuery('.wicket-field-slug-copy-btn .dashicons');
+                                $icon.removeClass('dashicons-admin-page').addClass('dashicons-yes');
+                                setTimeout(function() { $icon.removeClass('dashicons-yes').addClass('dashicons-admin-page'); }, 1500);
+                            });
+                        }
+                    });
+                    jQuery('.wicket-field-slug-edit-btn').on('click', function(e) {
+                        e.stopPropagation();
+                        slugUI.showEdit();
+                    });
+                    jQuery('.wicket-field-slug-confirm').on('click', function(e) {
+                        e.stopPropagation();
+                        slugUI.confirm();
+                    });
+                    jQuery('.wicket-field-slug-cancel').on('click', function(e) {
+                        e.stopPropagation();
+                        slugUI.hideEdit();
+                    });
+                    jQuery('#wicket_field_slug_input').on('keydown', function(e) {
+                        if (e.which === 13) { e.preventDefault(); slugUI.confirm(); }
+                        if (e.which === 27) { slugUI.hideEdit(); }
+                    });
+                    jQuery('#wicket_field_slug_input').on('input', function() {
+                        var val = jQuery(this).val();
+                        jQuery(this).val(val.toLowerCase().replace(/[^a-z0-9\-]/g, '-').replace(/-+/g, '-'));
+                    });
+                }
+            };
+
+            wicketSlugUI.init();
+
+            /**
+             * Inject form slug badge into the editor toolbar buttons area.
+             * Shows slug badge for quick copy-paste + link to Settings.
+             */
+            (function() {
+                var slug = (typeof form !== 'undefined' && form.wicket_mdp_form_slug) ? form.wicket_mdp_form_slug : '';
+                var $container = jQuery('#gf_toolbar_buttons_container');
+                if (!$container.length) return;
+
+                // Inject styles once
+                jQuery('<style>' +
+                    '.wicket-toolbar-slug { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; padding: 4px 10px; border: 1px solid #dcdcde; border-radius: 4px; font-family: monospace; font-size: 11px; line-height: 1.4; vertical-align: middle; }' +
+                    '.wicket-toolbar-slug--empty { background: #fff8e5; border-color: #dba617; cursor: pointer; }' +
+                    '.wicket-toolbar-slug--set { background: #f0f0f1; }' +
+                    '.wicket-toolbar-slug__label { color: #999; font-weight: 400; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; margin-right: 2px; }' +
+                    '.wicket-toolbar-slug__value { color: #1d2327; user-select: all; cursor: text; }' +
+                    '.wicket-toolbar-slug__empty { color: #906800; font-style: italic; }' +
+                    '.wicket-toolbar-slug__link { color: #646970; text-decoration: none; line-height: 1; margin-left: 2px; }' +
+                    '.wicket-toolbar-slug__link:hover { color: #2271b1; }' +
+                    '.wicket-toolbar-slug__link .dashicons { font-size: 14px; width: 14px; height: 14px; }' +
+                    '.wicket-toolbar-slug__copy { color: #646970; cursor: pointer; text-decoration: none; line-height: 1; margin-left: 2px; }' +
+                    '.wicket-toolbar-slug__copy:hover { color: #2271b1; }' +
+                    '.wicket-toolbar-slug__copy .dashicons { font-size: 14px; width: 14px; height: 14px; }' +
+                    '</style>').appendTo('head');
+
+                var settingsUrl = '?page=gf_edit_forms&view=settings&subview=wicket_settings&id=' + wicketFieldSlugConfig.formId;
+                var $badge;
+                if (slug) {
+                    $badge = jQuery(
+                        '<span class="wicket-toolbar-slug wicket-toolbar-slug--set" title="Form Slug (click value to select)">' +
+                        '<span class="wicket-toolbar-slug__label">slug:</span>' +
+                        '<span class="wicket-toolbar-slug__value">' + slug + '</span>' +
+                        '<a href="#" class="wicket-toolbar-slug__copy" title="Copy slug to clipboard">' +
+                        '<span class="dashicons dashicons-admin-page"></span></a>' +
+                        '<a href="' + settingsUrl + '" class="wicket-toolbar-slug__link" title="Edit slug in Settings">' +
+                        '<span class="dashicons dashicons-edit"></span></a>' +
+                        '</span>'
+                    );
+                    $badge.on('click', '.wicket-toolbar-slug__copy', function(e) {
+                        e.preventDefault();
+                        var $icon = jQuery(this).find('.dashicons');
+                        navigator.clipboard.writeText(slug).then(function() {
+                            $icon.removeClass('dashicons-admin-page').addClass('dashicons-yes');
+                            setTimeout(function() { $icon.removeClass('dashicons-yes').addClass('dashicons-admin-page'); }, 1500);
+                        });
+                    });
+                } else {
+                    $badge = jQuery(
+                        '<a href="' + settingsUrl + '" class="wicket-toolbar-slug wicket-toolbar-slug--empty" title="Click to set a form slug">' +
+                        '<span class="wicket-toolbar-slug__empty">no slug set</span>' +
+                        '<span class="dashicons dashicons-edit" style="font-size:14px;width:14px;height:14px;color:#906800;"></span>' +
+                        '</a>'
+                    );
+                }
+                $container.prepend($badge);
+            })();
 
             // Toggle a conditional MDP setting row. Uses setProperty('important') so it beats
             // the 'display: block !important' class rule that keeps these rows visible to GF.
@@ -1460,6 +1860,7 @@ class Wicket_Gf_Main
             }
 
             jQuery(document).on('gform_load_field_settings', function(event, field, form){
+                wicketSlugUI.load(rgar(field, 'wicket_field_slug') || '');
                 jQuery('#hide_label').prop('checked', Boolean(rgar(field, 'hide_label')));
                 jQuery('#wicket_enable_mdp_mapping').prop('checked', Boolean(rgar(field, 'wicket_enable_mdp_mapping')));
                 wicketRefreshMdpFieldSettings(field, form);
@@ -1619,6 +2020,18 @@ class Wicket_Gf_Main
                         if (!fieldFound) {
                             field.wicket_mdp_target_field = '';
                         }
+                    }
+                }
+
+                // Slug dedup: if multiple fields share a slug, strip from all but the first
+                var seenSlugs = {};
+                for (var k = 0; k < form.fields.length; k++) {
+                    var s = form.fields[k].wicket_field_slug;
+                    if (!s) continue;
+                    if (seenSlugs[s]) {
+                        form.fields[k].wicket_field_slug = '';
+                    } else {
+                        seenSlugs[s] = true;
                     }
                 }
 
@@ -1961,6 +2374,102 @@ class Wicket_Gf_Main
                 return true;
             },
         ]);
+    }
+
+    /**
+     * AJAX handler: validate a field slug for uniqueness within a form.
+     *
+     * Checks the database version of the form (not the editor's in-memory state)
+     * so it catches conflicts from concurrent edits or imports.
+     *
+     * @return void Sends JSON response.
+     */
+    public function ajax_validate_field_slug(): void
+    {
+        check_ajax_referer('wicket_gf_field_slug', 'nonce');
+
+        if (!current_user_can('gravityforms_edit_forms')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'wicket-gf')]);
+        }
+
+        $form_id = absint($_POST['form_id'] ?? 0);
+        $field_id = absint($_POST['field_id'] ?? 0);
+        $slug = sanitize_title($_POST['slug'] ?? '');
+
+        if ($form_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid form ID.', 'wicket-gf')]);
+        }
+
+        if ($slug === '') {
+            wp_send_json_success(['valid' => true]);
+        }
+
+        $form = GFAPI::get_form($form_id);
+        if (!$form) {
+            wp_send_json_error(['message' => __('Form not found.', 'wicket-gf')]);
+        }
+
+        foreach ($form['fields'] as $field) {
+            if ((int) $field->id === $field_id) {
+                continue;
+            }
+            if (isset($field->wicket_field_slug) && $field->wicket_field_slug === $slug) {
+                wp_send_json_error([
+                    'message' => __('This slug is already used by another field in this form.', 'wicket-gf'),
+                ]);
+            }
+        }
+
+        wp_send_json_success(['valid' => true, 'slug' => $slug]);
+    }
+
+    /**
+     * Flush the slug transient cache when a form is saved.
+     *
+     * @param array $form The form that was saved.
+     * @param int   $form_id The form ID.
+     */
+    public function flush_slug_cache_on_save(array $form, bool $is_new_form): void
+    {
+        wicket_gf_flush_slug_cache();
+    }
+
+    /**
+     * Clear the form slug on imported forms if it collides with an existing form.
+     *
+     * GF import copies display_meta verbatim, including wicket_mdp_form_slug.
+     * Without this, two forms would share the same slug and lookup becomes undefined.
+     *
+     * @param int $form_id The ID of the newly imported form.
+     */
+    public function clear_imported_slug_collision(int $form_id): void
+    {
+        $form = GFAPI::get_form($form_id);
+        if (!$form) {
+            return;
+        }
+
+        $slug = $form['wicket_mdp_form_slug'] ?? '';
+        if ($slug === '') {
+            return;
+        }
+
+        // Check if any other form already owns this slug
+        $all_forms = GFAPI::get_forms();
+        if (is_array($all_forms)) {
+            foreach ($all_forms as $other) {
+                if ((int) $other['id'] === $form_id) {
+                    continue;
+                }
+                if (($other['wicket_mdp_form_slug'] ?? '') === $slug) {
+                    $form['wicket_mdp_form_slug'] = '';
+                    GFAPI::update_form($form, $form_id);
+                    wicket_gf_flush_slug_cache($slug);
+
+                    return;
+                }
+            }
+        }
     }
 
     public function output_wicket_event_debugger_script(): void

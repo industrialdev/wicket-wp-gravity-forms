@@ -36,7 +36,7 @@ class MdpSyncLogger
      * Log levels.
      */
     public const LEVEL_SUCCESS = 'success';
-    public const LEVEL_FAILED  = 'failed';
+    public const LEVEL_FAILED = 'failed';
     public const LEVEL_SKIPPED = 'skipped';
     public const LEVEL_PENDING = 'pending';
 
@@ -96,6 +96,7 @@ class MdpSyncLogger
         // Verify creation
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Verification after DDL
         $check = $wpdb->get_row($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+
         return !empty($check);
     }
 
@@ -161,7 +162,7 @@ class MdpSyncLogger
 
         $sql = "SELECT * FROM {$table} WHERE " . implode(' AND ', $where)
              . " ORDER BY {$orderby} {$order}"
-             . " LIMIT %d OFFSET %d";
+             . ' LIMIT %d OFFSET %d';
 
         $params[] = $limit;
         $params[] = $offset;
@@ -281,6 +282,7 @@ class MdpSyncLogger
     public function table_name(): string
     {
         global $wpdb;
+
         return $wpdb->prefix . 'wicket_gf_mdp_sync_log';
     }
 

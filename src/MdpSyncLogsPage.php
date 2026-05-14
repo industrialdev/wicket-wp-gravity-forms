@@ -63,9 +63,9 @@ class MdpSyncLogsPage
         }
 
         $filter_status = \sanitize_text_field((string) ($_GET['filter_status'] ?? ''));
-        $filter_form   = \absint($_GET['filter_form'] ?? 0);
-        $paged         = \max(1, \absint($_GET['paged'] ?? 1));
-        $offset        = ($paged - 1) * self::PER_PAGE;
+        $filter_form = \absint($_GET['filter_form'] ?? 0);
+        $paged = \max(1, \absint($_GET['paged'] ?? 1));
+        $offset = ($paged - 1) * self::PER_PAGE;
 
         $args = [
             'limit'  => self::PER_PAGE,
@@ -81,7 +81,7 @@ class MdpSyncLogsPage
             $args['form_id'] = $filter_form;
         }
 
-        $logs  = $this->logger->get_logs($args);
+        $logs = $this->logger->get_logs($args);
         $total = $this->logger->count_logs(\array_intersect_key($args, \array_flip(['status', 'form_id'])));
         $pages = (int) \ceil($total / self::PER_PAGE);
 
@@ -109,7 +109,7 @@ class MdpSyncLogsPage
             <?php endforeach; ?>
         </select>
 
-        <input type="number" name="filter_form" value="<?php echo \esc_attr($filter_form > 0 ? (string)$filter_form : ''); ?>"
+        <input type="number" name="filter_form" value="<?php echo \esc_attr($filter_form > 0 ? (string) $filter_form : ''); ?>"
             placeholder="<?php \esc_attr_e('Form ID', 'wicket-gf'); ?>" min="0" class="small-text"
             style="vertical-align:middle;" />
 
@@ -163,12 +163,12 @@ class MdpSyncLogsPage
                 <td>
                     <?php
                     $color = $status_colors[$log->status] ?? '#6c757d';
-                    \printf(
-                        '<span style="display:inline-block;padding:1px 6px;border-radius:3px;color:#fff;background:%s;font-size:11px;font-weight:600;">%s</span>',
-                        \esc_attr($color),
-                        \esc_html(\strtoupper($log->status))
-                    );
-                    ?>
+                \printf(
+                    '<span style="display:inline-block;padding:1px 6px;border-radius:3px;color:#fff;background:%s;font-size:11px;font-weight:600;">%s</span>',
+                    \esc_attr($color),
+                    \esc_html(\strtoupper($log->status))
+                );
+                ?>
                 </td>
                 <td><?php echo \esc_html($log->message); ?></td>
                 <td style="font-size:12px;color:#666;"><?php echo \esc_html($log->created_at); ?></td>
@@ -184,30 +184,30 @@ class MdpSyncLogsPage
         <div class="tablenav-pages">
             <?php
             $base_url = \admin_url('admin.php?page=' . self::PAGE_SLUG);
-            if ($filter_status !== '') {
-                $base_url .= '&filter_status=' . \urlencode($filter_status);
-            }
-            if ($filter_form > 0) {
-                $base_url .= '&filter_form=' . $filter_form;
-            }
+        if ($filter_status !== '') {
+            $base_url .= '&filter_status=' . \urlencode($filter_status);
+        }
+        if ($filter_form > 0) {
+            $base_url .= '&filter_form=' . $filter_form;
+        }
 
-            if ($paged > 1) {
-                \printf(
-                    '<a class="button" href="%s&paged=%d">%s</a> ',
-                    \esc_url($base_url),
-                    $paged - 1,
-                    \esc_html__('&larr; Prev', 'wicket-gf')
-                );
-            }
-            if ($paged < $pages) {
-                \printf(
-                    '<a class="button" href="%s&paged=%d">%s</a>',
-                    \esc_url($base_url),
-                    $paged + 1,
-                    \esc_html__('Next &rarr;', 'wicket-gf')
-                );
-            }
-            ?>
+        if ($paged > 1) {
+            \printf(
+                '<a class="button" href="%s&paged=%d">%s</a> ',
+                \esc_url($base_url),
+                $paged - 1,
+                \esc_html__('&larr; Prev', 'wicket-gf')
+            );
+        }
+        if ($paged < $pages) {
+            \printf(
+                '<a class="button" href="%s&paged=%d">%s</a>',
+                \esc_url($base_url),
+                $paged + 1,
+                \esc_html__('Next &rarr;', 'wicket-gf')
+            );
+        }
+        ?>
         </div>
     </div>
     <?php endif; ?>

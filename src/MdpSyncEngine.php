@@ -32,7 +32,7 @@ class MdpSyncEngine
      */
     public const STATUS_PENDING = 'pending';
     public const STATUS_SUCCESS = 'success';
-    public const STATUS_FAILED  = 'failed';
+    public const STATUS_FAILED = 'failed';
     public const STATUS_SKIPPED = 'skipped';
 
     /**
@@ -79,6 +79,7 @@ class MdpSyncEngine
 
         if (!$this->is_sync_eligible($form_config)) {
             $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config', $log_ctx);
+
             return;
         }
 
@@ -86,12 +87,14 @@ class MdpSyncEngine
 
         if (empty($mapped_values)) {
             $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values', $log_ctx);
+
             return;
         }
 
         $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
         if (empty($uuid)) {
             $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field', $log_ctx);
+
             return;
         }
 
@@ -136,6 +139,7 @@ class MdpSyncEngine
 
         if ($entry_id <= 0 || $uuid === '' || empty($grouped)) {
             $this->record_status($entry_id, self::STATUS_FAILED, 'Invalid scheduled sync payload', $log_ctx);
+
             return;
         }
 
@@ -156,6 +160,7 @@ class MdpSyncEngine
 
         if (!$this->is_sync_eligible($form_config)) {
             $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+
             return;
         }
 
@@ -163,12 +168,14 @@ class MdpSyncEngine
 
         if (empty($mapped_values)) {
             $this->record_status($entry_id, self::STATUS_SKIPPED, 'No mapped fields with values');
+
             return;
         }
 
         $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
         if (empty($uuid)) {
             $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+
             return;
         }
 
@@ -281,6 +288,7 @@ class MdpSyncEngine
                     $parts[] = $val;
                 }
             }
+
             return !empty($parts) ? implode(' ', $parts) : null;
         }
 
@@ -314,6 +322,7 @@ class MdpSyncEngine
                 'value' => $item['value'],
             ];
         }
+
         return $grouped;
     }
 
@@ -367,12 +376,14 @@ class MdpSyncEngine
             $client->patch($endpoint, ['json' => $payload]);
 
             $objects = array_fill_keys(array_keys($grouped), true);
+
             return ['success' => true, 'message' => 'MDP sync successful', 'objects' => $objects];
         } catch (RequestException $e) {
             $body = '';
             if ($e->hasResponse()) {
                 $body = (string) $e->getResponse()->getBody();
             }
+
             return [
                 'success' => false,
                 'message' => sprintf('API error (%d): %s', $e->getCode(), $body),
@@ -472,6 +483,7 @@ class MdpSyncEngine
         if (str_starts_with($field, 'attributes.')) {
             return substr($field, strlen('attributes.'));
         }
+
         return $field;
     }
 
@@ -485,6 +497,7 @@ class MdpSyncEngine
         if (str_starts_with($field, 'data_field.')) {
             return substr($field, strlen('data_field.'));
         }
+
         return '';
     }
 
@@ -502,6 +515,7 @@ class MdpSyncEngine
         if (str_starts_with($field, 'communications.')) {
             return substr($field, strlen('communications.'));
         }
+
         return '';
     }
 

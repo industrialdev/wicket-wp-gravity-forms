@@ -22,6 +22,24 @@ class ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e
 
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+        'WicketGF\\Admin' => __DIR__ . '/../..' . '/src/Admin.php',
+        'WicketGF\\Fields\\ApiDataBind' => __DIR__ . '/../..' . '/src/Fields/ApiDataBind.php',
+        'WicketGF\\Fields\\ConsentFieldExtension' => __DIR__ . '/../..' . '/src/Fields/ConsentFieldExtension.php',
+        'WicketGF\\Fields\\DataBindHidden' => __DIR__ . '/../..' . '/src/Fields/DataBindHidden.php',
+        'WicketGF\\Fields\\OrgSearchSelect' => __DIR__ . '/../..' . '/src/Fields/OrgSearchSelect.php',
+        'WicketGF\\Fields\\UserMdpTags' => __DIR__ . '/../..' . '/src/Fields/UserMdpTags.php',
+        'WicketGF\\Fields\\WidgetAdditionalInfo' => __DIR__ . '/../..' . '/src/Fields/WidgetAdditionalInfo.php',
+        'WicketGF\\Fields\\WidgetPrefs' => __DIR__ . '/../..' . '/src/Fields/WidgetPrefs.php',
+        'WicketGF\\Fields\\WidgetProfile' => __DIR__ . '/../..' . '/src/Fields/WidgetProfile.php',
+        'WicketGF\\Fields\\WidgetProfileOrg' => __DIR__ . '/../..' . '/src/Fields/WidgetProfileOrg.php',
+        'WicketGF\\MappingAddOn' => __DIR__ . '/../..' . '/src/MappingAddOn.php',
+        'WicketGF\\MdpFieldDiscovery' => __DIR__ . '/../..' . '/src/MdpFieldDiscovery.php',
+        'WicketGF\\MdpSyncEngine' => __DIR__ . '/../..' . '/src/MdpSyncEngine.php',
+        'WicketGF\\MdpSyncLogger' => __DIR__ . '/../..' . '/src/MdpSyncLogger.php',
+        'WicketGF\\MdpSyncLogsPage' => __DIR__ . '/../..' . '/src/MdpSyncLogsPage.php',
+        'WicketGF\\NonceHandler' => __DIR__ . '/../..' . '/src/NonceHandler.php',
+        'WicketGF\\ObjectTypeWicket' => __DIR__ . '/../..' . '/src/ObjectTypeWicket.php',
+        'WicketGF\\Validation' => __DIR__ . '/../..' . '/src/Validation.php',
     );
 
     public static function getInitializer(ClassLoader $loader)

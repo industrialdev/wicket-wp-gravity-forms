@@ -260,9 +260,9 @@ jQuery(document).ready(function($) {
         $field_page = isset($this->pageNumber) ? (int) $this->pageNumber : 1;
 
         if ($on_submit) {
-            $field_id_for_log    = $this->id ?? 'unknown';
+            $field_id_for_log = $this->id ?? 'unknown';
             $validation_flag_log = rgpost('input_' . $field_id_for_log . '_validation');
-            $value_array_log     = is_array(json_decode((string) $value, true)) ? json_decode((string) $value, true) : [];
+            $value_array_log = is_array(json_decode((string) $value, true)) ? json_decode((string) $value, true) : [];
             \Wicket()->log()->debug(
                 sprintf(
                     'ProfileIND field=%s form=%s field_page=%d current_page=%d flag=%s incompleteFields=%s incompleteResources=%s%s',
@@ -271,7 +271,7 @@ jQuery(document).ready(function($) {
                     $field_page,
                     $current_page,
                     var_export($validation_flag_log, true),
-                    wp_json_encode($value_array_log['incompleteRequiredFields']    ?? []),
+                    wp_json_encode($value_array_log['incompleteRequiredFields'] ?? []),
                     wp_json_encode($value_array_log['incompleteRequiredResources'] ?? []),
                     $field_page !== $current_page ? ' [SKIPPED: not on current page]' : ''
                 ),
