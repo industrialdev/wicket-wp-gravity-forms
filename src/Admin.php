@@ -120,16 +120,16 @@ class Admin
         <h3><?php esc_html_e('Form Slug ID Mapping', 'wicket-gf'); ?></h3>
 
         <div class="notice notice-info inline" style="margin: 10px 0; padding: 10px 12px; border-left-color: #72aee6;">
-            <p><strong><?php esc_html_e('Form slugs can now be set directly in the form editor.', 'wicket-gf'); ?></strong></p>
-            <p><?php esc_html_e('Go to any form → Settings → Wicket Settings and set the Form Slug field. This page remains as a fallback for existing mappings but will be removed in a future version.', 'wicket-gf'); ?></p>
+            <p><strong><?php esc_html_e('Form slugs can also be set per-form.', 'wicket-gf'); ?></strong></p>
+            <p><?php esc_html_e('Go to any form → Settings → Wicket Settings and set the Form Slug field. Both this page and the per-form settings read and write the same storage, so changes are always in sync.', 'wicket-gf'); ?></p>
         </div>
 
         <p>
-            <?php esc_html_e('The mappings below tell the rest of the site which form slugs correspond to which Gravity Form IDs, allowing you to import and update forms easily by simply changing the ID here.', 'wicket-gf'); ?>
+            <?php esc_html_e('The mappings below tell the rest of the site which form slugs correspond to which Gravity Form IDs. Changes made here or in a form’s Wicket Settings tab update the same mapping.', 'wicket-gf'); ?>
         </p>
 
         <p>
-            <?php esc_html_e('This makes it easy to reference forms by their slug in coding using the', 'wicket-gf'); ?> <code>wicket_gf_get_form_id_by_slug()</code> <?php esc_html_e('function.', 'wicket-gf'); ?>
+            <?php esc_html_e('Reference forms by slug in code using the', 'wicket-gf'); ?> <code>wicket_gf_get_form_id_by_slug()</code> <?php esc_html_e('function.', 'wicket-gf'); ?>
         </p>
 
         <?php

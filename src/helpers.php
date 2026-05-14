@@ -7,8 +7,8 @@ if (!function_exists('wicket_gf_get_form_id_by_slug')) {
     /**
      * Retrieve the Gravity Forms ID associated with a given slug.
      *
-     * Queries per-form wicket_mdp_form_slug property first (transient-cached),
-     * then falls back to the legacy wicket_gf_slug_mapping option.
+     * Queries the canonical wicket_gf_slug_mapping option first (transient-cached),
+     * then falls back to the per-form wicket_mdp_form_slug property for migration.
      *
      * @param string $slug Gravity Forms slug.
      *
@@ -21,27 +21,13 @@ if (!function_exists('wicket_gf_get_form_id_by_slug')) {
             return false;
         }
 
-        // Try per-form property (transient-cached)
         $cache_key = 'wicket_gf_form_slug_' . $slug;
         $cached = get_transient($cache_key);
         if ($cached !== false) {
             return (int) $cached > 0 ? (int) $cached : false;
         }
 
-        // Per-form lookup
-        $forms = GFAPI::get_forms();
-        if (is_array($forms)) {
-            foreach ($forms as $form) {
-                $form_slug = $form['wicket_mdp_form_slug'] ?? '';
-                if ($form_slug === $slug) {
-                    set_transient($cache_key, (int) $form['id'], HOUR_IN_SECONDS);
-
-                    return (int) $form['id'];
-                }
-            }
-        }
-
-        // Fallback: legacy global option
+        // Primary: canonical wicket_gf_slug_mapping option
         $current_mappings = get_option('wicket_gf_slug_mapping');
         if (!empty($current_mappings)) {
             $current_mappings = json_decode($current_mappings, true);
@@ -51,6 +37,19 @@ if (!function_exists('wicket_gf_get_form_id_by_slug')) {
                     set_transient($cache_key, $form_id, HOUR_IN_SECONDS);
 
                     return $form_id;
+                }
+            }
+        }
+
+        // Fallback: per-form wicket_mdp_form_slug property (migration path)
+        $forms = GFAPI::get_forms();
+        if (is_array($forms)) {
+            foreach ($forms as $form) {
+                $form_slug = $form['wicket_mdp_form_slug'] ?? '';
+                if ($form_slug === $slug) {
+                    set_transient($cache_key, (int) $form['id'], HOUR_IN_SECONDS);
+
+                    return (int) $form['id'];
                 }
             }
         }

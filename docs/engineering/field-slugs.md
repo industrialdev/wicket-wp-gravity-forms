@@ -13,16 +13,20 @@ and form duplication (import collision detection clears duplicates).
 
 ## Form Slugs
 
-Each form can carry a `wicket_mdp_form_slug` property (stored in GF form meta).
-This replaces the legacy global `wicket_gf_slug_mapping` option with per-form storage.
+Form slugs are stored centrally in the `wicket_gf_slug_mapping` WordPress option
+(a JSON object mapping slug → form ID). This is the canonical storage used by
+both the global Wicket Slugs page and the per-form Wicket Settings tab.
 
 ### Admin UI
 
-- WP Admin → Forms → [form] → Settings → **Wicket** tab
-- Set the **Form Slug** field (must be unique across all forms)
+- **Global page**: WP Admin → Forms → Settings → **Wicket** tab
+- **Per-form page**: WP Admin → Forms → [form] → Settings → **Wicket** tab
 
-The legacy **Wicket Slugs** page (`admin.php?page=wicket_gf`) now redirects to
-`admin.php?page=gf_settings&subview=wicket`.
+Both pages read and write the same `wicket_gf_slug_mapping` option. Changes made
+in either location are immediately visible in the other.
+
+The legacy submenu page (`admin.php?page=wicket_gf`) now redirects to the
+global GF Settings Wicket tab.
 
 ### Lookup Helpers
 
@@ -33,9 +37,10 @@ $form_id = wicket_gf_get_form_id_by_slug('member-registration');
 $form = wicket_gf_resolve_form('member-registration');
 ```
 
-`wicket_gf_get_form_id_by_slug()` queries per-form `wicket_mdp_form_slug` first
-(transient-cached for 1 hour), then falls back to the legacy
-`wicket_gf_slug_mapping` option.
+`wicket_gf_get_form_id_by_slug()` queries the canonical
+`wicket_gf_slug_mapping` option first (transient-cached for 1 hour), then falls
+back to the per-form `wicket_mdp_form_slug` display_meta property for migration
+of any legacy per-form entries.
 
 ### Cache Management
 
@@ -44,12 +49,14 @@ wicket_gf_flush_slug_cache();        // Flush all slug transients
 wicket_gf_flush_slug_cache('my-slug'); // Flush a specific slug
 ```
 
-The cache is flushed automatically when any form is saved (`gform_after_save_form`).
+The cache is flushed automatically when any form is saved (`gform_after_save_form`)
+or when the global Wicket settings are saved.
 
-### Import Collision Protection
+### Import Handling
 
-On form import (`gform_after_import_form`), if the imported form's slug collides
-with an existing form, the imported slug is cleared to prevent ambiguous lookups.
+On form import (`gform_after_import_form`), any `wicket_mdp_form_slug` property
+on the imported form is stripped. Imported forms do not automatically register
+a slug — assign one explicitly via the Wicket Settings tab.
 
 ---
 
