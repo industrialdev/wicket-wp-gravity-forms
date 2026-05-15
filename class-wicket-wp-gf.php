@@ -846,116 +846,87 @@ class Wicket_Gf_Main
 
         GFFormSettings::page_header(__('Wicket Settings', 'wicket-gf'));
         ?>
-        <style>
-            .wicket-slug-form {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 20px;
-                padding: 12px 16px;
-                background: #f6f7f7;
-                border-radius: 4px;
-            }
-            .wicket-slug-form label {
-                font-weight: 600;
-                font-size: 13px;
-            }
-            .wicket-slug-form input {
-                font-family: monospace;
-                max-width: 260px;
-            }
-            .wicket-slug-hint {
-                font-size: 12px;
-                color: #646970;
-                margin-top: -12px;
-                margin-bottom: 16px;
-                padding-left: 16px;
-            }
-        </style>
-        <form method="post">
-            <div class="wicket-slug-form">
-                <label for="wicket_mdp_form_slug"><?php esc_html_e('Form Slug', 'wicket-gf'); ?></label>
-                <input type="text" id="wicket_mdp_form_slug" name="wicket_mdp_form_slug" value="<?php echo esc_attr($current_slug); ?>" class="medium" />
-                <?php submit_button(__('Save Slug', 'wicket-gf'), 'secondary', 'wicket_save_slug', false); ?>
-            </div>
-        </form>
-        <p class="wicket-slug-hint"><?php esc_html_e('Unique identifier used in code via wicket_gf_get_form_id_by_slug(). Changing it may break shortcode references.', 'wicket-gf'); ?></p>
+        <div class="gform-settings__content">
+            <form id="gform-settings" class="gform_settings_form" method="post" enctype="multipart/form-data" novalidate="">
 
-        <div class="wicket-mdp-settings-summary">
-            <style>
-                .wicket-mdp-settings-summary {
-                    margin-top: 10px;
-                }
-                .wicket-mdp-config-badge {
-                    display: inline-flex;
-                    gap: 16px;
-                    padding: 8px 14px;
-                    background: #f0f0f1;
-                    border-radius: 4px;
-                    margin-bottom: 16px;
-                    font-size: 13px;
-                }
-                .wicket-mdp-config-badge span {
-                    color: #2271b1;
-                    font-weight: 500;
-                }
-                .wicket-mdp-settings-summary table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                .wicket-mdp-settings-summary table th,
-                .wicket-mdp-settings-summary table td {
-                    text-align: left;
-                    padding: 8px 12px;
-                    border-bottom: 1px solid #dcdcde;
-                }
-                .wicket-mdp-settings-summary table th {
-                    font-weight: 600;
-                    color: #646970;
-                }
-                .wicket-mdp-settings-summary table tr:hover {
-                    background: #f6f7f7;
-                }
-                .wicket-mdp-settings-summary table tr a {
-                    text-decoration: none;
-                }
-            </style>
+                <!-- Form Slug Section -->
+                <fieldset class="gform-settings-panel gform-settings-panel--full gform-settings-panel--with-title">
+                    <legend class="gform-settings-panel__title gform-settings-panel__title--header"><?php esc_html_e('Form Slug', 'wicket-gf'); ?></legend>
+                    <div class="gform-settings-panel__content">
+                        <div class="gform-settings-field gform-settings-field__text">
+                            <div class="gform-settings-field__header">
+                                <label class="gform-settings-label" for="wicket_mdp_form_slug"><?php esc_html_e('Slug', 'wicket-gf'); ?></label>
+                            </div>
+                            <span class="gform-settings-input__container">
+                                <input type="text" id="wicket_mdp_form_slug" name="wicket_mdp_form_slug" value="<?php echo esc_attr($current_slug); ?>" />
+                            </span>
+                            <p class="gform-settings-description"><?php esc_html_e('Unique identifier used in code via wicket_gf_get_form_id_by_slug(). Changing it may break shortcode references.', 'wicket-gf'); ?></p>
+                        </div>
+                    </div>
+                </fieldset>
 
-            <?php if ($entity_type || $uuid_source): ?>
-                <div class="wicket-mdp-config-badge">
-                    <div>Entity Type: <span><?php echo esc_html($entity_type === 'person' ? 'Person' : ($entity_type === 'organization' ? 'Organization' : $entity_type)); ?></span></div>
-                    <?php if ($uuid_source): ?>
-                        <div>UUID Source: <span>Field <?php echo esc_html($uuid_source); ?></span></div>
-                    <?php endif; ?>
+                <!-- MDP Configuration Section -->
+                <?php if ($entity_type || $uuid_source): ?>
+                <fieldset class="gform-settings-panel gform-settings-panel--full gform-settings-panel--with-title">
+                    <legend class="gform-settings-panel__title gform-settings-panel__title--header"><?php esc_html_e('MDP Configuration', 'wicket-gf'); ?></legend>
+                    <div class="gform-settings-panel__content">
+                        <div class="gform-settings-field gform-settings-field__text" style="display:flex;gap:24px;flex-wrap:wrap;">
+                            <?php if ($entity_type): ?>
+                            <div>
+                                <div class="gform-settings-field__header"><label class="gform-settings-label"><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label></div>
+                                <span style="color:#2271b1;font-weight:500;"><?php echo esc_html($entity_type === 'person' ? 'Person' : ($entity_type === 'organization' ? 'Organization' : $entity_type)); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($uuid_source): ?>
+                            <div>
+                                <div class="gform-settings-field__header"><label class="gform-settings-label"><?php esc_html_e('UUID Source', 'wicket-gf'); ?></label></div>
+                                <span style="color:#2271b1;font-weight:500;">Field <?php echo esc_html($uuid_source); ?></span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </fieldset>
+                <?php endif; ?>
+
+                <!-- Mapped Fields Section -->
+                <fieldset class="gform-settings-panel gform-settings-panel--full gform-settings-panel--with-title">
+                    <legend class="gform-settings-panel__title gform-settings-panel__title--header"><?php esc_html_e('Mapped Fields', 'wicket-gf'); ?></legend>
+                    <div class="gform-settings-panel__content">
+                        <?php if (empty($mapped_fields)): ?>
+                            <p style="color:#646970;"><?php esc_html_e('No fields have MDP mapping enabled yet. Enable MDP Mapping on any field in the form editor to configure mappings.', 'wicket-gf'); ?></p>
+                        <?php else: ?>
+                            <table class="gform-settings-panel__table" style="width:100%;border-collapse:collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Field', 'wicket-gf'); ?></th>
+                                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Target Object', 'wicket-gf'); ?></th>
+                                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Target Field', 'wicket-gf'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($mapped_fields as $mf): ?>
+                                        <tr>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;">
+                                                <a href="<?php echo esc_url('?page=gf_edit_forms&id=' . $form_id . '&fid=' . $form_id . '#gf-field-' . $mf['field_id']); ?>">
+                                                    <?php echo esc_html($mf['field_label']); ?>
+                                                </a>
+                                            </td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;"><?php echo esc_html($mf['target_object_label']); ?></td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;"><?php echo esc_html($mf['target_field_label']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                    </div>
+                </fieldset>
+
+                <div class="gform-settings-save-container">
+                    <button type="submit" name="wicket_save_slug" value="save" class="primary button large"><?php esc_html_e('Save Settings', 'wicket-gf'); ?> &nbsp;→</button>
                 </div>
-            <?php endif; ?>
 
-            <?php if (empty($mapped_fields)): ?>
-                <p><?php esc_html_e('No fields have MDP mapping enabled yet. Enable MDP Mapping on any field in the form editor to configure mappings.', 'wicket-gf'); ?></p>
-            <?php else: ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th><?php esc_html_e('Field', 'wicket-gf'); ?></th>
-                            <th><?php esc_html_e('Target Object', 'wicket-gf'); ?></th>
-                            <th><?php esc_html_e('Target Field', 'wicket-gf'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($mapped_fields as $mf): ?>
-                            <tr>
-                                <td>
-                                    <a href="<?php echo esc_url('?page=gf_edit_forms&id=' . $form_id . '&fid=' . $form_id . '#gf-field-' . $mf['field_id']); ?>">
-                                        <?php echo esc_html($mf['field_label']); ?>
-                                    </a>
-                                </td>
-                                <td><?php echo esc_html($mf['target_object_label']); ?></td>
-                                <td><?php echo esc_html($mf['target_field_label']); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
+            <?php wp_nonce_field('update-options'); ?>
+            </form>
         </div>
         <?php
         GFFormSettings::page_footer();
