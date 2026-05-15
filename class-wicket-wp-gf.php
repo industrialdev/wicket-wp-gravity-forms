@@ -2274,7 +2274,9 @@ class Wicket_Gf_Main
             /**
              * Edit link click — switch inline config to edit mode.
              */
-            jQuery(document).on('click', '#wicket_mdp_edit_config', function(e){
+            // Direct binding — GF stops click propagation on .field_setting <li>s
+            // so delegated handlers on document never fire.
+            jQuery('#wicket_mdp_edit_config').on('click', function(e){
                 e.preventDefault();
                 e.stopPropagation();
                 wicketSetInlineConfigMode('edit');
