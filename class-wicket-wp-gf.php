@@ -69,6 +69,7 @@ use WicketGF\MdpFieldDiscovery;
 use WicketGF\MdpSyncEngine;
 use WicketGF\MdpSyncLogger;
 use WicketGF\MdpSyncLogsPage;
+use WicketGF\MdpTypeCompatibility;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\Validation;
@@ -126,6 +127,12 @@ class Wicket_Gf_Main
      * @var MdpSyncLogsPage|null
      */
     protected ?MdpSyncLogsPage $mdp_logs_page = null;
+
+    /**
+     * MDP type compatibility checker.
+     * @var MdpTypeCompatibility|null
+     */
+    protected ?MdpTypeCompatibility $mdp_compat = null;
 
     /**
      * Class variables.
@@ -1078,6 +1085,20 @@ class Wicket_Gf_Main
         return $this->mdp_logs_page;
     }
 
+    /**
+     * Get the MDP type compatibility checker (lazy-loaded).
+     *
+     * @return MdpTypeCompatibility
+     */
+    protected function get_mdp_compat(): MdpTypeCompatibility
+    {
+        if ($this->mdp_compat === null) {
+            $this->mdp_compat = new MdpTypeCompatibility();
+        }
+
+        return $this->mdp_compat;
+    }
+
     protected function get_mdp_target_field_values($target_object)
     {
         return $this->get_mdp_discovery()->getTargetFieldValues($target_object);
@@ -1553,11 +1574,13 @@ class Wicket_Gf_Main
                     .wicket_global_custom_settings_enable_mdp_mapping,
                     .wicket_global_custom_settings_mdp_help,
                     .wicket_global_custom_settings_mdp_target_object,
-                    .wicket_global_custom_settings_mdp_target_field {
+                    .wicket_global_custom_settings_mdp_target_field,
+                    .wicket_global_custom_settings_mdp_type_warning {
                         display: block !important;
                     }
 
-                    .wicket_global_custom_settings_mdp_help .description {
+                    .wicket_global_custom_settings_mdp_help .description,
+                    .wicket_global_custom_settings_mdp_type_warning .description {
                         margin: 6px 0 0;
                     }
                 </style>
@@ -1585,6 +1608,10 @@ class Wicket_Gf_Main
                 </select>
             </li>
 
+            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_type_warning field_setting" style="display: none !important;">
+                <span class="description wicket-mdp-type-warning" style="color: #b32d00;"></span>
+            </li>
+
         <?php echo ob_get_clean();
         }
     }
@@ -1599,6 +1626,9 @@ class Wicket_Gf_Main
             // Field definitions sourced from PHP single source of truth (get_mdp_target_fields).
             // Task 2.1 will replace additional_info/preferences with dynamic discovery.
             var wicketMdpTargetFields = <?php echo json_encode($this->get_all_mdp_target_fields()); ?>;
+
+            // Type compatibility matrix: GF field type → array of incompatible target field values.
+            var wicketMdpTypeCompat = <?php echo json_encode($this->get_mdp_compat()->buildJsMatrix($this->get_mdp_discovery())); ?>;
 
             // Field Slug Configuration
             <?php
@@ -1877,6 +1907,7 @@ class Wicket_Gf_Main
                 var $helpRow         = jQuery('.wicket_global_custom_settings_mdp_help');
                 var $targetObjectRow = jQuery('.wicket_global_custom_settings_mdp_target_object');
                 var $targetFieldRow  = jQuery('.wicket_global_custom_settings_mdp_target_field');
+                var $warningRow      = jQuery('.wicket_global_custom_settings_mdp_type_warning');
                 var mdpEnabled       = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
                 var targetObject     = rgar(field, 'wicket_mdp_target_object') || '';
                 var targetField      = rgar(field, 'wicket_mdp_target_field') || '';
@@ -1899,6 +1930,7 @@ class Wicket_Gf_Main
                     }
 
                     wicketMdpToggle($targetFieldRow, false);
+                    wicketMdpToggle($warningRow, false);
                     return;
                 }
 
@@ -1906,6 +1938,36 @@ class Wicket_Gf_Main
                 if (!targetFieldState.hasSelectedValue && targetField) {
                     jQuery('#wicket_mdp_target_field').val('');
                     SetFieldProperty('wicket_mdp_target_field', '');
+                    targetField = '';
+                }
+
+                // Task 5.1: Type compatibility warning
+                wicketShowTypeWarning(field, targetField);
+            }
+
+            /**
+             * Show a type compatibility warning when a multi-value GF field
+             * is mapped to a boolean target (e.g. checkbox → communications.email).
+             */
+            function wicketShowTypeWarning(field, targetField) {
+                var $warningRow = jQuery('.wicket_global_custom_settings_mdp_type_warning');
+                var $warningSpan = $warningRow.find('.wicket-mdp-type-warning');
+
+                if (!targetField || !wicketMdpTypeCompat) {
+                    wicketMdpToggle($warningRow, false);
+                    return;
+                }
+
+                var fieldType = rgar(field, 'type') || '';
+                var incompatible = wicketMdpTypeCompat[fieldType] || [];
+                var hasWarning = incompatible.indexOf(targetField) !== -1;
+
+                if (hasWarning) {
+                    $warningSpan.text('<?php esc_html_e('Warning: Multi-value field mapped to a boolean target. Only the first selected value will be sent.', 'wicket-gf'); ?>');
+                    wicketMdpToggle($warningRow, true);
+                } else {
+                    $warningSpan.text('');
+                    wicketMdpToggle($warningRow, false);
                 }
             }
 
@@ -1934,6 +1996,11 @@ class Wicket_Gf_Main
 
                 jQuery('#wicket_mdp_target_field').val('');
                 SetFieldProperty('wicket_mdp_target_field', '');
+                wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
+            });
+
+            jQuery(document).on('change', '#wicket_mdp_target_field', function(){
+                var field = GetSelectedField();
                 wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
             });
 
