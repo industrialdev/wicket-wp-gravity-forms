@@ -326,6 +326,12 @@ class Wicket_Gf_Main
         // Add form pre-render hook for pagination sidebar layout and other dynamic features
         add_filter('gform_pre_render', [$this, 'gf_custom_pre_render'], 50, 1);
 
+        // Inject field slug pills into GF preview mode
+        add_filter('gform_field_content', [$this, 'inject_preview_slug_pill'], 10, 2);
+
+        // Add data-slug attribute to field wrapper div on all frontend renders
+        add_filter('gform_field_container', [$this, 'inject_field_slug_data_attr'], 10, 6);
+
         // Support dynamic population parameter: user_mdp_tags
         add_filter('gform_field_value_user_mdp_tags', [$this, 'populate_user_mdp_tags_dynamic_parameter']);
     }
@@ -480,6 +486,101 @@ class Wicket_Gf_Main
             $GLOBALS['post'] = get_post($subscription->get_id());
             WCS_Meta_Box_Subscription_Data::output($subscription);
         }
+    }
+
+    /**
+     * Inject field slug pill next to label in GF preview mode.
+     *
+     * Only active when GFCommon::is_preview() is true.
+     * Renders a small pill matching the GF editor sidebar style.
+     *
+     * @param string   $content The field HTML content.
+     * @param GF_Field $field   The Gravity Forms field object.
+     * @return string Modified field content.
+     */
+    public function inject_preview_slug_pill($content, $field)
+    {
+        $slug = $field->wicket_field_slug ?? '';
+        if ($slug === '') {
+            return $content;
+        }
+
+        if (!\GFCommon::is_preview()) {
+            return $content;
+        }
+
+        // Inject copy-to-clipboard script once
+        static $script_injected = false;
+        if (!$script_injected) {
+            $script_injected = true;
+            $content .= '<script>' .
+                '(function(){' .
+                'function wicketCopySlug(el,slug){' .
+                    'navigator.clipboard.writeText(slug).then(function(){' .
+                        'var orig=el.style.backgroundColor;' .
+                        'el.style.backgroundColor="#d4edda";' .
+                        'el.style.borderColor="#28a745";' .
+                        'var tip=document.createElement("span");' .
+                        'tip.textContent="Copied!";' .
+                        'tip.style.cssText="font-size:11px;color:#28a745;margin-left:4px;vertical-align:middle;font-weight:600;";' .
+                        'el.parentNode.insertBefore(tip,el.nextSibling);' .
+                        'setTimeout(function(){' .
+                            'el.style.backgroundColor=orig;' .
+                            'el.style.borderColor="#d5d7e9";' .
+                            'tip.remove();' .
+                        '},1500);' .
+                    '});' .
+                '}' .
+                'window.wicketCopySlug=wicketCopySlug;' .
+                '})();' .
+                '</script>';
+        }
+
+        $pill = sprintf(
+            '<span onclick="wicketCopySlug(this,\'%1$s\')" style="display:inline-block;background-color:#ecedf8;border:1px solid #d5d7e9;border-radius:40px;font-size:.6875rem;font-weight:600;padding:.1125rem .4625rem;font-family:monospace;margin-left:6px;vertical-align:middle;cursor:pointer;" title="Click to copy slug: %1$s">Slug: %1$s</span>',
+            esc_js($slug),
+            esc_attr($slug),
+            esc_html($slug)
+        );
+
+        // Inject right before the </label> closing tag so it stays inline
+        $content = preg_replace(
+            '/(<\/label>)/i',
+            $pill . '$1',
+            $content,
+            1
+        );
+
+        return $content;
+    }
+
+    /**
+     * Add data-slug attribute to the field wrapper div on all frontend renders.
+     *
+     * Uses gform_field_container filter which has access to the outer <div> wrapper.
+     *
+     * @param string   $field_container The field container HTML.
+     * @param GF_Field $field           The field object.
+     * @param array    $form            The form object.
+     * @param string   $css_class       CSS classes.
+     * @param string   $style           Inline style.
+     * @param string   $field_content   The field content HTML.
+     * @return string Modified container HTML.
+     */
+    public function inject_field_slug_data_attr($field_container, $field, $form, $css_class, $style, $field_content)
+    {
+        $slug = $field->wicket_field_slug ?? '';
+        if ($slug === '') {
+            return $field_container;
+        }
+
+        $slug_attr = esc_attr($slug);
+        return preg_replace(
+            '/(<div[^>]*)(>)/i',
+            '$1 data-slug="' . $slug_attr . '"$2',
+            $field_container,
+            1
+        );
     }
 
     /**
