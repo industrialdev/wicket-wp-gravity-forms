@@ -1703,7 +1703,7 @@ class Wicket_Gf_Main
                         <div class="wicket-mdp-config-row">
                             <label><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label>
                             <span class="wicket-mdp-config-value" id="wicket_mdp_entity_type_display"></span>
-                            <a class="wicket-mdp-config-edit-link" id="wicket_mdp_edit_config"><?php esc_html_e('Edit', 'wicket-gf'); ?></a>
+                            <a href="#" class="wicket-mdp-config-edit-link" id="wicket_mdp_edit_config"><?php esc_html_e('Edit', 'wicket-gf'); ?></a>
                         </div>
                         <div class="wicket-mdp-config-row">
                             <label><?php esc_html_e('UUID Source', 'wicket-gf'); ?></label>
