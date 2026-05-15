@@ -1,7 +1,7 @@
 ---
 title: "MDP Field Mapping Guide"
 audience: [implementer, support]
-wp_admin_path: "Forms → Edit Form → Wicket Settings / Wicket Member Mapping"
+wp_admin_path: "Forms → Edit Form → Field Settings → MDP Mapping"
 php_class: Wicket_Gf_Main
 db_option_prefix: wicket_gf_
 source_files: ["class-wicket-wp-gf.php", "src/MdpFieldDiscovery.php", "src/MdpSyncEngine.php", "src/MdpTypeCompatibility.php"]
@@ -9,55 +9,42 @@ source_files: ["class-wicket-wp-gf.php", "src/MdpFieldDiscovery.php", "src/MdpSy
 
 # MDP Field Mapping Guide
 
-This guide covers configuring Gravity Forms to push submitted values to the Wicket Member Data Platform (MDP) API. Three steps: set the UUID source, map fields, and verify results.
+This guide covers configuring Gravity Forms to push submitted values to the Wicket Member Data Platform (MDP) API. Two steps: map fields, verify results.
 
 ## Overview
 
-When MDP mapping is enabled on a form, each submission sends field values to Wicket after the entry is saved. The sync runs asynchronously (WP-Cron) and falls back to synchronous processing if scheduling fails.
+When MDP mapping is enabled on a form field, each submission sends that field's value to Wicket after the entry is saved. The sync runs asynchronously (WP-Cron) and falls back to synchronous processing if scheduling fails.
 
-## Step 1: Configure Form-Level Settings
+## Step 1: Map Fields in the Field Editor
 
-Open the form editor and click the **Wicket** tab in the form settings navigation.
+All MDP configuration happens in the field settings panel when you select a field in the form editor.
+
+### Enable MDP Mapping
+
+1. Click any field in the form editor.
+2. In the field settings panel, check **Enable MDP Mapping**.
+3. The MDP configuration section appears below the checkbox.
 
 ### Entity Type
 
-Select **Person** or **Org**. This determines which MDP target objects are available for field mapping.
+Select **Person** or **Organization**. This determines which MDP target objects are available. Entity Type is a form-level setting (shared across all fields), but is configured inline for convenience. Setting it on any field applies it to the entire form.
 
-### UUID Source Field
+### Target Object
 
-Select the form field that supplies the entity UUID. This is how the sync engine knows which Wicket record to update.
+Select a target object from the dropdown (filtered by Entity Type):
 
-The dropdown only includes fields that can hold a UUID value — layout fields (HTML, Page, Section, Captcha) and Wicket widgets are excluded. Common choices:
-
-- A **Hidden** field populated dynamically (e.g. via JS Data Bind or URL parameter)
-- A **Text** or **Hidden** field bound to Org. Search
-- Any standard input field that receives a UUID string
-
-> Without a UUID source, MDP field mapping is disabled at runtime.
-
-Save the form after setting these values.
-
-## Step 2: Map Individual Fields
-
-For each form field whose value should sync to Wicket:
-
-1. Select the field in the form editor.
-2. In the field settings panel, check **Enable MDP Mapping**.
-3. Select a **Target Object** from the dropdown (filtered by Entity Type):
-   - **Person** → Person Profile, Additional Info, Preferences
-   - **Org** → Org Profile
-4. Select a **Target Field** (populated based on the chosen Target Object).
-
-### Target Objects
-
-| Target Object | Description | Example Fields |
-|---|---|---|
-| **Person Profile** | Top-level person attributes | First Name, Last Name, Job Title, Language |
-| **Additional Info** | Custom schema-based fields from Wicket | Discovers available schemas via MDP API |
-| **Preferences** | Communication opt-in/sublist toggles | Email Opt-in, specific communication sublists |
-| **Org Profile** | Organization attributes | Legal Name |
+| Target Object | Entity | Description | Example Fields |
+|---|---|---|---|
+| **Person Profile** | Person | Top-level person attributes | First Name, Last Name, Job Title, Language |
+| **Additional Info** | Person | Custom schema-based fields from Wicket | Discovers available schemas via MDP API |
+| **Preferences** | Person | Communication opt-in/sublist toggles | Email Opt-in, specific communication sublists |
+| **Org Profile** | Organization | Organization attributes | Legal Name |
 
 > Additional Info and Preferences require an active MDP API connection to discover available fields. If no fields appear, verify the Wicket base plugin is configured with valid API credentials.
+
+### Target Field
+
+Select a specific field from the chosen Target Object. The dropdown populates dynamically based on the selected Target Object.
 
 ### Type Compatibility Warnings
 
@@ -72,12 +59,11 @@ This is a non-blocking warning. If the mapping is intentional, proceed. Otherwis
 The form cannot be saved if MDP mapping is enabled but:
 
 - Entity Type is not set
-- UUID Source Field is not set
 - Target Object is not selected
 - Target Object is not yet supported by field discovery
 - Target Field is not selected or is invalid for the chosen Target Object
 
-## Step 3: Verify Sync Results
+## Step 2: Verify Sync Results
 
 ### Entry-Level Status
 
@@ -89,6 +75,10 @@ After a submission, open the GF entry detail page. The sync status is recorded a
 | **Failed** | API call failed — check error message |
 | **Skipped** | Form had no MDP config or no mapped values |
 | **Pending** | Sync is scheduled (async, usually completes within seconds) |
+
+### Wicket Settings Tab (Read-Only Summary)
+
+The **Wicket** tab in form settings displays a read-only summary of all mapped fields. This is for quick reference only; all configuration is done in the field editor.
 
 ### Wicket Logs
 
@@ -106,9 +96,9 @@ Log location is configured in the Wicket Base Plugin settings.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Status stays **Pending** | WP-Cron not firing | Ensure WP-Cron is enabled; check server cron if `DISABLE_WP_CRON` is set |
-| Status is **Skipped** | No UUID source configured | Set Entity Type and UUID Source Field in Form Settings |
+| Status is **Skipped** | No Entity Type configured | Set Entity Type when enabling MDP Mapping on a field |
 | Status is **Failed** with API error | Invalid credentials or network issue | Check Wicket base plugin API configuration |
-| **Failed** with "Could not resolve entity UUID" | Source field was empty on submission | Ensure the UUID source field receives a value before form submit |
+| **Failed** with "Could not resolve entity UUID" | UUID source was empty at submission time | Ensure the UUID source field receives a value before form submit |
 | Target Field dropdown is empty | MDP API unreachable or no schemas/preferences defined | Verify API connectivity; additional info and preferences are discovered dynamically |
 
 ## Re-Sync Wicket Member Fields
