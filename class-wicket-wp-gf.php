@@ -1640,17 +1640,8 @@ class Wicket_Gf_Main
 
             <li class="wicket_global_custom_settings wicket_global_custom_settings_enable_mdp_mapping field_setting">
                 <style>
-                    /* Override GF's field_setting hiding for our global Wicket MDP settings */
-                    .wicket_global_custom_settings_enable_mdp_mapping,
-                    .wicket_global_custom_settings_mdp_config,
-                    .wicket_global_custom_settings_mdp_target_object,
-                    .wicket_global_custom_settings_mdp_target_field,
-                    .wicket_global_custom_settings_mdp_type_warning {
+                    .wicket_global_custom_settings_enable_mdp_mapping {
                         display: block !important;
-                    }
-
-                    .wicket_global_custom_settings_mdp_type_warning .description {
-                        margin: 6px 0 0;
                     }
 
                     .wicket-mdp-config-row {
@@ -1668,83 +1659,49 @@ class Wicket_Gf_Main
                         flex: 1;
                         max-width: 300px;
                     }
-                    .wicket-mdp-config-value {
-                        font-size: 12px;
-                        color: #2271b1;
-                    }
-                    .wicket-mdp-config-edit-link {
-                        font-size: 11px;
-                        color: #2271b1;
-                        cursor: pointer;
-                        margin-left: 4px;
-                    }
-                    .wicket-mdp-config-edit-link:hover {
-                        color: #135e96;
-                    }
+
                     .wicket-mdp-config-section {
                         border-left: 2px solid #dcdcde;
                         padding-left: 10px;
-                        margin-bottom: 10px;
+                        margin-top: 8px;
                     }
-                    .wicket-mdp-config-section.hidden {
-                        display: none;
+                    .wicket-mdp-type-warning {
+                        color: #b32d2e;
+                        font-size: 12px;
+                        margin: 6px 0 0;
                     }
                 </style>
                 <input type="checkbox" id="wicket_enable_mdp_mapping"
                     onclick="SetFieldProperty('wicket_enable_mdp_mapping', this.checked);"
                     onkeypress="SetFieldProperty('wicket_enable_mdp_mapping', this.checked);">
                 <label for="wicket_enable_mdp_mapping" class="inline"><?php esc_html_e('Enable MDP Mapping', 'wicket-gf'); ?></label>
-            </li>
 
-            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_config field_setting" style="display: none !important;">
-                <div class="wicket-mdp-config-section">
-                    <!-- Read-only summary (shown when config already exists) -->
-                    <div class="wicket-mdp-config-readonly">
-                        <div class="wicket-mdp-config-row">
-                            <label><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label>
-                            <span class="wicket-mdp-config-value" id="wicket_mdp_entity_type_display"></span>
-                            <a href="#" class="wicket-mdp-config-edit-link" id="wicket_mdp_edit_config"><?php esc_html_e('Edit', 'wicket-gf'); ?></a>
-                        </div>
-                        <div class="wicket-mdp-config-row">
-                            <label><?php esc_html_e('UUID Source', 'wicket-gf'); ?></label>
-                            <span class="wicket-mdp-config-value" id="wicket_mdp_uuid_display"></span>
-                        </div>
+                <div class="wicket-mdp-config-section" id="wicket_mdp_config_section" style="display:none;">
+                    <div class="wicket-mdp-config-row">
+                        <label for="wicket_mdp_entity_type"><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label>
+                        <select id="wicket_mdp_entity_type">
+                            <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
+                            <option value="person"><?php esc_html_e('Person', 'wicket-gf'); ?></option>
+                            <option value="organization"><?php esc_html_e('Organization', 'wicket-gf'); ?></option>
+                        </select>
                     </div>
-                    <!-- Editable fields (shown when editing or no config exists) -->
-                    <div class="wicket-mdp-config-edit">
-                        <div class="wicket-mdp-config-row">
-                            <label for="wicket_mdp_entity_type"><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label>
-                            <select id="wicket_mdp_entity_type">
-                                <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
-                                <option value="person"><?php esc_html_e('Person', 'wicket-gf'); ?></option>
-                                <option value="organization"><?php esc_html_e('Organization', 'wicket-gf'); ?></option>
-                            </select>
-                        </div>
-                        <div class="wicket-mdp-config-row">
-                            <label for="wicket_mdp_uuid_source_field"><?php esc_html_e('UUID Source', 'wicket-gf'); ?></label>
-                            <select id="wicket_mdp_uuid_source_field">
-                                <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
-                            </select>
-                        </div>
+                    <div class="wicket-mdp-config-row">
+                        <label for="wicket_mdp_target_object"><?php esc_html_e('Target Object', 'wicket-gf'); ?></label>
+                        <select id="wicket_mdp_target_object" onchange="SetFieldProperty('wicket_mdp_target_object', this.value);">
+                            <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
+                        </select>
+                    </div>
+                    <div class="wicket-mdp-config-row" id="wicket_mdp_target_field_row" style="display:none;">
+                        <label for="wicket_mdp_target_field"><?php esc_html_e('Target Field', 'wicket-gf'); ?></label>
+                        <select id="wicket_mdp_target_field" onchange="SetFieldProperty('wicket_mdp_target_field', this.value);">
+                            <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
+                        </select>
+                    </div>
+                    <div id="wicket_mdp_type_warning_row" style="display:none;">
+                        <span class="wicket-mdp-type-warning"></span>
                     </div>
                 </div>
             </li>
-
-            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_target_object field_setting" style="display: none !important;">
-                <label for="wicket_mdp_target_object"><?php esc_html_e('Target Object', 'wicket-gf'); ?></label>
-                <select id="wicket_mdp_target_object" onchange="SetFieldProperty('wicket_mdp_target_object', this.value);">
-                    <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
-                </select>
-            </li>
-
-            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_target_field field_setting" style="display: none !important;">
-                <label for="wicket_mdp_target_field"><?php esc_html_e('Target Field', 'wicket-gf'); ?></label>
-                <select id="wicket_mdp_target_field" onchange="SetFieldProperty('wicket_mdp_target_field', this.value);">
-                    <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
-                </select>
-            </li>
-
-            <li class="wicket_global_custom_settings wicket_global_custom_settings_mdp_type_warning field_setting" style="display: none !important;">
                 <span class="description wicket-mdp-type-warning" style="color: #b32d00;"></span>
             </li>
 
@@ -1765,13 +1722,6 @@ class Wicket_Gf_Main
 
             // Type compatibility matrix: GF field type → array of incompatible target field values.
             var wicketMdpTypeCompat = <?php echo json_encode($this->get_mdp_compat()->buildJsMatrix($this->get_mdp_discovery())); ?>;
-
-            // Field types that CANNOT be used as UUID source (mirrors is_supported_mdp_uuid_source_field PHP).
-            var wicketMdpUnsupportedUuidTypes = <?php echo json_encode([
-                'captcha', 'html', 'page', 'section',
-                'wicket_user_mdp_tags', 'wicket_widget_profile_individual',
-                'wicket_widget_profile_org', 'wicket_widget_ai', 'wicket_widget_prefs',
-            ]); ?>;
 
             // Field Slug Configuration
             <?php
@@ -1998,51 +1948,8 @@ class Wicket_Gf_Main
                 currentForm = wicketGetCurrentFormObject(currentForm);
 
                 return {
-                    entityType: rgar(currentForm, 'wicket_mdp_entity_type') || '',
-                    uuidSourceField: rgar(currentForm, 'wicket_mdp_uuid_source_field') || ''
+                    entityType: rgar(currentForm, 'wicket_mdp_entity_type') || ''
                 };
-            }
-
-            /**
-             * Build UUID source field choices from the current form's fields.
-             * Mirrors get_mdp_uuid_source_field_choices() PHP method.
-             */
-            function wicketGetUuidSourceChoices(currentForm) {
-                currentForm = wicketGetCurrentFormObject(currentForm);
-                var choices = [];
-                var fields = currentForm.fields || [];
-
-                for (var i = 0; i < fields.length; i++) {
-                    var f = fields[i];
-                    var ftype = rgar(f, 'type') || '';
-                    if (wicketMdpUnsupportedUuidTypes.indexOf(ftype) !== -1) {
-                        continue;
-                    }
-                    var fid = rgar(f, 'id');
-                    if (!fid) continue;
-                    var label = rgar(f, 'label') || rgar(f, 'adminLabel') || '';
-                    if (label) {
-                        label = label + ' (Field ' + fid + ')';
-                    } else {
-                        label = 'Field ' + fid;
-                    }
-                    choices.push({ value: String(fid), label: label });
-                }
-                return choices;
-            }
-
-            function wicketPopulateUuidSourceDropdown(selectedValue) {
-                var $select = jQuery('#wicket_mdp_uuid_source_field');
-                var choices = wicketGetUuidSourceChoices(wicketGetCurrentFormObject());
-
-                $select.empty().append('<option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>');
-                jQuery.each(choices, function(i, c) {
-                    $select.append('<option value="' + c.value + '">' + c.label + '</option>');
-                });
-
-                if (selectedValue && choices.some(function(c) { return c.value === selectedValue; })) {
-                    $select.val(selectedValue);
-                }
             }
 
             function wicketPopulateMdpTargetObjects(entityType, selectedValue) {
@@ -2068,7 +1975,7 @@ class Wicket_Gf_Main
 
             function wicketPopulateMdpTargetFields(targetObject, selectedValue) {
                 var $select = jQuery('#wicket_mdp_target_field');
-                var $row    = jQuery('.wicket_global_custom_settings_mdp_target_field');
+                var $row    = jQuery('#wicket_mdp_target_field_row');
                 var fields  = wicketMdpTargetFields[targetObject] || [];
                 var hasSelectedValue = false;
 
@@ -2089,94 +1996,36 @@ class Wicket_Gf_Main
             }
 
             /**
-             * Update the form-level meta (currentForm object) with entity type and UUID source.
-             * This persists to the form when the user saves.
+             * Update form-level entity type on the form object.
              */
-            function wicketSetFormMdpConfig(key, value) {
+            function wicketSetFormEntityType(value) {
                 var form = wicketGetCurrentFormObject();
-                form['wicket_mdp_' + key] = value;
-
-                // Also update the inline config UI on all other open field panels
-                wicketUpdateInlineConfigDisplay();
-            }
-
-            /**
-             * Sync inline config dropdowns to current form meta.
-             */
-            function wicketUpdateInlineConfigDisplay() {
-                var formConfig = wicketGetMdpFormConfig();
-                var $etSelect  = jQuery('#wicket_mdp_entity_type');
-                var $uuidSelect = jQuery('#wicket_mdp_uuid_source_field');
-
-                if ($etSelect.val() !== formConfig.entityType) {
-                    $etSelect.val(formConfig.entityType || '');
-                }
-
-                wicketPopulateUuidSourceDropdown(formConfig.uuidSourceField);
-            }
-
-            /**
-             * Update the read-only summary display.
-             */
-            function wicketUpdateConfigReadOnlyDisplay() {
-                var formConfig = wicketGetMdpFormConfig();
-                var entityLabels = { person: 'Person', organization: 'Organization' };
-                jQuery('#wicket_mdp_entity_type_display').text(entityLabels[formConfig.entityType] || '—');
-
-                // Build UUID display label
-                var uuidLabel = '—';
-                var choices = wicketGetUuidSourceChoices();
-                for (var i = 0; i < choices.length; i++) {
-                    if (choices[i].value === formConfig.uuidSourceField) {
-                        uuidLabel = choices[i].label;
-                        break;
-                    }
-                }
-                jQuery('#wicket_mdp_uuid_display').text(uuidLabel);
-            }
-
-            /**
-             * Toggle between read-only summary and editable inline config.
-             */
-            function wicketSetInlineConfigMode(mode) {
-                var $readonly = jQuery('.wicket-mdp-config-readonly');
-                var $edit     = jQuery('.wicket-mdp-config-edit');
-
-                if (mode === 'edit') {
-                    $readonly.hide();
-                    $edit.show();
-                    wicketUpdateInlineConfigDisplay();
-                } else {
-                    $readonly.show();
-                    $edit.hide();
-                    wicketUpdateConfigReadOnlyDisplay();
-                }
+                form['wicket_mdp_entity_type'] = value;
             }
 
             function wicketRefreshMdpFieldSettings(field, currentForm) {
-                var $configRow       = jQuery('.wicket_global_custom_settings_mdp_config');
-                var $targetObjectRow = jQuery('.wicket_global_custom_settings_mdp_target_object');
-                var $targetFieldRow  = jQuery('.wicket_global_custom_settings_mdp_target_field');
-                var $warningRow      = jQuery('.wicket_global_custom_settings_mdp_type_warning');
+                var $configSection = jQuery('#wicket_mdp_config_section');
+                var $targetFieldRow  = jQuery('#wicket_mdp_target_field_row');
+                var $warningRow      = jQuery('#wicket_mdp_type_warning_row');
                 var mdpEnabled       = Boolean(rgar(field, 'wicket_enable_mdp_mapping'));
                 var targetObject     = rgar(field, 'wicket_mdp_target_object') || '';
                 var targetField      = rgar(field, 'wicket_mdp_target_field') || '';
                 var formConfig       = wicketGetMdpFormConfig(currentForm);
-                var hasFormConfig    = Boolean(formConfig.entityType && formConfig.uuidSourceField);
 
-                // Hide/show inline config section
-                wicketMdpToggle($configRow, mdpEnabled);
+                // Show/hide entire config section
+                wicketMdpToggle($configSection, mdpEnabled);
 
-                if (mdpEnabled && hasFormConfig) {
-                    wicketSetInlineConfigMode('readonly');
-                } else if (mdpEnabled) {
-                    wicketSetInlineConfigMode('edit');
+                if (mdpEnabled) {
+                    var $etSelect = jQuery('#wicket_mdp_entity_type');
+                    if ($etSelect.val() !== formConfig.entityType) {
+                        $etSelect.val(formConfig.entityType || '');
+                    }
                 }
 
                 var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
-                wicketMdpToggle($targetObjectRow, mdpEnabled && hasFormConfig && targetObjectState.hasChoices);
+                // Target Object row is always visible inside the section when enabled
 
-                if (!mdpEnabled || !hasFormConfig || !targetObjectState.hasSelectedValue) {
+                if (!mdpEnabled || !targetObjectState.hasSelectedValue) {
                     if (targetObject && !targetObjectState.hasSelectedValue) {
                         jQuery('#wicket_mdp_target_object').val('');
                         SetFieldProperty('wicket_mdp_target_object', '');
@@ -2208,7 +2057,7 @@ class Wicket_Gf_Main
              * is mapped to a boolean target (e.g. checkbox → communications.email).
              */
             function wicketShowTypeWarning(field, targetField) {
-                var $warningRow = jQuery('.wicket_global_custom_settings_mdp_type_warning');
+                var $warningRow = jQuery('#wicket_mdp_type_warning_row');
                 var $warningSpan = $warningRow.find('.wicket-mdp-type-warning');
 
                 if (!targetField || !wicketMdpTypeCompat) {
@@ -2250,37 +2099,16 @@ class Wicket_Gf_Main
             });
 
             /**
-             * Inline Entity Type change — updates form-level meta.
+             * Entity Type change — updates form-level meta.
              */
             jQuery(document).on('change', '#wicket_mdp_entity_type', function(){
                 var val = jQuery(this).val();
-                wicketSetFormMdpConfig('entity_type', val);
+                wicketSetFormEntityType(val);
 
                 var field = GetSelectedField();
                 wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
             });
 
-            /**
-             * Inline UUID Source change — updates form-level meta.
-             */
-            jQuery(document).on('change', '#wicket_mdp_uuid_source_field', function(){
-                var val = jQuery(this).val();
-                wicketSetFormMdpConfig('uuid_source_field', val);
-
-                var field = GetSelectedField();
-                wicketRefreshMdpFieldSettings(field, wicketGetCurrentFormObject());
-            });
-
-            /**
-             * Edit link click — switch inline config to edit mode.
-             */
-            // Direct binding — GF stops click propagation on .field_setting <li>s
-            // so delegated handlers on document never fire.
-            jQuery('#wicket_mdp_edit_config').on('click', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                wicketSetInlineConfigMode('edit');
-            });
 
             jQuery(document).on('change', '#wicket_mdp_target_object', function(){
                 var field = GetSelectedField();
@@ -2323,30 +2151,24 @@ class Wicket_Gf_Main
 
                     // Rule 1: MDP enabled but form has no entity type
                     if (!formConfig.entityType) {
-                        mdpErrors.push(displayName + ': <?php esc_html_e('Set Entity Type and UUID Source above to enable MDP mapping.', 'wicket-gf'); ?>');
+                        mdpErrors.push(displayName + ': <?php esc_html_e('Set Entity Type above to enable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
                     }
 
-                    // Rule 2: MDP enabled but form has no UUID source
-                    if (!formConfig.uuidSourceField) {
-                        mdpErrors.push(displayName + ': <?php esc_html_e('Set UUID Source above to enable MDP mapping.', 'wicket-gf'); ?>');
-                        continue;
-                    }
-
-                    // Rule 3: MDP enabled but no Target Object selected
+                    // Rule 2: MDP enabled but no Target Object selected
                     if (!targetObject) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('Select a Target Object or disable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
                     }
 
-                    // Rule 4: Target Object has no available fields (unsupported)
+                    // Rule 3: Target Object has no available fields (unsupported)
                     var availableFields = wicketMdpTargetFields[targetObject] || [];
                     if (availableFields.length === 0) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('The selected Target Object is not yet supported. Disable MDP mapping or choose a different Target Object.', 'wicket-gf'); ?>');
                         continue;
                     }
 
-                    // Rule 5: Target Object selected but no Target Field
+                    // Rule 4: Target Object selected but no Target Field
                     if (targetObject && !targetField) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('Select a Target Field or disable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
@@ -2397,14 +2219,7 @@ class Wicket_Gf_Main
                         continue;
                     }
 
-                    // If no form-level UUID source, strip field-level MDP entirely
-                    if (!formConfig.uuidSourceField) {
-                        field.wicket_enable_mdp_mapping = false;
-                        field.wicket_mdp_target_object  = '';
-                        field.wicket_mdp_target_field   = '';
-                        continue;
-                    }
-
+                    // No UUID source stripping — UUID handled at sync time
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
                     var availableFields = wicketMdpTargetFields[targetObject] || [];
 
