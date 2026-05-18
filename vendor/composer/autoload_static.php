@@ -37,6 +37,7 @@ class ComposerStaticInit025e7e4f88aa28bf447d441216d15a5e
         'WicketGF\\MdpSyncEngine' => __DIR__ . '/../..' . '/src/MdpSyncEngine.php',
         'WicketGF\\MdpSyncLogger' => __DIR__ . '/../..' . '/src/MdpSyncLogger.php',
         'WicketGF\\MdpSyncLogsPage' => __DIR__ . '/../..' . '/src/MdpSyncLogsPage.php',
+        'WicketGF\\MdpTypeCompatibility' => __DIR__ . '/../..' . '/src/MdpTypeCompatibility.php',
         'WicketGF\\NonceHandler' => __DIR__ . '/../..' . '/src/NonceHandler.php',
         'WicketGF\\ObjectTypeWicket' => __DIR__ . '/../..' . '/src/ObjectTypeWicket.php',
         'WicketGF\\Validation' => __DIR__ . '/../..' . '/src/Validation.php',

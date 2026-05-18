@@ -492,22 +492,16 @@ class OrgSearchSelect extends \GF_Field
                     orgssSearchModeSelect.val(currentMode);
                     updateModeDisplay(currentMode);
 
-                    // Show/hide active membership alert fields based on checkbox
+                    // Active membership messaging config is always visible — it applies
+                    // regardless of whether org selection is blocked or allowed.
                     function updateActiveMembershipDisplay() {
-                        var isChecked = $('#orgss_disable_selecting_orgs_with_active_membership').is(':checked');
-                        if (isChecked) {
-                            $('#orgss_active_membership_alert_wrapper').show();
-                            updateSeatMessagingDisplay();
-                        } else {
-                            $('#orgss_active_membership_alert_wrapper').hide();
-                            $('#orgss_active_membership_seat_messaging_wrapper').hide();
-                        }
+                        $('#orgss_active_membership_alert_wrapper').show();
+                        updateSeatMessagingDisplay();
                     }
 
                     function updateSeatMessagingDisplay() {
                         var seatMessagingEnabled = $('#orgss_active_membership_seat_messaging_enabled').is(':checked');
-                        var disableActiveSelection = $('#orgss_disable_selecting_orgs_with_active_membership').is(':checked');
-                        if (seatMessagingEnabled && disableActiveSelection) {
+                        if (seatMessagingEnabled) {
                             $('#orgss_active_membership_seat_messaging_wrapper').show();
                         } else {
                             $('#orgss_active_membership_seat_messaging_wrapper').hide();

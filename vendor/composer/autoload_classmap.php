@@ -22,6 +22,7 @@ return array(
     'WicketGF\\MdpSyncEngine' => $baseDir . '/src/MdpSyncEngine.php',
     'WicketGF\\MdpSyncLogger' => $baseDir . '/src/MdpSyncLogger.php',
     'WicketGF\\MdpSyncLogsPage' => $baseDir . '/src/MdpSyncLogsPage.php',
+    'WicketGF\\MdpTypeCompatibility' => $baseDir . '/src/MdpTypeCompatibility.php',
     'WicketGF\\NonceHandler' => $baseDir . '/src/NonceHandler.php',
     'WicketGF\\ObjectTypeWicket' => $baseDir . '/src/ObjectTypeWicket.php',
     'WicketGF\\Validation' => $baseDir . '/src/Validation.php',

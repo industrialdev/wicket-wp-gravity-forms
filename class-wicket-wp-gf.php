@@ -6,7 +6,7 @@
  * Plugin Name:       Wicket Gravity Forms
  * Plugin URI:        https://wicket.io
  * Description:       Adds Wicket functionality to Gravity Forms.
- * Version:           2.4.6
+ * Version:           2.4.7
  * Author:            Wicket Inc.
  * Developed By:      Wicket Inc.
  * Author URI:        https://wicket.io
@@ -505,7 +505,7 @@ class Wicket_Gf_Main
             return $content;
         }
 
-        if (!\GFCommon::is_preview()) {
+        if (!GFCommon::is_preview()) {
             return $content;
         }
 
@@ -513,27 +513,27 @@ class Wicket_Gf_Main
         static $script_injected = false;
         if (!$script_injected) {
             $script_injected = true;
-            $content .= '<script>' .
-                '(function(){' .
-                'function wicketCopySlug(el,slug){' .
-                    'navigator.clipboard.writeText(slug).then(function(){' .
-                        'var orig=el.style.backgroundColor;' .
-                        'el.style.backgroundColor="#d4edda";' .
-                        'el.style.borderColor="#28a745";' .
-                        'var tip=document.createElement("span");' .
-                        'tip.textContent="Copied!";' .
-                        'tip.style.cssText="font-size:11px;color:#28a745;margin-left:4px;vertical-align:middle;font-weight:600;";' .
-                        'el.parentNode.insertBefore(tip,el.nextSibling);' .
-                        'setTimeout(function(){' .
-                            'el.style.backgroundColor=orig;' .
-                            'el.style.borderColor="#d5d7e9";' .
-                            'tip.remove();' .
-                        '},1500);' .
-                    '});' .
-                '}' .
-                'window.wicketCopySlug=wicketCopySlug;' .
-                '})();' .
-                '</script>';
+            $content .= '<script>'
+                . '(function(){'
+                . 'function wicketCopySlug(el,slug){'
+                    . 'navigator.clipboard.writeText(slug).then(function(){'
+                        . 'var orig=el.style.backgroundColor;'
+                        . 'el.style.backgroundColor="#d4edda";'
+                        . 'el.style.borderColor="#28a745";'
+                        . 'var tip=document.createElement("span");'
+                        . 'tip.textContent="Copied!";'
+                        . 'tip.style.cssText="font-size:11px;color:#28a745;margin-left:4px;vertical-align:middle;font-weight:600;";'
+                        . 'el.parentNode.insertBefore(tip,el.nextSibling);'
+                        . 'setTimeout(function(){'
+                            . 'el.style.backgroundColor=orig;'
+                            . 'el.style.borderColor="#d5d7e9";'
+                            . 'tip.remove();'
+                        . '},1500);'
+                    . '});'
+                . '}'
+                . 'window.wicketCopySlug=wicketCopySlug;'
+                . '})();'
+                . '</script>';
         }
 
         $pill = sprintf(
@@ -575,6 +575,7 @@ class Wicket_Gf_Main
         }
 
         $slug_attr = esc_attr($slug);
+
         return preg_replace(
             '/(<div[^>]*)(>)/i',
             '$1 data-slug="' . $slug_attr . '"$2',
@@ -828,6 +829,7 @@ class Wicket_Gf_Main
         $form = GFAPI::get_form($form_id);
         if (!$form) {
             echo '<p>' . esc_html__('Form not found.', 'wicket-gf') . '</p>';
+
             return;
         }
 
