@@ -12,6 +12,7 @@ class WidgetProfile extends \GF_Field
 {
     public $type = 'wicket_widget_profile_individual';
     public $wwidget_profile_required_resources = '';
+    public $wwidget_profile_mdp_json_fields = '';
     private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['personType'];
 
     public static function init(): void
@@ -23,6 +24,7 @@ class WidgetProfile extends \GF_Field
     {
         $defaults = parent::get_default_properties();
         $defaults['wwidget_profile_required_resources'] = '';
+        $defaults['wwidget_profile_mdp_json_fields'] = '';
 
         return $defaults;
     }
@@ -36,6 +38,22 @@ class WidgetProfile extends \GF_Field
         } else {
             $raw = wp_kses_post((string) $this->wwidget_profile_required_resources);
             $this->wwidget_profile_required_resources = $raw !== '' ? $raw : '';
+        }
+
+        if (empty($this->wwidget_profile_mdp_json_fields)) {
+            $this->wwidget_profile_mdp_json_fields = '';
+        } else {
+            $raw = wp_kses_post((string) $this->wwidget_profile_mdp_json_fields);
+            $this->wwidget_profile_mdp_json_fields = $raw;
+            if ($raw !== '' && trim($raw) !== '') {
+                json_decode($raw);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    \Wicket()->log()->debug(
+                        'Profile Individual Widget: invalid MDP JSON Fields saved',
+                        ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
+                    );
+                }
+            }
         }
     }
 
@@ -73,6 +91,7 @@ class WidgetProfile extends \GF_Field
             "function SetDefaultValues_%s(field) {
                 field.label = '%s';
                 field.wwidget_profile_required_resources = '';
+                field.wwidget_profile_mdp_json_fields = '';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -93,9 +112,37 @@ class WidgetProfile extends \GF_Field
     </div>
 </li>
 
+<li class="wicket_widget_profile_setting field_setting" style="display:none;">
+    <div>
+        <label>MDP JSON Fields:</label>
+        <textarea id="wwidget_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_profile_mdp_json_fields', this.value)" placeholder='{"personType": {"hidden": false}}'></textarea>
+        <p class="wwidget_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"personType": {"hidden": true}}</code>).</em></p>
+        <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
+    </div>
+</li>
+
 <script type='text/javascript'>
 jQuery(document).ready(function($) {
     var defaultRequired = '';
+
+    function validateMdpJson(value) {
+        var $err = $('.wwidget_profile_mdp_json_error');
+        var $ta = $('#wwidget_profile_mdp_json_fields_input');
+        if (!value || !value.trim()) {
+            $err.hide();
+            $ta.removeClass('wicket-mdp-json-invalid');
+            return;
+        }
+        try {
+            JSON.parse(value);
+            $err.hide();
+            $ta.removeClass('wicket-mdp-json-invalid');
+        } catch (e) {
+            $err.show();
+            $ta.addClass('wicket-mdp-json-invalid');
+        }
+    }
 
     $(document).on('gform_load_field_settings', function(event, field) {
         if (field.type !== 'wicket_widget_profile_individual') {
@@ -114,6 +161,18 @@ jQuery(document).ready(function($) {
                 SetFieldProperty('wwidget_profile_required_resources', this.value);
             }).data('bound', true);
         }
+
+        var mdpVal = field.wwidget_profile_mdp_json_fields || '';
+        $('#wwidget_profile_mdp_json_fields_input').val(mdpVal);
+        validateMdpJson(mdpVal);
+
+        var mdpSel = '#wwidget_profile_mdp_json_fields_input';
+        if (!$(mdpSel).data('bound')) {
+            $(mdpSel).on('input.wicket-profile change.wicket-profile', function() {
+                SetFieldProperty('wwidget_profile_mdp_json_fields', this.value);
+                validateMdpJson(this.value);
+            }).data('bound', true);
+        }
     });
 
     $(document).on('gform_field_added', function(event, field) {
@@ -125,9 +184,16 @@ jQuery(document).ready(function($) {
             field.wwidget_profile_required_resources = defaultRequired;
             SetFieldProperty('wwidget_profile_required_resources', defaultRequired);
         }
+        if (typeof field.wwidget_profile_mdp_json_fields === 'undefined') {
+            field.wwidget_profile_mdp_json_fields = '';
+            SetFieldProperty('wwidget_profile_mdp_json_fields', '');
+        }
     });
 });
 </script>
+<style>
+.wicket-mdp-json-invalid { border-color: #d63638 !important; box-shadow: 0 0 0 1px #d63638 !important; }
+</style>
 
 <?php
             echo ob_get_clean();
@@ -151,6 +217,9 @@ jQuery(document).ready(function($) {
             return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p></div>';
         }
 
+        $mdp_json_fields = json_decode((string) ($this->wwidget_profile_mdp_json_fields ?? ''), true);
+        $mdp_json_fields = is_array($mdp_json_fields) ? $mdp_json_fields : [];
+
         $component_args = [
             'classes'                    => [],
             'user_info_data_field_name'  => 'wicket_user_info_data_' . $id,
@@ -158,6 +227,7 @@ jQuery(document).ready(function($) {
             'validation_data_field_name' => 'input_' . $this->id . '_validation',
             'profile_required_resources' => $this->wwidget_profile_required_resources ?? '',
             'person_id'                  => $this->get_user_mdp_uuid(rgar($entry, 'created_by')) ?? '',
+            'fields'                     => $mdp_json_fields,
         ];
 
         if (isset($this->org_uuid)) {

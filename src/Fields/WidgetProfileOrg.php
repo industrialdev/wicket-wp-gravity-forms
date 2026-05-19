@@ -14,6 +14,7 @@ class WidgetProfileOrg extends \GF_Field
     private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['type'];
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
+    public $wwidget_org_profile_mdp_json_fields = '';
 
     public static function init(): void
     {
@@ -25,6 +26,7 @@ class WidgetProfileOrg extends \GF_Field
         $defaults = parent::get_default_properties();
         $defaults['wwidget_org_profile_uuid'] = '';
         $defaults['wwidget_org_profile_required_resources'] = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+        $defaults['wwidget_org_profile_mdp_json_fields'] = '';
 
         return $defaults;
     }
@@ -45,6 +47,22 @@ class WidgetProfileOrg extends \GF_Field
         } else {
             $raw = wp_kses_post((string) $this->wwidget_org_profile_required_resources);
             $this->wwidget_org_profile_required_resources = $raw !== '' ? $raw : $default_required;
+        }
+
+        if (empty($this->wwidget_org_profile_mdp_json_fields)) {
+            $this->wwidget_org_profile_mdp_json_fields = '';
+        } else {
+            $raw = wp_kses_post((string) $this->wwidget_org_profile_mdp_json_fields);
+            $this->wwidget_org_profile_mdp_json_fields = $raw;
+            if ($raw !== '' && trim($raw) !== '') {
+                json_decode($raw);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    \Wicket()->log()->debug(
+                        'Profile Org Widget: invalid MDP JSON Fields saved',
+                        ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
+                    );
+                }
+            }
         }
     }
 
@@ -83,6 +101,7 @@ class WidgetProfileOrg extends \GF_Field
                 field.label = '%s';
                 field.wwidget_org_profile_uuid = '';
                 field.wwidget_org_profile_required_resources = '{ addresses: \"mailing\", emails: \"work\", phones: \"work\", webAddresses: \"website\" }';
+                field.wwidget_org_profile_mdp_json_fields = '';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -112,9 +131,37 @@ class WidgetProfileOrg extends \GF_Field
     </div>
 </li>
 
+<li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
+    <div>
+        <label>MDP JSON Fields:</label>
+        <textarea id="wwidget_org_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value)" placeholder='{"legalName": {"hidden": true}}'></textarea>
+        <p class="wwidget_org_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"legalName": {"hidden": true}}</code>).</em></p>
+        <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
+    </div>
+</li>
+
 <script type='text/javascript'>
 jQuery(document).ready(function($) {
     var defaultRequired = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+
+    function validateOrgMdpJson(value) {
+        var $err = $('.wwidget_org_profile_mdp_json_error');
+        var $ta = $('#wwidget_org_profile_mdp_json_fields_input');
+        if (!value || !value.trim()) {
+            $err.hide();
+            $ta.removeClass('wicket-mdp-json-invalid');
+            return;
+        }
+        try {
+            JSON.parse(value);
+            $err.hide();
+            $ta.removeClass('wicket-mdp-json-invalid');
+        } catch (e) {
+            $err.show();
+            $ta.addClass('wicket-mdp-json-invalid');
+        }
+    }
 
     $(document).on('gform_load_field_settings', function(event, field) {
         if (field.type !== 'wicket_widget_profile_org') {
@@ -142,6 +189,18 @@ jQuery(document).ready(function($) {
                 SetFieldProperty('wwidget_org_profile_uuid', this.value);
             }).data('bound', true);
         }
+
+        var mdpVal = field.wwidget_org_profile_mdp_json_fields || '';
+        $('#wwidget_org_profile_mdp_json_fields_input').val(mdpVal);
+        validateOrgMdpJson(mdpVal);
+
+        var mdpSel = '#wwidget_org_profile_mdp_json_fields_input';
+        if (!$(mdpSel).data('bound')) {
+            $(mdpSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
+                SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value);
+                validateOrgMdpJson(this.value);
+            }).data('bound', true);
+        }
     });
 
     $(document).on('gform_field_added', function(event, field) {
@@ -154,9 +213,16 @@ jQuery(document).ready(function($) {
             field.wwidget_org_profile_required_resources = defaultRequired;
             SetFieldProperty('wwidget_org_profile_required_resources', defaultRequired);
         }
+        if (typeof field.wwidget_org_profile_mdp_json_fields === 'undefined') {
+            field.wwidget_org_profile_mdp_json_fields = '';
+            SetFieldProperty('wwidget_org_profile_mdp_json_fields', '');
+        }
     });
 });
 </script>
+<style>
+.wicket-mdp-json-invalid { border-color: #d63638 !important; box-shadow: 0 0 0 1px #d63638 !important; }
+</style>
 
 <?php
             echo ob_get_clean();
@@ -204,12 +270,16 @@ jQuery(document).ready(function($) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
 
+            $mdp_json_fields = json_decode((string) ($this->wwidget_org_profile_mdp_json_fields ?? ''), true);
+            $mdp_json_fields = is_array($mdp_json_fields) ? $mdp_json_fields : [];
+
             $component_output = get_component('widget-profile-org', [
                 'classes'                    => [],
                 'org_info_data_field_name'   => 'input_' . $this->id,
                 'validation_data_field_name' => 'input_' . $this->id . '_validation',
                 'org_id'                     => $org_uuid,
                 'org_required_resources'     => $org_required_resources,
+                'fields'                     => $mdp_json_fields,
             ], false);
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
