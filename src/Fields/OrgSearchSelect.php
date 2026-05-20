@@ -1040,8 +1040,6 @@ class OrgSearchSelect extends \GF_Field
                 'active_membership_notify_email_subject'       => $orgss_active_membership_notify_email_subject,
                 'active_membership_notify_email_body'          => $orgss_active_membership_notify_email_body,
                 'active_membership_seat_messaging_enabled'      => $orgss_active_membership_seat_messaging_enabled,
-                'active_membership_seat_available_alert_title'  => $orgss_active_membership_seat_available_alert_title,
-                'active_membership_seat_available_alert_body'   => $orgss_active_membership_seat_available_alert_body,
                 'active_membership_seat_available_alert_button_1_text' => $orgss_active_membership_seat_available_alert_button_1_text,
                 'active_membership_seat_available_alert_button_1_url' => $orgss_active_membership_seat_available_alert_button_1_url,
                 'active_membership_seat_available_alert_button_1_style' => $orgss_active_membership_seat_available_alert_button_1_style,
@@ -1050,8 +1048,6 @@ class OrgSearchSelect extends \GF_Field
                 'active_membership_seat_available_alert_button_2_url' => $orgss_active_membership_seat_available_alert_button_2_url,
                 'active_membership_seat_available_alert_button_2_style' => $orgss_active_membership_seat_available_alert_button_2_style,
                 'active_membership_seat_available_alert_button_2_new_tab' => $orgss_active_membership_seat_available_alert_button_2_new_tab,
-                'active_membership_seat_unavailable_alert_title' => $orgss_active_membership_seat_unavailable_alert_title,
-                'active_membership_seat_unavailable_alert_body' => $orgss_active_membership_seat_unavailable_alert_body,
                 'active_membership_seat_unavailable_alert_button_1_text' => $orgss_active_membership_seat_unavailable_alert_button_1_text,
                 'active_membership_seat_unavailable_alert_button_1_url' => $orgss_active_membership_seat_unavailable_alert_button_1_url,
                 'active_membership_seat_unavailable_alert_button_1_style' => $orgss_active_membership_seat_unavailable_alert_button_1_style,
@@ -1073,6 +1069,21 @@ class OrgSearchSelect extends \GF_Field
                 'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
                 'form_id'                                       => $form['id'] ?? 0,
             ];
+
+            // Only pass seat/available text params when non-empty so component built-in
+            // defaults survive wp_parse_args. An empty string would override the translations.
+            if (!empty($orgss_active_membership_seat_available_alert_title)) {
+                $params['active_membership_seat_available_alert_title'] = $orgss_active_membership_seat_available_alert_title;
+            }
+            if (!empty($orgss_active_membership_seat_available_alert_body)) {
+                $params['active_membership_seat_available_alert_body'] = $orgss_active_membership_seat_available_alert_body;
+            }
+            if (!empty($orgss_active_membership_seat_unavailable_alert_title)) {
+                $params['active_membership_seat_unavailable_alert_title'] = $orgss_active_membership_seat_unavailable_alert_title;
+            }
+            if (!empty($orgss_active_membership_seat_unavailable_alert_body)) {
+                $params['active_membership_seat_unavailable_alert_body'] = $orgss_active_membership_seat_unavailable_alert_body;
+            }
 
             $component_output = get_component('org-search-select', $params, false);
 
