@@ -11,6 +11,7 @@ Integration plugin that connects Wicket's Member Data Platform (MDP) with Gravit
 - **Field slug system** — stable, human-readable identifiers for individual fields, with AJAX uniqueness validation, a copy-to-clipboard pill in the editor, and a `data-slug` attribute on the rendered field container
 - **Custom confirmation types** — Same Page redirect, Cart redirect (WooCommerce), Checkout Link redirect (WooCommerce Blocks)
 - **Consent field extension** — adds a "Sync option to MDP" toggle to Gravity Forms' built-in Consent field that updates Wicket communication preferences on opt-in
+- **Secure file uploads** — opt-in per file-upload field; moves submitted files out of the public uploads directory to a store above the web root and serves them only to authorised, logged-in users through a capability-gated download endpoint
 - **Pagination sidebar layout** — opt-in CSS/JS that renders multi-page form pagination as a sidebar instead of top steps
 - **REST API** — endpoint for resyncing Wicket member fields
 
@@ -81,6 +82,43 @@ The plugin adds three confirmation types to Gravity Forms' **Type** dropdown und
 - **Same Page redirect** — redirects to the page that hosted the form (with optional query string)
 - **Cart redirect** — redirects to `wc_get_cart_url()` (WooCommerce only)
 - **Checkout Link redirect** — redirects to the WooCommerce Blocks `/checkout-link/` route
+
+### Secure File Uploads
+
+By default, files uploaded through a Gravity Forms File Upload field are written to `wp-content/uploads/gravity_forms/…` and are publicly accessible to anyone who knows (or guesses) the URL. For confidential documents this is not acceptable. The secure uploads feature stores those files **above the web root** and serves them only to authorised users.
+
+**Enabling it:** edit a File Upload field and tick **Store uploads securely (outside the web root)** in the field settings. Optionally set a **Secure subfolder** to group a field's files (e.g. by document type):
+
+| Setting | Field property | Effect |
+|---|---|---|
+| Store uploads securely | `wicketGfSecureUpload` | When checked, the field's files are moved to secure storage on submission |
+| Secure subfolder | `wicketGfSecureUploadSubfolder` | Optional folder name; files are stored under it |
+
+**What happens on submission** (`gform_entry_post_save`, before notifications are sent):
+
+1. Each uploaded file is moved out of the public uploads directory into the secure store at `[subfolder/]form-<id>/entry-<id>/<filename>`.
+2. The entry value is rewritten to a capability-gated download URL (`admin-post.php?action=wicket_gf_secure_file&entry=…&field=…&idx=…`).
+3. The relative storage path is recorded in entry meta (`_wicket_gf_secure_<field_id>`), which is the tamper-proof source of truth used by the download endpoint. The path is resolved with `realpath()` and confined to the secure base directory on every request.
+
+Because the rewrite happens before notifications fire, notification emails contain the gated link rather than a public URL. Entry detail and the `{all_fields}` merge tag render the original filename as the link. Both single- and multiple-file upload fields are supported.
+
+**Storage location** resolves in this order:
+
+1. `WICKET_GF_SECURE_UPLOADS_DIR` constant, if defined.
+2. Default: `<above-docroot>/gf-uploads-secure`, derived from `WP_CONTENT_DIR`.
+3. The `wicket_gf_secure_uploads_base_dir` filter (applied last).
+
+The directory must be writable by the web server user and should sit outside the document root. Add it to the site's `.gitignore` so uploaded documents are never committed.
+
+**Download access** requires the user to be logged in and hold the `gravityforms_view_entries` capability; logged-out or unauthorised requests receive a `403`. Change the required capability with the `wicket_gf_secure_upload_capability` filter:
+
+```php
+// Restrict secure-file downloads to administrators only.
+add_filter('wicket_gf_secure_upload_capability', fn () => 'manage_options');
+
+// Or store secured files at an explicit absolute path (e.g. on managed hosting).
+add_filter('wicket_gf_secure_uploads_base_dir', fn () => '/home/app/private/gf-uploads-secure');
+```
 
 ### REST API
 
