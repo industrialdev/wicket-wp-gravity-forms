@@ -13,7 +13,9 @@ This guide covers configuring Gravity Forms to push submitted values to the Wick
 
 ## Overview
 
-When MDP mapping is enabled on a form field, each submission sends that field's value to Wicket after the entry is saved. The sync runs asynchronously (WP-Cron) and falls back to synchronous processing if scheduling fails.
+MDP Field Mapping is the **write** direction: it pushes submitted form values *to* Wicket. When mapping is enabled on a form field, each submission sends that field's value to Wicket after the entry is saved. The sync runs asynchronously (WP-Cron) and falls back to synchronous processing if scheduling fails.
+
+> To go the other way — pull existing member/org data *from* Wicket into a field (to prefill or drive conditional logic) — use the **API Data Bind** or **JS Data Bind** field types instead. See [Field Types Reference](field-types.md#reading-vs-writing-wicket-data).
 
 ## Step 1: Map Fields in the Field Editor
 

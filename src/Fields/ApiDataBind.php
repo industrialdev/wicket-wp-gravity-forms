@@ -427,17 +427,209 @@ class ApiDataBind extends \GF_Field
             return $this->get_fallback_value();
         }
 
-        // Convert to array for consistent processing
+        // Relationship collections (addresses, emails, phones, organizations, web_addresses)
+        // are JSON:API sideloaded resources held only on the raw SDK object. They are lost
+        // when the object is flattened via wicket_convert_obj_to_array() / toJsonAPI(), so
+        // resolve those paths from the raw object while it is still available.
+        if (is_object($person_data)) {
+            $relationship_value = $this->extract_relationship_value_from_object($person_data, $field_path);
+            if ($relationship_value !== null) {
+                return $relationship_value;
+            }
+        }
+
+        // Convert to array for consistent processing of top-level attributes / data_fields.
         if (function_exists('wicket_convert_obj_to_array') && is_object($person_data)) {
             $person_data = wicket_convert_obj_to_array($person_data);
         }
 
         $value = $this->extract_field_value($person_data, $field_path);
 
-        // Cache disabled for debugging - skip caching
-        // set_transient($cache_key, $value, 300);
-
         return $value;
+    }
+
+    /**
+     * Resolve a relationship-collection path (e.g. "addresses.0.city" or
+     * "organizations.0.legal_name") from the raw Wicket SDK object.
+     *
+     * The SDK keeps related resources in its JSON:API "included" sideload, accessed via
+     * relationship()/included(). That data does not survive wicket_convert_obj_to_array(),
+     * so relationship paths must be resolved here against the raw object.
+     *
+     * Supported path shapes (after the relationship name):
+     *   addresses.0.city  -> attribute "city" of the first related address
+     *   addresses.city    -> shorthand for index 0
+     *   addresses.0       -> the whole related record (JSON encoded)
+     *
+     * @param object $object     The raw SDK entity (e.g. Wicket\Entities\People).
+     * @param string $field_path The dot-notation field path.
+     *
+     * @return string|null The extracted value, or null if $field_path is not a
+     *                      relationship path this method handles (so the caller can
+     *                      fall back to normal attribute extraction).
+     */
+    private function extract_relationship_value_from_object($object, $field_path): ?string
+    {
+        $relationship_names = ['addresses', 'emails', 'phones', 'organizations', 'web_addresses'];
+
+        // Translate "primary_*" convenience aliases into canonical relationship paths so
+        // the advertised shorthands resolve against the same sideloaded data.
+        $aliases = [
+            'primary_email'        => 'emails.primary.address',
+            'primary_phone'        => 'phones.primary.number',
+            'primary_address'      => 'addresses.primary',
+            'primary_organization' => 'organizations.0.legal_name',
+        ];
+        if (isset($aliases[$field_path])) {
+            $field_path = $aliases[$field_path];
+        }
+
+        $path_parts = explode('.', $field_path);
+        $relationship_name = $path_parts[0] ?? '';
+
+        if (!in_array($relationship_name, $relationship_names, true)) {
+            return null;
+        }
+
+        if (!method_exists($object, 'relationship') || !method_exists($object, 'included')) {
+            return null;
+        }
+
+        $references = $object->relationship($relationship_name);
+        if (empty($references)) {
+            return '';
+        }
+
+        $included_items = $object->included();
+        if (empty($included_items)) {
+            return '';
+        }
+
+        // Resolve references (in relationship order) to their included attributes.
+        $resolved = [];
+        foreach ($references as $reference) {
+            $ref_id = is_object($reference) ? ($reference->id ?? null) : ($reference['id'] ?? null);
+            if ($ref_id === null) {
+                continue;
+            }
+
+            foreach ($included_items as $included) {
+                $included_id = is_object($included) ? ($included->id ?? null) : ($included['id'] ?? null);
+                if ($included_id !== $ref_id) {
+                    continue;
+                }
+
+                $attributes = is_object($included) ? ($included->attributes ?? null) : ($included['attributes'] ?? null);
+                if (is_object($attributes)) {
+                    $attributes = (array) $attributes;
+                }
+                $resolved[] = is_array($attributes) ? $attributes : [];
+                break;
+            }
+        }
+
+        return $this->extract_from_resolved_records($resolved, array_slice($path_parts, 1));
+    }
+
+    /**
+     * Select a record from a resolved relationship list and read the remaining path.
+     *
+     * The selector segment (first remaining part) can be:
+     *   - "primary"      -> the record flagged primary === true (reliable)
+     *   - "type:<value>" -> the record whose attributes.type === <value> (reliable, named slot)
+     *   - a number       -> positional, in API order (NOT necessarily primary; order not guaranteed)
+     *   - omitted / a bare attribute key -> defaults to the primary record
+     *
+     * Wicket can hold several addresses/emails/phones, so "primary" and "type:" are the
+     * reliable selectors; numeric indexes depend on whatever order the API returns.
+     *
+     * @param array $resolved  Ordered list of relationship attribute arrays.
+     * @param array $remaining Path parts after the relationship name.
+     *
+     * @return string The extracted value, or '' if nothing matches.
+     */
+    private function extract_from_resolved_records(array $resolved, array $remaining): string
+    {
+        if (empty($resolved)) {
+            return '';
+        }
+
+        $selector = $remaining[0] ?? null;
+        $current = null;
+
+        if ($selector !== null && is_numeric($selector)) {
+            array_shift($remaining);
+            $current = $resolved[(int) $selector] ?? null;
+        } elseif ($selector === 'primary') {
+            array_shift($remaining);
+            $current = $this->pick_primary_record($resolved);
+        } elseif (is_string($selector) && strncmp($selector, 'type:', 5) === 0) {
+            array_shift($remaining);
+            $current = $this->pick_record_by_type($resolved, substr($selector, 5));
+        } else {
+            // Bare attribute key (e.g. "addresses.city") or no further segment: default to primary.
+            $current = $this->pick_primary_record($resolved);
+        }
+
+        if (!is_array($current)) {
+            return '';
+        }
+
+        // No further key: return the whole record.
+        if (empty($remaining)) {
+            return $this->format_output_value($current);
+        }
+
+        // Walk the remaining keys into the record's attributes.
+        foreach ($remaining as $key) {
+            if (is_array($current) && array_key_exists($key, $current)) {
+                $current = $current[$key];
+            } else {
+                return '';
+            }
+        }
+
+        return $this->format_output_value($current);
+    }
+
+    /**
+     * Pick the first record whose attributes.type matches the given value.
+     *
+     * @param array  $resolved Ordered list of relationship attribute arrays.
+     * @param string $type     The address/email/phone type to match (e.g. "work").
+     *
+     * @return array|null The matching record, or null if none match.
+     */
+    private function pick_record_by_type($resolved, $type): ?array
+    {
+        foreach ($resolved as $record) {
+            if (is_array($record) && (string) ($record['type'] ?? '') === $type) {
+                return $record;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pick the "primary" record from a list of resolved relationship attribute arrays.
+     *
+     * Returns the first record flagged primary === true; if none is flagged primary,
+     * falls back to the first record so a value still resolves.
+     *
+     * @param array $resolved Ordered list of relationship attribute arrays.
+     *
+     * @return array|null The chosen record, or null if the list is empty.
+     */
+    private function pick_primary_record($resolved): ?array
+    {
+        foreach ($resolved as $record) {
+            if (is_array($record) && ($record['primary'] ?? null) === true) {
+                return $record;
+            }
+        }
+
+        return $resolved[0] ?? null;
     }
 
     /**
@@ -453,25 +645,93 @@ class ApiDataBind extends \GF_Field
             return $this->get_fallback_value();
         }
 
-        // Cache disabled - always fetch fresh data
-        $cache_key = "wicket_gf_org_data_{$org_uuid}_" . md5($field_path);
-        $cached_value = false; // get_transient($cache_key);
-
-        if ($cached_value !== false) {
-            return $cached_value;
-        }
-
-        $org_data = wicket_get_organization($org_uuid);
+        // Request the relationship collections so org addresses/contacts are sideloaded.
+        $org_data = wicket_get_organization($org_uuid, 'addresses,web_addresses,emails,phones');
         if (!$org_data || is_wp_error($org_data)) {
             return $this->get_fallback_value();
         }
 
-        $value = $this->extract_field_value($org_data, $field_path);
+        // Resolve relationship paths (e.g. addresses.primary.city) from the JSON:API array.
+        // Unlike the person path, wicket_get_organization() returns an array whose "included"
+        // sideload is intact, so we read relationships from it directly.
+        $relationship_value = $this->extract_relationship_value_from_array($org_data, $field_path);
+        if ($relationship_value !== null) {
+            return $relationship_value;
+        }
 
-        // Cache disabled for debugging - skip caching
-        // set_transient($cache_key, $value, 600);
+        return $this->extract_field_value($org_data, $field_path);
+    }
 
-        return $value;
+    /**
+     * Resolve a relationship-collection path (e.g. "addresses.primary.city") from a JSON:API
+     * array such as the one returned by wicket_get_organization().
+     *
+     * Reads the relationship references from data.relationships.<name>.data and matches them
+     * against the top-level "included" resources, then applies the same primary/type/index
+     * selection used for person records.
+     *
+     * @param array  $data       JSON:API array with 'data' and 'included' keys.
+     * @param string $field_path The dot-notation field path.
+     *
+     * @return string|null The extracted value, or null if $field_path is not a relationship
+     *                      path this method handles (so the caller can fall back).
+     */
+    private function extract_relationship_value_from_array($data, $field_path): ?string
+    {
+        $relationship_names = ['addresses', 'emails', 'phones', 'web_addresses'];
+
+        if (!is_array($data)) {
+            return null;
+        }
+
+        $aliases = [
+            'primary_email'   => 'emails.primary.address',
+            'primary_phone'   => 'phones.primary.number',
+            'primary_address' => 'addresses.primary',
+        ];
+        if (isset($aliases[$field_path])) {
+            $field_path = $aliases[$field_path];
+        }
+
+        $path_parts = explode('.', $field_path);
+        $relationship_name = $path_parts[0] ?? '';
+
+        if (!in_array($relationship_name, $relationship_names, true)) {
+            return null;
+        }
+
+        $node = (isset($data['data']) && is_array($data['data'])) ? $data['data'] : $data;
+        $references = $node['relationships'][$relationship_name]['data'] ?? null;
+        if (empty($references)) {
+            return '';
+        }
+        // Normalise a single reference to a list.
+        if (isset($references['id'])) {
+            $references = [$references];
+        }
+
+        $included_items = $data['included'] ?? [];
+        if (empty($included_items)) {
+            return '';
+        }
+
+        $resolved = [];
+        foreach ($references as $reference) {
+            $ref_id = is_array($reference) ? ($reference['id'] ?? null) : null;
+            if ($ref_id === null) {
+                continue;
+            }
+            foreach ($included_items as $included) {
+                if (!is_array($included) || ($included['id'] ?? null) !== $ref_id) {
+                    continue;
+                }
+                $attributes = $included['attributes'] ?? null;
+                $resolved[] = is_array($attributes) ? $attributes : [];
+                break;
+            }
+        }
+
+        return $this->extract_from_resolved_records($resolved, array_slice($path_parts, 1));
     }
 
     /**
@@ -823,7 +1083,7 @@ class ApiDataBind extends \GF_Field
                 </div>
 
                 <p class="instruction" id="fieldPathInstruction">
-                    <?php esc_html_e('Use dot notation to access nested data. Examples: attributes.given_name, organizations.0.legal_name, data_fields.{schema_slug}.value.{field_name}', 'wicket-gf'); ?>
+                    <?php esc_html_e('Use dot notation to access nested data. Examples: attributes.given_name, organizations.0.legal_name, data_fields.{schema_slug}.value.{field_name}. For relationship collections (addresses, emails, phones), target a record with .primary (recommended) or by type, e.g. addresses.primary.city or addresses.type:work.city. Numeric indexes like .0/.1 are positional and depend on API order.', 'wicket-gf'); ?>
                 </p>
 
                 <!-- Common field path examples -->
@@ -832,10 +1092,10 @@ class ApiDataBind extends \GF_Field
                     <ul style="margin: 5px 0; padding-left: 20px;">
                         <li><code>attributes.given_name</code> - <?php esc_html_e('First Name', 'wicket-gf'); ?></li>
                         <li><code>attributes.family_name</code> - <?php esc_html_e('Last Name', 'wicket-gf'); ?></li>
-                        <li><code>attributes.email</code> - <?php esc_html_e('Email Address', 'wicket-gf'); ?></li>
+                        <li><code>attributes.primary_email_address</code> - <?php esc_html_e('Email Address', 'wicket-gf'); ?></li>
                         <li><code>organizations.0.legal_name</code> - <?php esc_html_e('Primary Organization', 'wicket-gf'); ?></li>
-                        <li><code>addresses.0.city</code> - <?php esc_html_e('Primary Address City', 'wicket-gf'); ?></li>
-                        <li><code>full_name</code> - <?php esc_html_e('Full Name (auto-combined)', 'wicket-gf'); ?></li>
+                        <li><code>addresses.primary.city</code> - <?php esc_html_e('Primary Address City', 'wicket-gf'); ?></li>
+                        <li><code>attributes.full_name</code> - <?php esc_html_e('Full Name', 'wicket-gf'); ?></li>
                     </ul>
                 </div>
             </li>
@@ -913,6 +1173,10 @@ class ApiDataBind extends \GF_Field
 
                     // Handle binding UI visibility
                     toggleOrgssBindingUI(field.orgUuidSource || 'static');
+
+                    // Refresh the Browse button state for the already-selected data source
+                    // (otherwise it stays greyed as "Select Data Source First" on reopen).
+                    updateBrowseButtonState(field.apiDataSource || '');
 
                     // Validate configuration
                     validateFieldConfiguration(field);
@@ -1017,9 +1281,10 @@ class ApiDataBind extends \GF_Field
                             examples = '<strong><?php esc_html_e('Profile Field Examples:', 'wicket-gf'); ?></strong><br>' +
                                 '<code>attributes.given_name</code> - <?php esc_html_e('First Name', 'wicket-gf'); ?><br>' +
                                 '<code>attributes.family_name</code> - <?php esc_html_e('Last Name', 'wicket-gf'); ?><br>' +
-                                '<code>full_name</code> - <?php esc_html_e('Full Name', 'wicket-gf'); ?><br>' +
-                                '<code>primary_email</code> - <?php esc_html_e('Primary Email', 'wicket-gf'); ?><br>' +
-                                '<code>addresses.0.city</code> - <?php esc_html_e('Address City', 'wicket-gf'); ?><br>' +
+                                '<code>attributes.full_name</code> - <?php esc_html_e('Full Name', 'wicket-gf'); ?><br>' +
+                                '<code>attributes.primary_email_address</code> - <?php esc_html_e('Email Address', 'wicket-gf'); ?><br>' +
+                                '<code>addresses.primary.city</code> - <?php esc_html_e('Primary Address City', 'wicket-gf'); ?><br>' +
+                                '<code>addresses.type:work.city</code> - <?php esc_html_e('City of the "work" address', 'wicket-gf'); ?><br>' +
                                 '<code>organizations.0.legal_name</code> - <?php esc_html_e('Organization Name', 'wicket-gf'); ?>';
                             break;
                         case 'organization':
@@ -1027,7 +1292,8 @@ class ApiDataBind extends \GF_Field
                                 '<code>attributes.legal_name</code> - <?php esc_html_e('Legal Name', 'wicket-gf'); ?><br>' +
                                 '<code>attributes.type</code> - <?php esc_html_e('Organization Type', 'wicket-gf'); ?><br>' +
                                 '<code>attributes.description</code> - <?php esc_html_e('Description', 'wicket-gf'); ?><br>' +
-                                '<code>attributes.identifying_number</code> - <?php esc_html_e('ID Number', 'wicket-gf'); ?>';
+                                '<code>attributes.identifying_number</code> - <?php esc_html_e('ID Number', 'wicket-gf'); ?><br>' +
+                                '<code>addresses.primary.city</code> - <?php esc_html_e('Primary Address City', 'wicket-gf'); ?>';
                             break;
                         default:
                             examples = '<strong><?php esc_html_e('Select a data source to see field path examples.', 'wicket-gf'); ?></strong>';
@@ -1517,7 +1783,18 @@ class ApiDataBind extends \GF_Field
             return [];
         }
 
-        // Convert to array for consistent processing
+        // Seed common relationship paths so addresses/emails/phones always appear in Browse,
+        // even if this person currently has none on record. Data-driven discovery below
+        // overrides these labels and adds any extra fields actually present.
+        $fields = self::get_baseline_relationship_fields();
+
+        // Discover relationship fields (addresses, emails, phones, organizations, web_addresses)
+        // from the raw SDK object FIRST, before wicket_convert_obj_to_array() strips the
+        // sideloaded "included" resources. These match the paths the extractor resolves
+        // (e.g. addresses.primary.city).
+        self::discover_relationship_fields($person_data, $fields);
+
+        // Convert to array for attribute / data_fields discovery.
         if (function_exists('wicket_convert_obj_to_array') && is_object($person_data)) {
             $person_data = wicket_convert_obj_to_array($person_data);
         }
@@ -1525,10 +1802,82 @@ class ApiDataBind extends \GF_Field
         // Extract schema titles and field labels for person profile
         $schema_info = self::extract_schema_titles($person_data);
 
-        $fields = [];
         self::extract_dynamic_fields($person_data, '', $fields, $schema_info);
 
         return $fields;
+    }
+
+    /**
+     * Discover relationship-collection field paths from the raw Wicket SDK object.
+     *
+     * Adds paths the extractor can resolve, keyed to the primary record by default
+     * (e.g. "addresses.primary.city", "emails.primary.address"). Organizations are
+     * keyed positionally ("organizations.0.legal_name") since they carry no primary flag.
+     *
+     * @param object $object  The raw SDK entity (e.g. Wicket\Entities\People).
+     * @param array  $fields  Field list to append to (path => display label).
+     */
+    private static function discover_relationship_fields($object, array &$fields): void
+    {
+        if (!is_object($object) || !method_exists($object, 'relationship') || !method_exists($object, 'included')) {
+            return;
+        }
+
+        // relationship name => [selector, friendly label prefix]
+        $relationships = [
+            'addresses'     => ['primary', 'Primary Address'],
+            'emails'        => ['primary', 'Primary Email'],
+            'phones'        => ['primary', 'Primary Phone'],
+            'web_addresses' => ['primary', 'Primary Web Address'],
+            'organizations' => ['0', 'Organization'],
+        ];
+
+        $included = $object->included();
+        $skip_keys = ['uuid', 'created_at', 'updated_at', 'deleted_at'];
+
+        foreach ($relationships as $rel => $info) {
+            [$selector, $label] = $info;
+
+            $refs = $object->relationship($rel);
+            if (empty($refs)) {
+                continue;
+            }
+
+            // Grab attribute keys from the first matching included record as a template.
+            $sample = null;
+            foreach ($refs as $ref) {
+                $ref_id = is_object($ref) ? ($ref->id ?? null) : ($ref['id'] ?? null);
+                if ($ref_id === null) {
+                    continue;
+                }
+                foreach ($included as $inc) {
+                    $inc_id = is_object($inc) ? ($inc->id ?? null) : ($inc['id'] ?? null);
+                    if ($inc_id !== $ref_id) {
+                        continue;
+                    }
+                    $attrs = is_object($inc) ? ($inc->attributes ?? null) : ($inc['attributes'] ?? null);
+                    if (is_object($attrs)) {
+                        $attrs = (array) $attrs;
+                    }
+                    if (is_array($attrs)) {
+                        $sample = $attrs;
+                    }
+                    break 2;
+                }
+            }
+
+            if (!is_array($sample)) {
+                continue;
+            }
+
+            foreach ($sample as $key => $value) {
+                if (in_array($key, $skip_keys, true) || is_array($value) || is_object($value)) {
+                    continue;
+                }
+                $path = "{$rel}.{$selector}.{$key}";
+                $fields[$path] = $label . ' → ' . ucfirst(str_replace('_', ' ', (string) $key));
+            }
+        }
     }
 
     /**
@@ -1553,10 +1902,90 @@ class ApiDataBind extends \GF_Field
         // Extract schema titles and field labels from json_schemas in included data
         $schema_info = self::extract_schema_titles($org_data);
 
-        $fields = [];
+        // Seed common relationship paths so address/contact fields always appear in Browse,
+        // even if this org currently has none on record (data-driven discovery augments below).
+        $fields = self::get_baseline_relationship_fields();
         self::extract_dynamic_fields($org_data, '', $fields, $schema_info);
 
+        // Discover relationship fields (org addresses/contacts) from a sideload-aware fetch,
+        // so Browse lists resolvable paths like addresses.primary.city.
+        $org_relationships = wicket_get_organization($organization_uuid, 'addresses,web_addresses,emails,phones');
+        if ($org_relationships && !is_wp_error($org_relationships)) {
+            self::discover_relationship_fields_from_array($org_relationships, $fields);
+        }
+
         return $fields;
+    }
+
+    /**
+     * Common relationship field paths offered in Browse regardless of whether the current
+     * record has any addresses/emails/phones yet. Keyed to the primary record; editors can
+     * also switch to .type:<value> or a numeric index by hand.
+     *
+     * @return array path => display label
+     */
+    private static function get_baseline_relationship_fields(): array
+    {
+        return [
+            'addresses.primary.address1'     => 'Primary Address → Address 1',
+            'addresses.primary.address2'     => 'Primary Address → Address 2',
+            'addresses.primary.city'         => 'Primary Address → City',
+            'addresses.primary.state_name'   => 'Primary Address → State / Province',
+            'addresses.primary.zip_code'     => 'Primary Address → Zip / Postal Code',
+            'addresses.primary.country_name' => 'Primary Address → Country',
+            'addresses.primary.type'         => 'Primary Address → Type',
+            'emails.primary.address'         => 'Primary Email → Address',
+            'phones.primary.number'          => 'Primary Phone → Number',
+        ];
+    }
+
+    /**
+     * Discover relationship-collection field paths from a JSON:API array (e.g. an organization
+     * fetched with address/contact includes).
+     *
+     * Scans the top-level "included" resources and, for each address/email/phone/web-address
+     * type, emits primary-keyed paths the extractor can resolve (e.g. "addresses.primary.city").
+     *
+     * @param array $data   JSON:API array with an 'included' key.
+     * @param array $fields Field list to append to (path => display label).
+     */
+    private static function discover_relationship_fields_from_array($data, array &$fields): void
+    {
+        if (!is_array($data) || empty($data['included']) || !is_array($data['included'])) {
+            return;
+        }
+
+        $labels = [
+            'addresses'     => 'Primary Address',
+            'emails'        => 'Primary Email',
+            'phones'        => 'Primary Phone',
+            'web_addresses' => 'Primary Web Address',
+        ];
+        $skip_keys = ['uuid', 'created_at', 'updated_at', 'deleted_at'];
+        $seen_types = [];
+
+        foreach ($data['included'] as $included) {
+            if (!is_array($included)) {
+                continue;
+            }
+            $type = $included['type'] ?? '';
+            if (!isset($labels[$type]) || isset($seen_types[$type])) {
+                continue;
+            }
+            $attributes = $included['attributes'] ?? null;
+            if (!is_array($attributes)) {
+                continue;
+            }
+            $seen_types[$type] = true;
+
+            foreach ($attributes as $key => $value) {
+                if (in_array($key, $skip_keys, true) || is_array($value) || is_object($value)) {
+                    continue;
+                }
+                $path = "{$type}.primary.{$key}";
+                $fields[$path] = $labels[$type] . ' → ' . ucfirst(str_replace('_', ' ', (string) $key));
+            }
+        }
     }
 
     /**
@@ -1632,31 +2061,16 @@ class ApiDataBind extends \GF_Field
 
         $original_data = $data;
 
-        // Handle JSON:API structure - extract from both main data and included data
+        // Handle JSON:API structure - extract attribute fields from the main data only.
         if (is_array($data) && isset($data['data'])) {
             // Process main data structure
             self::extract_dynamic_fields_recursive($data['data'], '', $fields, $schema_info);
 
-            // Process included data (relationships, phones, addresses, etc.)
-            if (isset($data['included']) && is_array($data['included'])) {
-                foreach ($data['included'] as $included_item) {
-                    if (is_array($included_item) && isset($included_item['type']) && isset($included_item['attributes'])) {
-                        $item_type = $included_item['type'];
-                        $item_id = $included_item['id'] ?? 'unknown';
-
-                        // Skip schema-related included items
-                        $type_lower = strtolower($item_type);
-                        if (strpos($type_lower, 'schema') !== false
-                            || strpos($type_lower, 'json_schema') !== false
-                            || strpos($type_lower, 'ui_schema') !== false) {
-                            continue;
-                        }
-
-                        // Extract fields from included item with prefix like "included.phones.0.number"
-                        self::extract_dynamic_fields_recursive($included_item['attributes'], "included.{$item_type}.{$item_id}", $fields, $schema_info);
-                    }
-                }
-            }
+            // NOTE: "included" (sideloaded) resources are intentionally NOT surfaced here.
+            // The legacy "included.<type>.<id>.<field>" paths this used to emit are not
+            // resolvable by the runtime extractor. Relationship data is instead offered as
+            // resolvable paths (e.g. addresses.primary.city) via discover_relationship_fields()
+            // / discover_relationship_fields_from_array() and the baseline list.
         } else {
             // Process as regular array/object
             self::extract_dynamic_fields_recursive($data, $prefix, $fields, $schema_info);
@@ -1880,3 +2294,7 @@ class ApiDataBind extends \GF_Field
         return $display_name;
     }
 }
+
+// Register AJAX handlers
+add_action('wp_ajax_gf_wicket_get_api_data_fields', [ApiDataBind::class, 'ajax_get_api_data_fields']);
+add_action('wp_ajax_gf_wicket_api_data_bind_fetch_value', [ApiDataBind::class, 'ajax_fetch_value_for_live_update']);
