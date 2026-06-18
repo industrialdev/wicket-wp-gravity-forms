@@ -240,3 +240,28 @@ body:not(.wicket-theme-v2) .gform_wrapper {
 .gform_wrapper .gform_footer button[disabled] {
   cursor: not-allowed !important;
 }
+
+/* Multi-step tracker: keep the step number a fixed circle regardless of label length.
+   On wicket-theme-v2 the plugin's own stepper block above (scoped to
+   body:not(.wicket-theme-v2)) does not apply; Gravity Forms' "gravity-theme" styles the
+   number as `display: table-cell`, so it stretches to the table-row height whenever the
+   step label wraps to multiple lines, distorting the circle into an oval. Take the step
+   out of table layout: make it a flex row so the number is a fixed, non-stretching 40px
+   circle and the label wraps independently (number top-aligned with the first label line). */
+.gform_wrapper.gravity-theme .gf_step {
+  display: flex !important;
+  align-items: flex-start !important;
+}
+.gform_wrapper.gravity-theme .gf_step .gf_step_number {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+}
+.gform_wrapper.gravity-theme .gf_step .gf_step_label {
+  display: block !important;
+}
