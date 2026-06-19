@@ -890,7 +890,13 @@ class ApiDataBind extends \GF_Field
 
     /**
      * Extract value from data_fields (additional info).
-     * Supports advanced search path format: data_fields.{schema_slug}.value.{field_key}.
+     *
+     * Supports both path formats and arbitrary nesting under the schema value:
+     *   data_fields.{schema_slug}.value.{key}[.{nested}...]   (advanced)
+     *   data_fields.{schema_slug}.{key}[.{nested}...]         (legacy)
+     *
+     * Nested sections (e.g. data_fields.assocmaster.value.about-self.uniafil) are walked
+     * to the leaf value, matching the JS Data Bind field's dotted value-key behaviour.
      */
     private function extract_data_field_value($data_fields, $full_field_path, $current_part): ?string
     {
@@ -902,20 +908,18 @@ class ApiDataBind extends \GF_Field
         }
 
         $schema_slug = $path_parts[$current_index + 1] ?? null;
-        $value_key = $path_parts[$current_index + 2] ?? null;
-        $field_key = $path_parts[$current_index + 3] ?? null;
-
         if (!$schema_slug) {
             return null;
         }
 
-        // Support both formats:
-        // 1. New format: data_fields.{schema_slug}.value.{field_key}
-        // 2. Legacy format: data_fields.{schema_slug}.{field_key}
-        $is_advanced_format = ($value_key === 'value' && $field_key !== null);
-        $actual_field_key = $is_advanced_format ? $field_key : $value_key;
+        // Remaining segments after the schema slug form the (possibly nested) key path.
+        // Drop a leading "value" marker so both the advanced and legacy formats align.
+        $key_path = array_slice($path_parts, $current_index + 2);
+        if (!empty($key_path) && $key_path[0] === 'value') {
+            array_shift($key_path);
+        }
 
-        if (!$actual_field_key) {
+        if (empty($key_path)) {
             return null;
         }
 
@@ -925,13 +929,30 @@ class ApiDataBind extends \GF_Field
             }
 
             $schema_key = $field_data['schema_slug'] ?? $field_data['schema_id'];
-            if ($schema_key === $schema_slug) {
-                $value = $field_data['value'] ?? null;
-                if (is_array($value) && isset($value[$actual_field_key])) {
-                    return (string) $value[$actual_field_key];
-                } elseif ($actual_field_key === '_self' && !is_array($value)) {
-                    return (string) $value;
+            if ($schema_key !== $schema_slug) {
+                continue;
+            }
+
+            $value = $field_data['value'] ?? null;
+
+            // "_self" selects the whole scalar value.
+            if (count($key_path) === 1 && $key_path[0] === '_self' && !is_array($value)) {
+                return (string) $value;
+            }
+
+            // Walk the (possibly nested) key path into the value.
+            $current = $value;
+            foreach ($key_path as $key) {
+                if (is_array($current) && array_key_exists($key, $current)) {
+                    $current = $current[$key];
+                } else {
+                    $current = null;
+                    break;
                 }
+            }
+
+            if ($current !== null) {
+                return $this->format_output_value($current);
             }
         }
 

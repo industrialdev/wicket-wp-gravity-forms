@@ -570,7 +570,7 @@ class DataBindHidden extends \GF_Field
             if (method_exists($api_response, 'included')) {
                 try {
                     $included_data = $api_response->included();
-                    if ($included_data instanceof Illuminate\Support\Collection) {
+                    if ($included_data instanceof \Illuminate\Support\Collection) {
                         $included_items_array = $included_data->all();
                     } elseif (is_array($included_data)) {
                         $included_items_array = $included_data;
@@ -582,7 +582,7 @@ class DataBindHidden extends \GF_Field
 
             if (is_null($included_items_array) && property_exists($api_response, 'included')) {
                 $included_data_prop = $api_response->included;
-                if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                if ($included_data_prop instanceof \Illuminate\Support\Collection) {
                     $included_items_array = $included_data_prop->all();
                 } elseif (is_array($included_data_prop)) {
                     $included_items_array = $included_data_prop;
@@ -593,7 +593,7 @@ class DataBindHidden extends \GF_Field
                 try {
                     $response_as_array = $api_response->toJsonAPI();
                     if (isset($response_as_array['included'])) {
-                        if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                        if ($response_as_array['included'] instanceof \Illuminate\Support\Collection) {
                             $included_items_array = $response_as_array['included']->all();
                         } elseif (is_array($response_as_array['included'])) {
                             $included_items_array = $response_as_array['included'];
@@ -605,7 +605,7 @@ class DataBindHidden extends \GF_Field
             }
         } elseif (is_array($api_response) && isset($api_response['included'])) {
             $included_data_from_main_array = $api_response['included'];
-            if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+            if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
                 $included_items_array = $included_data_from_main_array->all();
             } elseif (is_array($included_data_from_main_array)) {
                 $included_items_array = $included_data_from_main_array;
@@ -639,17 +639,73 @@ class DataBindHidden extends \GF_Field
         }
 
         $options = [];
+        self::flatten_schema_properties($schema_definition['properties'], $ui_schema, '', '', $options);
 
-        foreach ($schema_definition['properties'] as $property_key => $property_definition) {
-            if (!is_array($property_definition)) {
+        return $options;
+    }
+
+    /**
+     * Recursively flatten schema properties into selectable value keys.
+     *
+     * Leaf fields become dot-notation keys (e.g. "about-self.uniafil") with a
+     * "Section -> Field" label, so nested additional-info schemas are fully
+     * targetable. Flat (top-level) fields keep their bare key, preserving
+     * backward compatibility with existing bindings.
+     *
+     * @param array      $properties   JSON schema "properties" map at this level.
+     * @param array|null $ui_schema    ui_schema map at this level (for labels).
+     * @param string     $key_prefix   Dotted key prefix accumulated so far.
+     * @param string     $label_prefix Display label prefix accumulated so far.
+     * @param array      $options      Output map (key => label), by reference.
+     */
+    private static function flatten_schema_properties(array $properties, $ui_schema, string $key_prefix, string $label_prefix, array &$options): void
+    {
+        foreach ($properties as $key => $definition) {
+            if (!is_array($definition)) {
                 continue;
             }
 
-            $label = self::derive_schema_property_label($property_key, $property_definition, $ui_schema);
-            $options[$property_key] = $label;
+            $full_key = $key_prefix === '' ? (string) $key : $key_prefix . '.' . $key;
+            $node_ui = (is_array($ui_schema) && isset($ui_schema[$key]) && is_array($ui_schema[$key])) ? $ui_schema[$key] : null;
+
+            // Nested section: recurse into its properties, extending the label path.
+            if (($definition['type'] ?? '') === 'object' && !empty($definition['properties']) && is_array($definition['properties'])) {
+                $section_title = self::derive_schema_section_title((string) $key, $definition, $node_ui);
+                $next_label_prefix = $label_prefix === '' ? $section_title : $label_prefix . ' → ' . $section_title;
+                self::flatten_schema_properties($definition['properties'], $node_ui, $full_key, $next_label_prefix, $options);
+                continue;
+            }
+
+            // Leaf field.
+            $field_label = self::derive_schema_property_label((string) $key, $definition, $ui_schema);
+            $options[$full_key] = $label_prefix === '' ? $field_label : $label_prefix . ' → ' . $field_label;
+        }
+    }
+
+    /**
+     * Derive a display title for a nested section (object property): prefer the
+     * ui_schema i18n title, then the schema title, then a humanized key.
+     */
+    private static function derive_schema_section_title(string $key, array $definition, ?array $section_ui): string
+    {
+        if (is_array($section_ui) && isset($section_ui['ui:i18n']['title'])) {
+            $title = $section_ui['ui:i18n']['title'];
+            if (is_array($title)) {
+                foreach (['en', 'fr'] as $locale) {
+                    if (!empty($title[$locale]) && is_string($title[$locale])) {
+                        return $title[$locale];
+                    }
+                }
+            } elseif (is_string($title)) {
+                return $title;
+            }
         }
 
-        return $options;
+        if (!empty($definition['title']) && is_string($definition['title'])) {
+            return $definition['title'];
+        }
+
+        return ucwords(str_replace(['_', '-'], ' ', $key));
     }
 
     private static function derive_schema_property_label(string $property_key, array $property_definition, ?array $ui_schema): string
@@ -746,7 +802,7 @@ class DataBindHidden extends \GF_Field
                     if (method_exists($person_data_response, 'included')) {
                         try {
                             $included_data = $person_data_response->included();
-                            if ($included_data instanceof Illuminate\Support\Collection) {
+                            if ($included_data instanceof \Illuminate\Support\Collection) {
                                 $included_items_array = $included_data->all();
                             } elseif (is_array($included_data)) {
                                 $included_items_array = $included_data;
@@ -759,7 +815,7 @@ class DataBindHidden extends \GF_Field
                     // Attempt 2: Direct access to 'included' property (fallback)
                     if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
                         $included_data_prop = $person_data_response->included;
-                        if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                        if ($included_data_prop instanceof \Illuminate\Support\Collection) {
                             $included_items_array = $included_data_prop->all();
                         } elseif (is_array($included_data_prop)) {
                             $included_items_array = $included_data_prop;
@@ -771,7 +827,7 @@ class DataBindHidden extends \GF_Field
                         try {
                             $response_as_array = $person_data_response->toJsonAPI();
                             if (isset($response_as_array['included'])) {
-                                if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                                if ($response_as_array['included'] instanceof \Illuminate\Support\Collection) {
                                     $included_items_array = $response_as_array['included']->all();
                                 } elseif (is_array($response_as_array['included'])) {
                                     $included_items_array = $response_as_array['included'];
@@ -783,7 +839,7 @@ class DataBindHidden extends \GF_Field
                     }
                 } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
                     $included_data_from_main_array = $person_data_response['included'];
-                    if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                    if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
                         $included_items_array = $included_data_from_main_array->all();
                     } elseif (is_array($included_data_from_main_array)) {
                         $included_items_array = $included_data_from_main_array;
@@ -919,7 +975,7 @@ class DataBindHidden extends \GF_Field
                     if (method_exists($person_data_response, 'included')) {
                         try {
                             $included_data = $person_data_response->included();
-                            if ($included_data instanceof Illuminate\Support\Collection) {
+                            if ($included_data instanceof \Illuminate\Support\Collection) {
                                 $included_items_array = $included_data->all();
                             } elseif (is_array($included_data)) {
                                 $included_items_array = $included_data;
@@ -932,7 +988,7 @@ class DataBindHidden extends \GF_Field
                     // Attempt 2: Direct access to 'included' property (fallback)
                     if (is_null($included_items_array) && property_exists($person_data_response, 'included')) {
                         $included_data_prop = $person_data_response->included;
-                        if ($included_data_prop instanceof Illuminate\Support\Collection) {
+                        if ($included_data_prop instanceof \Illuminate\Support\Collection) {
                             $included_items_array = $included_data_prop->all();
                         } elseif (is_array($included_data_prop)) {
                             $included_items_array = $included_data_prop;
@@ -944,7 +1000,7 @@ class DataBindHidden extends \GF_Field
                         try {
                             $response_as_array = $person_data_response->toJsonAPI();
                             if (isset($response_as_array['included'])) {
-                                if ($response_as_array['included'] instanceof Illuminate\Support\Collection) {
+                                if ($response_as_array['included'] instanceof \Illuminate\Support\Collection) {
                                     $included_items_array = $response_as_array['included']->all();
                                 } elseif (is_array($response_as_array['included'])) {
                                     $included_items_array = $response_as_array['included'];
@@ -956,7 +1012,7 @@ class DataBindHidden extends \GF_Field
                     }
                 } elseif (is_array($person_data_response) && isset($person_data_response['included'])) {
                     $included_data_from_main_array = $person_data_response['included'];
-                    if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                    if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
                         $included_items_array = $included_data_from_main_array->all();
                     } elseif (is_array($included_data_from_main_array)) {
                         $included_items_array = $included_data_from_main_array;
@@ -1402,7 +1458,7 @@ class DataBindHidden extends \GF_Field
                     $included_items_array = null;
                     if (is_array($person_data_response) && isset($person_data_response['included'])) {
                         $included_data_from_main_array = $person_data_response['included'];
-                        if ($included_data_from_main_array instanceof Illuminate\Support\Collection) {
+                        if ($included_data_from_main_array instanceof \Illuminate\Support\Collection) {
                             $included_items_array = $included_data_from_main_array->all();
                         } elseif (is_array($included_data_from_main_array)) {
                             $included_items_array = $included_data_from_main_array;

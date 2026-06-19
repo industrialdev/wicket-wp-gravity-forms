@@ -505,7 +505,7 @@ const WicketGFLiveUpdate = {
         // Check legacy format first
         if (payload.dataField && payload.dataField.key === schemaSlug) {
             const value = payload.dataField.value;
-            return valueKey && typeof value === 'object' ? value[valueKey] : value;
+            return valueKey && typeof value === 'object' ? this.getNestedValue(value, valueKey) : value;
         }
 
         // Check modern format (dataFields array)
@@ -515,10 +515,26 @@ const WicketGFLiveUpdate = {
         );
 
         if (matchingField?.value) {
-            return valueKey ? matchingField.value[valueKey] : matchingField.value;
+            return valueKey ? this.getNestedValue(matchingField.value, valueKey) : matchingField.value;
         }
 
         return undefined;
+    },
+
+    /**
+     * Resolve a (possibly dotted) value key against an object.
+     * A flat key like "certify" is a single lookup; a dotted key like
+     * "about-self.uniafil" walks into nested section objects. Backward
+     * compatible: a key without a dot behaves exactly as a direct lookup.
+     */
+    getNestedValue(obj, valueKey) {
+        if (obj == null || valueKey == null) {
+            return undefined;
+        }
+        return String(valueKey).split('.').reduce(
+            (acc, key) => (acc == null ? undefined : acc[key]),
+            obj
+        );
     },
 
     /**

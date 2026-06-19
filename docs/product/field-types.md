@@ -92,17 +92,24 @@ Embedded Wicket communication preferences widget.
 
 ## JS Data Bind (`wicket_data_hidden`)
 
-Hidden field that automatically populates with Wicket profile or organization data as the user fills the form. Works with Gravity Forms conditional logic.
+Populates a field (usually hidden) with Wicket data **client-side**, by reading from a Wicket widget rendered on the same form. Works with Gravity Forms conditional logic.
+
+> Important: JS Data Bind reads from the Wicket **widget on the page**, not from a standalone API call. A field can only bind values whose Additional Info / Profile widget is present on that same form. If the widget for the chosen schema is not on the form, the field stays empty. (To fetch from the API without a widget on the form, use **API Data Bind** instead.)
 
 ### Settings
 
 | Setting | Description |
 |---|---|
-| **Enable Live Update** | Enable data binding to auto-populate field value |
-| **Data Source** | `person` (current user) or `organization` |
-| **Organization UUID** | Required when source is `organization` |
-| **Schema Slug** | MDP data category to bind from |
-| **Value Key** | Specific field within the schema to bind |
+| **Enable JS Data Bind** | Enable data binding to auto-populate the field value |
+| **Display Mode** | `Hidden` (default), `Read-only`, `Editable`, or `Static` text |
+| **Data Source** | `Person Add. Info.`, `Person Profile`, `Organization`, or `Organization Profile` |
+| **Organization UUID** | Required when the source is an organization |
+| **Schema/Data Slug** | The MDP schema/category to bind from |
+| **Value Key** | The field within the schema to bind |
+
+### Nested value keys
+
+For schemas whose fields are grouped into sections (section -> field), the Value Key uses **dot notation** to reach a nested field, e.g. `about-self.uniafil`. The picker lists these as `Section -> Field`. Flat schemas keep their plain key (e.g. `certify`, `traineepgy`). Bound values are the stored slug (e.g. `university-of-western-ontario`), not the display label, so compare against the slug in conditional logic.
 
 ---
 
