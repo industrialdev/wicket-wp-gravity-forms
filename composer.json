@@ -33,7 +33,8 @@
         "check": [
             "@cs:lint"
         ],
-        "cs:fix": "php-cs-fixer fix"
+        "cs:fix": "php-cs-fixer fix",
+        "version-bump": "@php ./.ci/version-bump.php"
     },
     "config": {
         "allow-plugins": {
