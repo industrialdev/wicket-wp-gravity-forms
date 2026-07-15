@@ -1,14 +1,11 @@
-# Wicket Gravity Forms Documentation
+# Documentation Index — wicket-wp-gravity-forms
 
-## Product Docs (Operators & Support)
-- [Overview](product/overview.md) — What the plugin does, requirements, field type summary
-- [Field Types Reference](product/field-types.md) — All 8 custom GF field types and their settings
-- [MDP Field Mapping Guide](product/mdp-field-mapping.md) — UUID setup, field mapping, and sync verification
+## Settings Reference (Operators & Support)
 
-## Engineering Docs (Developers & Agents)
-- [Field Architecture](engineering/field-architecture.md) — How custom fields are structured, registered, and configured
-- [Field & Form Slug System](engineering/field-slugs.md) — Slug helpers, form slug storage, field slug UI, AJAX validation
-- [Hooks: Filters & Actions](engineering/hooks.md) — All filters, actions, and Gravity Forms hooks used
+- [Overview](overview.md) — What the plugin does, requirements, field type summary
+- [Field Types Reference](field-types.md) — All 8 custom GF field types and their settings
+- [MDP Field Mapping Guide](mdp-field-mapping.md) — UUID setup, field mapping, and sync verification
 
 ## Guides (End Users)
-- [Add a Wicket Widget Field to a Form](guides/add-widget-to-form.md) — How to add Wicket widget fields to a Gravity Form
+
+- [Add a Wicket Widget Field to a Form](add-widget-to-form.md) — How to add Wicket widget fields to a Gravity Form

@@ -46,5 +46,3 @@ The plugin adds a **Wicket Settings** page under the Gravity Forms menu (`gf_edi
 ## Documentation Links
 
 - [Field Types Reference](product/field-types.md) — all custom fields and their settings
-- [Engineering: Field Architecture](engineering/field-architecture.md) — how custom fields are structured
-- [Engineering: Hooks](engineering/hooks.md) — filters and actions
