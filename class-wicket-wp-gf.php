@@ -1482,6 +1482,35 @@ class Wicket_Gf_Main
                     wp_enqueue_script('wicket-gf-addon-script', plugins_url('assets/js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
                 }
             }
+
+            // Form editor: attach WP-core CodeMirror to the Wicket widget JSON settings textareas.
+            if (class_exists('GFCommon') && method_exists('GFCommon', 'is_form_editor') && GFCommon::is_form_editor()) {
+                wp_enqueue_script(
+                    'wicket-gf-json-editor',
+                    plugins_url('assets/js/wicket_gf_json_editor.js', __FILE__),
+                    ['jquery', 'underscore', 'wp-codemirror'],
+                    WICKET_WP_GF_VERSION,
+                    true
+                );
+
+                $wicket_json_editor_settings = wp_enqueue_code_editor(['type' => 'application/json']);
+                wp_localize_script(
+                    'wicket-gf-json-editor',
+                    'WicketGfJsonEditorSettings',
+                    $wicket_json_editor_settings !== false ? $wicket_json_editor_settings : []
+                );
+
+                // Temporary migration scaffolding — safe to remove this enqueue (and the
+                // file it points to) once no form has a populated legacy MDP JSON Fields
+                // value left. See the file header in wicket_gf_widget_config_migration.js.
+                wp_enqueue_script(
+                    'wicket-gf-widget-config-migration',
+                    plugins_url('assets/js/wicket_gf_widget_config_migration.js', __FILE__),
+                    ['jquery'],
+                    WICKET_WP_GF_VERSION,
+                    true
+                );
+            }
         }
     }
 
