@@ -14,7 +14,10 @@ class WidgetProfileOrg extends \GF_Field
     private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['type'];
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
+
+    /** @deprecated Superseded by wwidget_org_profile_mdp_json_config; kept for legacy saved forms. */
     public $wwidget_org_profile_mdp_json_fields = '';
+    public $wwidget_org_profile_mdp_json_config = '';
 
     public static function init(): void
     {
@@ -27,6 +30,7 @@ class WidgetProfileOrg extends \GF_Field
         $defaults['wwidget_org_profile_uuid'] = '';
         $defaults['wwidget_org_profile_required_resources'] = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
         $defaults['wwidget_org_profile_mdp_json_fields'] = '';
+        $defaults['wwidget_org_profile_mdp_json_config'] = '';
 
         return $defaults;
     }
@@ -49,6 +53,9 @@ class WidgetProfileOrg extends \GF_Field
             $this->wwidget_org_profile_required_resources = $raw !== '' ? $raw : $default_required;
         }
 
+        // Deprecated: wwidget_org_profile_mdp_json_fields is superseded by
+        // wwidget_org_profile_mdp_json_config (see get_field_input()); kept working
+        // for existing saved forms only.
         if (empty($this->wwidget_org_profile_mdp_json_fields)) {
             $this->wwidget_org_profile_mdp_json_fields = '';
         } else {
@@ -59,6 +66,27 @@ class WidgetProfileOrg extends \GF_Field
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     \Wicket()->log()->debug(
                         'Profile Org Widget: invalid MDP JSON Fields saved',
+                        ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
+                    );
+                }
+            }
+        }
+
+        if (empty($this->wwidget_org_profile_mdp_json_config)) {
+            $this->wwidget_org_profile_mdp_json_config = '';
+        } else {
+            // Not run through wp_kses_post: this value is only ever
+            // json_decode()'d then re-encoded via json_encode() into the
+            // widget's JS init call (see the base-plugin components), never
+            // echoed as raw HTML. Stripping tags as if this were markup
+            // corrupts legitimate JSON string values containing < or >.
+            $raw = (string) $this->wwidget_org_profile_mdp_json_config;
+            $this->wwidget_org_profile_mdp_json_config = $raw;
+            if ($raw !== '' && trim($raw) !== '') {
+                json_decode($raw);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    \Wicket()->log()->debug(
+                        'Profile Org Widget: invalid MDP Widget Config JSON saved',
                         ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
                     );
                 }
@@ -102,6 +130,7 @@ class WidgetProfileOrg extends \GF_Field
                 field.wwidget_org_profile_uuid = '';
                 field.wwidget_org_profile_required_resources = '{ addresses: \"mailing\", emails: \"work\", phones: \"work\", webAddresses: \"website\" }';
                 field.wwidget_org_profile_mdp_json_fields = '';
+                field.wwidget_org_profile_mdp_json_config = '';
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -124,6 +153,17 @@ class WidgetProfileOrg extends \GF_Field
 
 <li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
     <div>
+        <label>MDP Widget Config (JSON):</label>
+        <textarea id="wwidget_org_profile_mdp_json_config_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_config', this.value)" placeholder="{&#10;  &quot;fields&quot;: {...},&#10;  &quot;sections&quot;: {...}&#10;}"></textarea>
+        <p class="wwidget_org_profile_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p style="margin-top: 2px;"><em>This expects JSON data for configuring the widget, supporting all options documented for the MDP JS Widget (<code>fields</code>, <code>sections</code>, <code>resourceLimits</code>, <code>resourcePermissions</code>, and more). Please do not modify unless you know what you are doing.</em></p>
+        <p style="margin-top: 2px;"><em>Note: <code>rootEl</code>, <code>apiRoot</code>, <code>accessToken</code>, and <code>orgId</code> are always set automatically and any value provided for them here is ignored.</em></p>
+        <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
+    </div>
+</li>
+
+<li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
+    <div>
         <label>Required Resources:</label>
         <textarea id="wwidget_org_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_org_profile_required_resources', this.value)" type="text" ></textarea>
         <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"] }</em></p>
@@ -131,12 +171,13 @@ class WidgetProfileOrg extends \GF_Field
     </div>
 </li>
 
-<li class="wicket_widget_profile_org_setting field_setting" style="display:none;">
+<li class="wicket_widget_profile_org_setting field_setting" id="wwidget_org_profile_mdp_json_fields_li" style="display:none;">
     <div>
-        <label>MDP JSON Fields:</label>
+        <label>MDP JSON Fields (Deprecated):</label>
         <textarea id="wwidget_org_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value)" placeholder='{"legalName": {"hidden": true}}'></textarea>
         <p class="wwidget_org_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
-        <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"legalName": {"hidden": true}}</code>).</em></p>
+        <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"legalName": {"hidden": true}}</code>). Superseded by the MDP Widget Config setting above &mdash; if that is set, this value is ignored entirely.</em></p>
+        <p style="margin-top: 2px;"><em><a href="#" id="wwidget_org_profile_mdp_json_migrate_link">Replace "fields" in MDP Widget Config &rarr;</a></em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -145,9 +186,7 @@ class WidgetProfileOrg extends \GF_Field
 jQuery(document).ready(function($) {
     var defaultRequired = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
 
-    function validateOrgMdpJson(value) {
-        var $err = $('.wwidget_org_profile_mdp_json_error');
-        var $ta = $('#wwidget_org_profile_mdp_json_fields_input');
+    function validateOrgMdpJson(value, $err, $ta) {
         if (!value || !value.trim()) {
             $err.hide();
             $ta.removeClass('wicket-mdp-json-invalid');
@@ -162,6 +201,22 @@ jQuery(document).ready(function($) {
             $ta.addClass('wicket-mdp-json-invalid');
         }
     }
+
+    // Once the legacy MDP JSON Fields value has been migrated (or was never
+    // set), hide the whole setting row — nothing left to show or edit there.
+    function toggleOrgLegacyFieldVisibility(value) {
+        var $li = $('#wwidget_org_profile_mdp_json_fields_li');
+        if (!value || !value.trim()) {
+            $li.hide();
+        } else {
+            $li.show();
+        }
+    }
+
+    // The "Replace \"fields\" in MDP Widget Config" migrate link's click handler
+    // is temporary migration scaffolding and lives in its own file — see
+    // assets/js/wicket_gf_widget_config_migration.js. This file only owns the
+    // legacy field's own hide-when-empty behavior and its input bindings.
 
     $(document).on('gform_load_field_settings', function(event, field) {
         if (field.type !== 'wicket_widget_profile_org') {
@@ -192,15 +247,30 @@ jQuery(document).ready(function($) {
 
         var mdpVal = field.wwidget_org_profile_mdp_json_fields || '';
         $('#wwidget_org_profile_mdp_json_fields_input').val(mdpVal);
-        validateOrgMdpJson(mdpVal);
+        validateOrgMdpJson(mdpVal, $('.wwidget_org_profile_mdp_json_error'), $('#wwidget_org_profile_mdp_json_fields_input'));
+        toggleOrgLegacyFieldVisibility(mdpVal);
+
+        var configVal = field.wwidget_org_profile_mdp_json_config || '';
+        $('#wwidget_org_profile_mdp_json_config_input').val(configVal);
+        validateOrgMdpJson(configVal, $('.wwidget_org_profile_mdp_json_config_error'), $('#wwidget_org_profile_mdp_json_config_input'));
 
         var mdpSel = '#wwidget_org_profile_mdp_json_fields_input';
         if (!$(mdpSel).data('bound')) {
             $(mdpSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
                 SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value);
-                validateOrgMdpJson(this.value);
+                validateOrgMdpJson(this.value, $('.wwidget_org_profile_mdp_json_error'), $(this));
+                toggleOrgLegacyFieldVisibility(this.value);
             }).data('bound', true);
         }
+
+        var configSel = '#wwidget_org_profile_mdp_json_config_input';
+        if (!$(configSel).data('bound')) {
+            $(configSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
+                SetFieldProperty('wwidget_org_profile_mdp_json_config', this.value);
+                validateOrgMdpJson(this.value, $('.wwidget_org_profile_mdp_json_config_error'), $(this));
+            }).data('bound', true);
+        }
+
     });
 
     $(document).on('gform_field_added', function(event, field) {
@@ -216,6 +286,10 @@ jQuery(document).ready(function($) {
         if (typeof field.wwidget_org_profile_mdp_json_fields === 'undefined') {
             field.wwidget_org_profile_mdp_json_fields = '';
             SetFieldProperty('wwidget_org_profile_mdp_json_fields', '');
+        }
+        if (typeof field.wwidget_org_profile_mdp_json_config === 'undefined') {
+            field.wwidget_org_profile_mdp_json_config = '';
+            SetFieldProperty('wwidget_org_profile_mdp_json_config', '');
         }
     });
 });
@@ -270,17 +344,26 @@ jQuery(document).ready(function($) {
                 $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
             }
 
-            $mdp_json_fields = json_decode((string) ($this->wwidget_org_profile_mdp_json_fields ?? ''), true);
-            $mdp_json_fields = is_array($mdp_json_fields) ? $mdp_json_fields : [];
-
-            $component_output = get_component('widget-profile-org', [
+            $component_args = [
                 'classes'                    => [],
                 'org_info_data_field_name'   => 'input_' . $this->id,
                 'validation_data_field_name' => 'input_' . $this->id . '_validation',
                 'org_id'                     => $org_uuid,
                 'org_required_resources'     => $org_required_resources,
-                'fields'                     => $mdp_json_fields,
-            ], false);
+            ];
+
+            $widget_config = json_decode((string) ($this->wwidget_org_profile_mdp_json_config ?? ''), true);
+
+            if (is_array($widget_config) && $widget_config !== [] && !array_is_list($widget_config)) {
+                $component_args['widget_config'] = $widget_config;
+            } else {
+                // Deprecated fallback: wwidget_org_profile_mdp_json_fields only renders
+                // when wwidget_org_profile_mdp_json_config is empty/invalid.
+                $mdp_json_fields = json_decode((string) ($this->wwidget_org_profile_mdp_json_fields ?? ''), true);
+                $component_args['fields'] = is_array($mdp_json_fields) ? $mdp_json_fields : [];
+            }
+
+            $component_output = get_component('widget-profile-org', $component_args, false);
 
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         }
