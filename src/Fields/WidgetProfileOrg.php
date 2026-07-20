@@ -177,7 +177,7 @@ class WidgetProfileOrg extends \GF_Field
         <textarea id="wwidget_org_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value)" placeholder='{"legalName": {"hidden": true}}'></textarea>
         <p class="wwidget_org_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
         <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"legalName": {"hidden": true}}</code>). Superseded by the MDP Widget Config setting above &mdash; if that is set, this value is ignored entirely.</em></p>
-        <p style="margin-top: 2px;"><em><a href="#" id="wwidget_org_profile_mdp_json_migrate_link">Copy this value into MDP Widget Config &rarr;</a></em></p>
+        <p style="margin-top: 2px;"><em><a href="#" id="wwidget_org_profile_mdp_json_migrate_link">Replace "fields" in MDP Widget Config &rarr;</a></em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -213,7 +213,7 @@ jQuery(document).ready(function($) {
         }
     }
 
-    // The "Copy this value into MDP Widget Config" migrate link's click handler
+    // The "Replace \"fields\" in MDP Widget Config" migrate link's click handler
     // is temporary migration scaffolding and lives in its own file — see
     // assets/js/wicket_gf_widget_config_migration.js. This file only owns the
     // legacy field's own hide-when-empty behavior and its input bindings.

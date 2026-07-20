@@ -13,12 +13,13 @@
  * config box is set, the legacy value is ignored entirely (not merged).
  *
  * This script exists purely to make that migration painless for form
- * builders who already have a legacy value saved: it injects a "Copy this
- * value into MDP Widget Config" link under each legacy field's settings box.
- * Clicking it JSON-parses the legacy value, merges it under a `fields` key
- * into whatever's already in the Widget Config box (preserving other keys
- * already typed there, e.g. resourceLimits), writes the result back, and
- * clears + hides the legacy box.
+ * builders who already have a legacy value saved: it injects a `Replace
+ * "fields" in MDP Widget Config` link under each legacy field's settings box.
+ * Clicking it JSON-parses the legacy value and writes it under the `fields`
+ * key of whatever's already in the Widget Config box, replacing any existing
+ * value under that key wholesale (not merging it) while leaving other keys
+ * already typed there (e.g. resourceLimits) untouched, then clears + hides
+ * the legacy box.
  *
  * None of this is enforced server-side — it's pure editor-UX sugar on top of
  * the precedence rule that already lives in get_field_input() for both
