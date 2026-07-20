@@ -66,7 +66,12 @@ class WidgetProfile extends \GF_Field
         if (empty($this->wwidget_profile_mdp_json_config)) {
             $this->wwidget_profile_mdp_json_config = '';
         } else {
-            $raw = wp_kses_post((string) $this->wwidget_profile_mdp_json_config);
+            // Not run through wp_kses_post: this value is only ever
+            // json_decode()'d then re-encoded via json_encode() into the
+            // widget's JS init call (see the base-plugin components), never
+            // echoed as raw HTML. Stripping tags as if this were markup
+            // corrupts legitimate JSON string values containing < or >.
+            $raw = (string) $this->wwidget_profile_mdp_json_config;
             $this->wwidget_profile_mdp_json_config = $raw;
             if ($raw !== '' && trim($raw) !== '') {
                 json_decode($raw);
