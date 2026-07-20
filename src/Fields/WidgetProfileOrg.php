@@ -349,7 +349,7 @@ jQuery(document).ready(function($) {
 
             $widget_config = json_decode((string) ($this->wwidget_org_profile_mdp_json_config ?? ''), true);
 
-            if (is_array($widget_config) && $widget_config !== []) {
+            if (is_array($widget_config) && $widget_config !== [] && !array_is_list($widget_config)) {
                 $component_args['widget_config'] = $widget_config;
             } else {
                 // Deprecated fallback: wwidget_org_profile_mdp_json_fields only renders
