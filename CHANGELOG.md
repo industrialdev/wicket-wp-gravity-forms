@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.4.16] - 2026-07-27
+
+### Fixed
+- **autoload:** exclude vendored Google Sheet class from classmap
+
+
 ## [2.4.15] - 2026-07-20
 
 ### Added
