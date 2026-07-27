@@ -17,7 +17,10 @@
     "autoload": {
         "psr-4": {
             "WicketGF\\": "src/"
-        }
+        },
+        "exclude-from-classmap": [
+            "src/reference-class-object-type-google-sheet.php"
+        ]
     },
     "require": {
         "php": ">=8.2"
