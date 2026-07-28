@@ -30,6 +30,14 @@ const WicketMDPAutoValidation = {
     enableLogging: false,
 
     /**
+     * Translatable strings, overridden from WicketMDPAutoValidationConfig.i18n (PHP-side __())
+     */
+    i18n: {
+        requiredFieldsHeading: 'Please complete the required fields',
+        requiredFieldsFallback: 'Please complete all required fields before continuing.'
+    },
+
+    /**
      * Centralized logging method
      */
     log(message, data = null) {
@@ -49,6 +57,7 @@ const WicketMDPAutoValidation = {
         const config = window.WicketMDPAutoValidationConfig || {};
         const forceLoggingFromQuery = window.location.search.indexOf('wicketGfDebug=1') !== -1;
         this.enableLogging = Boolean(forceLoggingFromQuery);
+        this.i18n = Object.assign({}, this.i18n, config.i18n || {});
 
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
@@ -594,7 +603,7 @@ const WicketMDPAutoValidation = {
                 <div style="font-size: 20px; line-height: 1; margin-top: 2px;">⚠️</div>
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">
-                        Please complete the required fields
+                        ${this.i18n.requiredFieldsHeading}
                     </div>
                     <div style="font-size: 14px; line-height: 1.5;">
                         ${message}
@@ -958,7 +967,7 @@ const WicketMDPAutoValidation = {
         }
 
         if (missingItems.length === 0) {
-            return 'Please complete all required fields before continuing.';
+            return this.i18n.requiredFieldsFallback;
         }
 
         // Format as a bulleted list

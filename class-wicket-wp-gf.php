@@ -1461,6 +1461,7 @@ class Wicket_Gf_Main
             wp_localize_script('wicket-gf-api-data-bind', 'wicketGfApiDataBindConfig', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('wicket_gf_api_data_bind'),
+                'i18n' => wicket_gf_get_frontend_i18n_strings(),
             ]);
         }
     }

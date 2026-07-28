@@ -177,6 +177,25 @@ if (!function_exists('wicket_gf_get_field_by_slug')) {
     }
 }
 
+if (!function_exists('wicket_gf_get_frontend_i18n_strings')) {
+    /**
+     * Translatable strings shared across the plugin's frontend JS
+     * (widget validation, nonce/session handling, API data bind).
+     *
+     * @return array<string, string>
+     */
+    function wicket_gf_get_frontend_i18n_strings(): array
+    {
+        return [
+            'requiredFieldsHeading'  => __('Please complete the required fields', 'wicket-gf'),
+            'requiredFieldsFallback' => __('Please complete all required fields before continuing.', 'wicket-gf'),
+            'refreshFormButton'      => __('Refresh Form', 'wicket-gf'),
+            'sessionExpiringSoon'    => __('Your session will expire soon. Would you like to refresh the form to continue?', 'wicket-gf'),
+            'noDataAvailable'        => __('No data available', 'wicket-gf'),
+        ];
+    }
+}
+
 if (!function_exists('wicket_gf_get_field_id_by_slug')) {
     /**
      * Resolve a field slug to its numeric Gravity Forms field ID.

@@ -42,6 +42,7 @@ class NonceHandler
         wp_localize_script('wicket-gf-nonce-handling', 'WicketGfNonce', [
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('wicket_gf_nonce_validation'),
+            'i18n'    => wicket_gf_get_frontend_i18n_strings(),
         ]);
     }
 

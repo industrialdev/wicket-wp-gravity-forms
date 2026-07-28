@@ -194,7 +194,7 @@ class Validation
                         if ($is_incomplete) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
+                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
                             \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (forward navigation)', [
                                 'source'               => 'gravityforms-state-debug',
                                 'flag_false'           => $flag_false,
@@ -215,21 +215,21 @@ class Validation
                         if (isset($value_array['incompleteRequiredFields']) && count($value_array['incompleteRequiredFields']) > 0) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please complete all required fields in the organization profile.';
+                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Please complete all required fields in the organization profile.', 'wicket-gf');
                             break;
                         }
 
                         if (isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Please ensure the organization has at least one address, email, phone, and web address.';
+                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
                             break;
                         }
                     } else {
                         if ($field->isRequired) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : 'Organization profile is required.';
+                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Organization profile is required.', 'wicket-gf');
                             \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' is required but empty, failing validation', ['source' => 'gravityforms-state-debug']);
                             break;
                         }

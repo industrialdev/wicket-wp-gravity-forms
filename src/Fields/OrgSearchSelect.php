@@ -1264,7 +1264,7 @@ class OrgSearchSelect extends \GF_Field
 
             return apply_filters('wicket_gf_org_search_select_html_output', $html_output, $this, $form);
         } else {
-            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Org search/select component is missing. Please update the Wicket Base Plugin.</p></div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Org search/select component is missing. Please update the Wicket Base Plugin.', 'wicket-gf') . '</p></div>';
         }
     }
 

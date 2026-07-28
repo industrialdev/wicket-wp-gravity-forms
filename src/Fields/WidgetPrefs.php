@@ -118,7 +118,7 @@ class WidgetPrefs extends \GF_Field
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . ob_get_clean() . '</div>';
         }
 
-        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-prefs-person component is missing. Please update the Wicket Base Plugin.</p></div>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-prefs-person component is missing. Please update the Wicket Base Plugin.', 'wicket-gf') . '</p></div>';
     }
 
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
@@ -160,6 +160,7 @@ class WidgetPrefs extends \GF_Field
             'enableLogging'      => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
             'enableAutoDetection'=> true,
             'debugMode'          => defined('WP_ENV') && WP_ENV === 'development',
+            'i18n'               => wicket_gf_get_frontend_i18n_strings(),
         ]);
     }
 
