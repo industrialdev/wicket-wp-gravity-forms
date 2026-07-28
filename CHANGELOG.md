@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.4.17] - 2026-07-28
+
+### Fixed
+- **i18n:** make hardcoded frontend JS/PHP strings translatable
+
+
 ## [2.4.16] - 2026-07-27
 
 ### Fixed
