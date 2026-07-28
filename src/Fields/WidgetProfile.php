@@ -288,7 +288,7 @@ jQuery(document).ready(function($) {
         $id = (int) $this->id;
 
         if (!component_exists('widget-profile-individual')) {
-            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-profile-individual component is missing. Please update the Wicket Base Plugin.</p></div>';
+            return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-individual component is missing. Please update the Wicket Base Plugin.', 'wicket-gf') . '</p></div>';
         }
 
         $component_args = [
@@ -350,6 +350,7 @@ jQuery(document).ready(function($) {
             'enableLogging'       => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
             'enableAutoDetection' => true,
             'debugMode'           => defined('WP_ENV') && WP_ENV === 'development',
+            'i18n'                => wicket_gf_get_frontend_i18n_strings(),
         ]);
     }
 
@@ -449,7 +450,7 @@ jQuery(document).ready(function($) {
                 }
                 if ($is_incomplete) {
                     $this->failed_validation = true;
-                    $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket_gf');
+                    $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket-gf');
                 }
             }
 
@@ -462,7 +463,7 @@ jQuery(document).ready(function($) {
 
         if ($validation_flag !== null && $flag_false) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket-gf');
 
             return;
         }
@@ -474,14 +475,14 @@ jQuery(document).ready(function($) {
         $incomplete = $this->get_filtered_incomplete_required_fields($value_array);
         if (count($incomplete) > 0) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket-gf');
 
             return;
         }
 
         if (!empty($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please fill out all required fields in your profile.', 'wicket-gf');
         }
     }
 

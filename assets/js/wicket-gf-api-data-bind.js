@@ -25,10 +25,20 @@ const WicketGFApiDataBind = {
     fieldConfigs: new Map(),
 
     /**
+     * Translatable strings, overridden from wicketGfApiDataBindConfig.i18n (PHP-side __())
+     */
+    i18n: {
+        noDataAvailable: 'No data available'
+    },
+
+    /**
      * Initialize the API Data Bind system
      */
     init() {
         this.log('Initializing WicketGFApiDataBind');
+
+        const config = window.wicketGfApiDataBindConfig || {};
+        this.i18n = Object.assign({}, this.i18n, config.i18n || {});
 
         // Set up Gravity Forms hooks
         this.setupGFHooks();
@@ -376,7 +386,8 @@ const WicketGFApiDataBind = {
                 if (displayValue) {
                     field.textContent = displayValue;
                 } else {
-                    field.innerHTML = '<em>No data available</em>';
+                    field.innerHTML = '<em></em>';
+                    field.querySelector('em').textContent = this.i18n.noDataAvailable;
                 }
                 break;
 

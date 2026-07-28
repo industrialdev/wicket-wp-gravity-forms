@@ -421,7 +421,7 @@ jQuery(document).ready(function($) {
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         }
 
-        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>Widget-additional-info component is missing. Please update the Wicket Base Plugin.</p></div>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-additional-info component is missing. Please update the Wicket Base Plugin.', 'wicket-gf') . '</p></div>';
     }
 
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
@@ -441,7 +441,7 @@ jQuery(document).ready(function($) {
         if (json_last_error() !== JSON_ERROR_NONE) {
             if (!empty($value)) {
                 $this->failed_validation = true;
-                $this->validation_message = 'Invalid data format submitted.';
+                $this->validation_message = __('Invalid data format submitted.', 'wicket-gf');
             }
 
             return;
@@ -493,7 +493,7 @@ jQuery(document).ready(function($) {
 
         if ($has_validation_errors) {
             $this->failed_validation = true;
-            $error_message = $this->errorMessage ?: 'Please complete all required information in the form.';
+            $error_message = $this->errorMessage ?: __('Please complete all required information in the form.', 'wicket-gf');
 
             if (!empty($validation)) {
                 $specific_errors = [];
@@ -509,7 +509,7 @@ jQuery(document).ready(function($) {
                     }
                 }
                 if (!empty($specific_errors)) {
-                    $error_message .= ' Issues: ' . implode(', ', array_unique($specific_errors));
+                    $error_message .= ' ' . __('Issues:', 'wicket-gf') . ' ' . implode(', ', array_unique($specific_errors));
                 }
             }
 
@@ -546,6 +546,7 @@ jQuery(document).ready(function($) {
             'enableLogging'       => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
             'enableAutoDetection' => true,
             'debugMode'           => defined('WP_ENV') && WP_ENV === 'development',
+            'i18n'                => wicket_gf_get_frontend_i18n_strings(),
         ]);
     }
 }

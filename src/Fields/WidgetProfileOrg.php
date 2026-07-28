@@ -368,7 +368,7 @@ jQuery(document).ready(function($) {
             return '<div class="gform-theme__disable gform-theme__disable-reset">' . $component_output . '</div>';
         }
 
-        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket_gf') . '</p></div>';
+        return '<div class="gform-theme__disable gform-theme__disable-reset"><p>' . __('Widget-profile-org component is missing. Please update the Wicket Base Plugin.', 'wicket-gf') . '</p></div>';
     }
 
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
@@ -428,7 +428,7 @@ jQuery(document).ready(function($) {
 
             if ($is_incomplete) {
                 $this->failed_validation = true;
-                $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+                $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
             }
 
             return;
@@ -440,7 +440,7 @@ jQuery(document).ready(function($) {
 
         if ($validation_flag !== null && $flag_false) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
 
             return;
         }
@@ -452,14 +452,14 @@ jQuery(document).ready(function($) {
         $incomplete = $this->get_filtered_incomplete_required_fields($value_array);
         if (count($incomplete) > 0) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please complete all required fields in the organization profile.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please complete all required fields in the organization profile.', 'wicket-gf');
 
             return;
         }
 
         if (!empty($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket_gf');
+            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
         }
     }
 
@@ -501,6 +501,7 @@ jQuery(document).ready(function($) {
             'enableLogging'       => defined('WP_ENV') && in_array(WP_ENV, ['development', 'staging'], true),
             'enableAutoDetection' => true,
             'debugMode'           => defined('WP_ENV') && WP_ENV === 'development',
+            'i18n'                => wicket_gf_get_frontend_i18n_strings(),
         ]);
     }
 }

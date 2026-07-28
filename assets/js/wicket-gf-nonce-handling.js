@@ -4,6 +4,11 @@
  */
 
 jQuery(document).ready(function($) {
+    var i18n = $.extend({
+        refreshFormButton: 'Refresh Form',
+        sessionExpiringSoon: 'Your session will expire soon. Would you like to refresh the form to continue?'
+    }, (window.WicketGfNonce && window.WicketGfNonce.i18n) || {});
+
     function getOrgssAutoAdvanceMap() {
         return window.WicketGfOrgssAutoAdvance || {};
     }
@@ -49,8 +54,8 @@ jQuery(document).ready(function($) {
                     // Add refresh button for nonce timeout
                     if (!$form.find(".nonce-timeout-refresh").length) {
                         var refreshButton = $(
-                            '<button type="button" class="button nonce-timeout-refresh" style="margin: 10px 0;">Refresh Form</button>'
-                        );
+                            '<button type="button" class="button nonce-timeout-refresh" style="margin: 10px 0;"></button>'
+                        ).text(i18n.refreshFormButton);
                         refreshButton.on("click", function () {
                             location.reload();
                         });
@@ -70,7 +75,7 @@ jQuery(document).ready(function($) {
         formInactivityTimer = setTimeout(function () {
             if (
                 confirm(
-                    "Your session will expire soon. Would you like to refresh the form to continue?"
+                    i18n.sessionExpiringSoon
                 )
             ) {
                 location.reload();
