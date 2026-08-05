@@ -432,6 +432,35 @@ jQuery(document).ready(function($) {
         return $wicket_settings['wicket_admin'] . '/people/' . $user_id . '/additional_info';
     }
 
+    /**
+     * Validate the Additional Info widget submission.
+     *
+     * The submitted $value is the JSON payload the widget posts into the hidden
+     * `input_{id}` field. It carries the resource's additional-info state:
+     * `invalid` (schema ids with validation errors), `validation` (detailed AJV
+     * errors), `notFound` (configured schemas absent from the resource data),
+     * and `dataFields` (the resource's stored additional-info values).
+     *
+     * For a required field, validation is fail-closed: the field passes only when
+     * the widget affirmatively reports validation and no configured schema is
+     * invalid, failed, or missing from the resource data. This stops valid-JSON
+     * payloads without the validation keys (e.g. `{}`, `[]`, a bare scalar, or a
+     * partial payload) from silently passing a required field. GF core cannot catch
+     * those on its own, because is_value_submission_empty() returns false for any
+     * valid JSON, so the required-empty gate is bypassed.
+     *
+     * Limitation: an empty-string value that satisfies the MDP schema's `required`
+     * constraint (e.g. `{legalname:""}` against a schema with `required` but no
+     * `minLength`) is NOT caught here. That must be enforced at the schema level
+     * (a `minLength` constraint); see WWID-2118.
+     *
+     * @param  string $value The raw JSON payload from `input_{id}`.
+     * @param  array  $form  The Gravity Forms form array.
+     *
+     * @return void
+     *
+     * @see WidgetAdditionalInfo::is_value_submission_empty()
+     */
     public function validate($value, $form): void
     {
         \Wicket()->log()->debug('GF AI Widget validate called', ['source' => 'gravityforms-state-debug']);
@@ -447,13 +476,40 @@ jQuery(document).ready(function($) {
             return;
         }
 
+        // A valid-JSON scalar (e.g. "0", 0, true) is not a widget payload. Normalise it
+        // to an empty array so the fail-closed required-field branch below treats a
+        // scalar as "widget never reported validation". Without this, json_decode() of
+        // a bare scalar succeeds, is_value_submission_empty() returns false (GF core
+        // does not flag it as required-empty), the keys below resolve via ?? to
+        // empties, and a required field is silently skipped.
+        if (!is_array($value_array)) {
+            $value_array = [];
+        }
+
         $invalid = $value_array['invalid'] ?? [];
         $validation = $value_array['validation'] ?? [];
+        $not_found = $value_array['notFound'] ?? [];
 
         $has_validation_errors = false;
 
         if ($this->isRequired) {
-            $has_validation_errors = !empty($invalid) || !empty($validation);
+            // Fail-closed: a required field passes only when the widget affirmatively
+            // reports validation AND no schema is invalid, failed, or missing from the
+            // resource data. We must NOT infer "valid" from the absence of reported
+            // errors, because several valid-JSON payloads ({} / [] / a bare scalar /
+            // a payload missing the invalid-notFound-dataFields keys) otherwise pass.
+            // The widget only posts the data-state keys (notFound / dataFields) once it
+            // has loaded the resource and run validation. A payload that lacks BOTH
+            // means the widget never reported its state (partial load or a non-widget
+            // payload such as {} / [] / a bare scalar / {"invalid":[]}), so a required
+            // field must fail closed instead of inferring "valid" from silence.
+            $widget_reported_validation = array_key_exists('notFound', $value_array)
+                || array_key_exists('dataFields', $value_array);
+
+            $has_validation_errors = !$widget_reported_validation
+                || !empty($invalid)
+                || !empty($validation)
+                || !empty($not_found);
         } else {
             $required_schemas_with_errors = false;
             $ai_widget_schemas = $this->wwidget_ai_schemas ?? [[]];
