@@ -1020,6 +1020,7 @@ class OrgSearchSelect extends \GF_Field
                 'selected_uuid_hidden_field_name'               => 'input_' . $id,
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
                 'allow_continue_without_org'                    => $allow_continue_without_org,
+                'auto_advance'                                  => $orgss_auto_advance,
                 'key'                                           => $id,
                 'org_term_singular'                             => $org_term_singular,
                 'org_term_plural'                               => $org_term_plural,
