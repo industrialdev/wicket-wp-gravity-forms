@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.4.18] - 2026-08-07
+
+### Added
+- **orgss:** pass auto_advance to the org-search-select component
+
+### Fixed
+- **WWID-2118:** make required Additional Info widget field fail-closed
+
+
 ## [2.4.17] - 2026-07-28
 
 ### Fixed
