@@ -147,7 +147,8 @@ class WidgetProfile extends \GF_Field
     <div>
         <label>Required Resources:</label>
         <textarea id="wwidget_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_profile_required_resources', this.value)" type="text"></textarea>
-        <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"], webAddresses: "website" }</em></p>
+        <p class="wwidget_profile_required_resources_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p style="margin-top: 2px;"><em>Strict JSON only (object keys must be quoted). Example: {"addresses": "work", "phones": ["mobile", "work"], "webAddresses": "website"}</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -209,11 +210,13 @@ jQuery(document).ready(function($) {
             SetFieldProperty('wwidget_profile_required_resources', defaultRequired);
         }
         $('#wwidget_profile_required_resources_input').val(field.wwidget_profile_required_resources || '');
+        validateMdpJson(field.wwidget_profile_required_resources || '', $('.wwidget_profile_required_resources_error'), $('#wwidget_profile_required_resources_input'));
 
         var rrSel = '#wwidget_profile_required_resources_input';
         if (!$(rrSel).data('bound')) {
             $(rrSel).on('input.wicket-profile change.wicket-profile', function() {
                 SetFieldProperty('wwidget_profile_required_resources', this.value);
+                validateMdpJson(this.value, $('.wwidget_profile_required_resources_error'), $(this));
             }).data('bound', true);
         }
 
