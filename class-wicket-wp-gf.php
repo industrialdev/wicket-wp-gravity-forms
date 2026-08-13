@@ -1511,6 +1511,18 @@ class Wicket_Gf_Main
                     WICKET_WP_GF_VERSION,
                     true
                 );
+
+                // Form-editor save guard: block the save when a profile widget field
+                // has invalid JSON in Required Resources, MDP JSON Fields, or MDP
+                // Widget Config. Wraps GF's window.ValidateForm gate. See the file
+                // header in wicket-gf-form-editor-json-guard.js.
+                wp_enqueue_script(
+                    'wicket-gf-form-editor-json-guard',
+                    plugins_url('assets/js/wicket-gf-form-editor-json-guard.js', __FILE__),
+                    ['jquery'],
+                    WICKET_WP_GF_VERSION,
+                    true
+                );
             }
         }
     }

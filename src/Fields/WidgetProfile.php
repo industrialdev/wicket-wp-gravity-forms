@@ -136,7 +136,8 @@ class WidgetProfile extends \GF_Field
     <div>
         <label>MDP Widget Config (JSON):</label>
         <textarea id="wwidget_profile_mdp_json_config_input" onkeyup="SetFieldProperty('wwidget_profile_mdp_json_config', this.value)" placeholder="{&#10;  &quot;fields&quot;: {...},&#10;  &quot;sections&quot;: {...}&#10;}"></textarea>
-        <p class="wwidget_profile_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p class="wwidget_profile_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
         <p style="margin-top: 2px;"><em>This expects JSON data for configuring the widget, supporting all options documented for the MDP JS Widget (<code>fields</code>, <code>sections</code>, <code>resourceLimits</code>, <code>resourcePermissions</code>, and more). Please do not modify unless you know what you are doing.</em></p>
         <p style="margin-top: 2px;"><em>Note: <code>rootEl</code>, <code>apiRoot</code>, <code>accessToken</code>, and <code>personId</code>/<code>orgId</code> are always set automatically and any value provided for them here is ignored.</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
@@ -147,7 +148,9 @@ class WidgetProfile extends \GF_Field
     <div>
         <label>Required Resources:</label>
         <textarea id="wwidget_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_profile_required_resources', this.value)" type="text"></textarea>
-        <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"], webAddresses: "website" }</em></p>
+        <p class="wwidget_profile_required_resources_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
+        <p style="margin-top: 2px;"><em>Strict JSON only (object keys must be quoted). Example: {"addresses": "work", "phones": ["mobile", "work"], "webAddresses": "website"}</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -156,7 +159,8 @@ class WidgetProfile extends \GF_Field
     <div>
         <label>MDP JSON Fields (Deprecated):</label>
         <textarea id="wwidget_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_profile_mdp_json_fields', this.value)" placeholder='{"personType": {"hidden": false}}'></textarea>
-        <p class="wwidget_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p class="wwidget_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
         <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"personType": {"hidden": true}}</code>). Superseded by the MDP Widget Config setting above &mdash; if that is set, this value is ignored entirely.</em></p>
         <p style="margin-top: 2px;"><em><a href="#" id="wwidget_profile_mdp_json_migrate_link">Replace "fields" in MDP Widget Config &rarr;</a></em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#createpersonprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
@@ -209,11 +213,13 @@ jQuery(document).ready(function($) {
             SetFieldProperty('wwidget_profile_required_resources', defaultRequired);
         }
         $('#wwidget_profile_required_resources_input').val(field.wwidget_profile_required_resources || '');
+        validateMdpJson(field.wwidget_profile_required_resources || '', $('.wwidget_profile_required_resources_error'), $('#wwidget_profile_required_resources_input'));
 
         var rrSel = '#wwidget_profile_required_resources_input';
         if (!$(rrSel).data('bound')) {
             $(rrSel).on('input.wicket-profile change.wicket-profile', function() {
                 SetFieldProperty('wwidget_profile_required_resources', this.value);
+                validateMdpJson(this.value, $('.wwidget_profile_required_resources_error'), $(this));
             }).data('bound', true);
         }
 

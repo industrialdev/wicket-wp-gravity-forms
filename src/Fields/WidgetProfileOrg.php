@@ -12,6 +12,14 @@ class WidgetProfileOrg extends \GF_Field
 {
     public $type = 'wicket_widget_profile_org';
     private const VALIDATION_IGNORED_HIDDEN_FIELDS = ['type'];
+    /**
+     * Default required resources for new org-profile fields. MUST be strict
+     * JSON (quoted keys): the base-plugin widget-profile-org component
+     * json_decode()s this value before re-encoding it into the widget init
+     * call, so unquoted JS-object-literal keys silently decode to null and
+     * the widget enforces nothing.
+     */
+    private const DEFAULT_REQUIRED_RESOURCES = '{"addresses": "mailing", "emails": "work", "phones": "work", "webAddresses": "website"}';
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
 
@@ -28,7 +36,7 @@ class WidgetProfileOrg extends \GF_Field
     {
         $defaults = parent::get_default_properties();
         $defaults['wwidget_org_profile_uuid'] = '';
-        $defaults['wwidget_org_profile_required_resources'] = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+        $defaults['wwidget_org_profile_required_resources'] = self::DEFAULT_REQUIRED_RESOURCES;
         $defaults['wwidget_org_profile_mdp_json_fields'] = '';
         $defaults['wwidget_org_profile_mdp_json_config'] = '';
 
@@ -45,7 +53,7 @@ class WidgetProfileOrg extends \GF_Field
             $this->wwidget_org_profile_uuid = '';
         }
 
-        $default_required = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+        $default_required = self::DEFAULT_REQUIRED_RESOURCES;
         if (empty($this->wwidget_org_profile_required_resources)) {
             $this->wwidget_org_profile_required_resources = $default_required;
         } else {
@@ -128,12 +136,13 @@ class WidgetProfileOrg extends \GF_Field
             "function SetDefaultValues_%s(field) {
                 field.label = '%s';
                 field.wwidget_org_profile_uuid = '';
-                field.wwidget_org_profile_required_resources = '{ addresses: \"mailing\", emails: \"work\", phones: \"work\", webAddresses: \"website\" }';
+                field.wwidget_org_profile_required_resources = %s;
                 field.wwidget_org_profile_mdp_json_fields = '';
                 field.wwidget_org_profile_mdp_json_config = '';
             }",
             $this->type,
-            esc_js($this->get_form_editor_field_title())
+            esc_js($this->get_form_editor_field_title()),
+            json_encode(self::DEFAULT_REQUIRED_RESOURCES)
         );
     }
 
@@ -155,7 +164,8 @@ class WidgetProfileOrg extends \GF_Field
     <div>
         <label>MDP Widget Config (JSON):</label>
         <textarea id="wwidget_org_profile_mdp_json_config_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_config', this.value)" placeholder="{&#10;  &quot;fields&quot;: {...},&#10;  &quot;sections&quot;: {...}&#10;}"></textarea>
-        <p class="wwidget_org_profile_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p class="wwidget_org_profile_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
         <p style="margin-top: 2px;"><em>This expects JSON data for configuring the widget, supporting all options documented for the MDP JS Widget (<code>fields</code>, <code>sections</code>, <code>resourceLimits</code>, <code>resourcePermissions</code>, and more). Please do not modify unless you know what you are doing.</em></p>
         <p style="margin-top: 2px;"><em>Note: <code>rootEl</code>, <code>apiRoot</code>, <code>accessToken</code>, and <code>orgId</code> are always set automatically and any value provided for them here is ignored.</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
@@ -166,7 +176,9 @@ class WidgetProfileOrg extends \GF_Field
     <div>
         <label>Required Resources:</label>
         <textarea id="wwidget_org_profile_required_resources_input" onkeyup="SetFieldProperty('wwidget_org_profile_required_resources', this.value)" type="text" ></textarea>
-        <p style="margin-top: 2px;"><em>You can pass required resources like this: { addresses: "work", phones: ["mobile", "work"] }</em></p>
+        <p class="wwidget_org_profile_required_resources_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
+        <p style="margin-top: 2px;"><em>Strict JSON only (object keys must be quoted). Example: {"addresses": "work", "phones": ["mobile", "work"]}</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -175,7 +187,8 @@ class WidgetProfileOrg extends \GF_Field
     <div>
         <label>MDP JSON Fields (Deprecated):</label>
         <textarea id="wwidget_org_profile_mdp_json_fields_input" onkeyup="SetFieldProperty('wwidget_org_profile_mdp_json_fields', this.value)" placeholder='{"legalName": {"hidden": true}}'></textarea>
-        <p class="wwidget_org_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON</em></p>
+        <p class="wwidget_org_profile_mdp_json_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p style="margin-top: 2px;"><em>JSON syntax is checked only. Valid JSON does not guarantee the keys and values are valid for your MDP instance. Check resource types and field keys against the widget documentation.</em></p>
         <p style="margin-top: 2px;"><em>JSON object passed to the widget's <code>fields</code> property to control per-field behaviour (e.g. <code>{"legalName": {"hidden": true}}</code>). Superseded by the MDP Widget Config setting above &mdash; if that is set, this value is ignored entirely.</em></p>
         <p style="margin-top: 2px;"><em><a href="#" id="wwidget_org_profile_mdp_json_migrate_link">Replace "fields" in MDP Widget Config &rarr;</a></em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editorganizationprofile" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
@@ -184,7 +197,7 @@ class WidgetProfileOrg extends \GF_Field
 
 <script type='text/javascript'>
 jQuery(document).ready(function($) {
-    var defaultRequired = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+    var defaultRequired = <?php echo json_encode(self::DEFAULT_REQUIRED_RESOURCES); ?>;
 
     function validateOrgMdpJson(value, $err, $ta) {
         if (!value || !value.trim()) {
@@ -230,11 +243,13 @@ jQuery(document).ready(function($) {
             SetFieldProperty('wwidget_org_profile_required_resources', defaultRequired);
         }
         $('#wwidget_org_profile_required_resources_input').val(field.wwidget_org_profile_required_resources || '');
+        validateOrgMdpJson(field.wwidget_org_profile_required_resources || '', $('.wwidget_org_profile_required_resources_error'), $('#wwidget_org_profile_required_resources_input'));
 
         var rrSel = '#wwidget_org_profile_required_resources_input';
         if (!$(rrSel).data('bound')) {
             $(rrSel).on('input.wicket-profile-org change.wicket-profile-org', function() {
                 SetFieldProperty('wwidget_org_profile_required_resources', this.value);
+                validateOrgMdpJson(this.value, $('.wwidget_org_profile_required_resources_error'), $(this));
             }).data('bound', true);
         }
 
@@ -341,7 +356,7 @@ jQuery(document).ready(function($) {
 
         if (component_exists('widget-profile-org')) {
             if (empty($org_required_resources)) {
-                $org_required_resources = '{ addresses: "mailing", emails: "work", phones: "work", webAddresses: "website" }';
+                $org_required_resources = self::DEFAULT_REQUIRED_RESOURCES;
             }
 
             $component_args = [
