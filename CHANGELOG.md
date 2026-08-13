@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.4.19] - 2026-08-13
+
+### Added
+- **gravity-forms:** block invalid JSON saves and clarify JSON vs MDP validity
+
+### Fixed
+- **gravity-forms:** enforce strict JSON for Required Resources
+
+
 ## [2.4.18] - 2026-08-07
 
 ### Added
