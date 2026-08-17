@@ -1017,7 +1017,7 @@ class OrgSearchSelect extends \GF_Field
                 'relationship_mode'                             => $relationship_mode,
                 'new_org_type_override'                         => $new_org_type_override,
                 // Use standard GF naming convention
-                'selected_uuid_hidden_field_name'               => 'input_' . $id,
+                'selected_uuid_hidden_field_name'               => '', // GF renders its own canonical input_{id} hidden field; component copy suppressed to keep one owner
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
                 'allow_continue_without_org'                    => $allow_continue_without_org,
                 'auto_advance'                                  => $orgss_auto_advance,
@@ -1162,7 +1162,6 @@ class OrgSearchSelect extends \GF_Field
                                 const selectedOrgInput = form.querySelector("input[name=\'input_" + fieldId + "\']");
                                 const checkboxWrapper = checkbox.closest(".wicket-orgss-continue-without-org");
                                 const currentPage = checkbox.closest(".gform_page") || form;
-                                const footer = currentPage.querySelector(".gform_page_footer, .gform-page-footer");
                                 const buttons = currentPage.querySelectorAll(".gform_next_button, .gform_button, .gform_submit_button");
                                 const orgIsSelected = !!(selectedOrgInput && selectedOrgInput.value && selectedOrgInput.value.trim() !== "");
                                 const shouldShow = checkbox.checked || orgIsSelected;
@@ -1179,6 +1178,14 @@ class OrgSearchSelect extends \GF_Field
                                     el.style.setProperty("visibility", visible ? "visible" : "hidden", "important");
                                     el.hidden = !visible;
                                     el.setAttribute("aria-hidden", visible ? "false" : "true");
+                                    // Mirror the base component class handling: it stamps gform_hidden
+                                    // on hide and showGfNextButton() removes it. Without this, a component-initiated
+                                    // hide leaves gform_hidden behind and inline styles fight the GF rule.
+                                    if (visible) {
+                                        el.classList.remove("gform_hidden", "hidden", "gf_invisible");
+                                    } else {
+                                        el.classList.add("gform_hidden");
+                                    }
                                 };
 
                                 const getButtonText = (button) => {
@@ -1211,7 +1218,9 @@ class OrgSearchSelect extends \GF_Field
                                     checkbox.checked = false;
                                 }
 
-                                toggle(footer, shouldShow);
+                                // Never hide the footer container itself: it also carries the Previous button.
+                                // Hide only the advance (next/submit) buttons; the base component keeps the
+                                // footer container visible for exactly this reason.
                                 buttons.forEach((button) => toggle(button, shouldShow));
 
                                 const advanceButtons = currentPage.querySelectorAll(".gform_next_button, .gform_submit_button");
