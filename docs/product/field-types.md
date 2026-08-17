@@ -147,19 +147,6 @@ The field path addresses a value inside the Wicket record. Use **Browse Availabl
 | `organizations.0.legal_name` | Legal name of the member's first connected organization |
 | `data_fields.{schema_slug}.value.{field_name}` | A custom additional-info field |
 
-### Service Identity paths
-
-With the `Service Identity (Current User)` source, the field path addresses the current member's identity on the selected service. A member can hold one identity per service; the service selection disambiguates when the client uses several identity types (e.g. OBA's Bar Type service).
-
-| Path | Returns |
-|---|---|
-| `external_id` | The identity value itself, e.g. the member's Bar ID (**default** — preselected when you choose this source) |
-| `namespace` | The identity namespace |
-| `external_url` | The external URL stored on the identity |
-| `data.{key}` | An extra key stored in the identity's `data` object (listed in Browse when present) |
-
-> The value is read at render time from `GET /people/:id/service_identities` filtered by the selected service. If the member has no identity on that service, the **Fallback Value** applies. This field reads only; it never creates or updates service identities.
-
 Relationship collections (addresses, emails, phones, web_addresses) can hold several records. Target one with:
 
 - **`.primary`** — the record flagged primary; order-independent and recommended. A bare path like `addresses.city` defaults to the primary record.
@@ -167,6 +154,20 @@ Relationship collections (addresses, emails, phones, web_addresses) can hold sev
 - **`.0` / `.1`** — positional, in whatever order the API returns. Avoid for anything that must be stable.
 
 > Organizations are connected to a person via **roles** scoped to an organization. A member with no org-scoped role returns nothing for `organizations.*`.
+
+### Service Identity paths
+
+With the `Service Identity (Current User)` source, the field path addresses the current member's identity on the selected service. The field reads the first identity the MDP returns for that service (per-service uniqueness depends on the service's uniqueness scope). The service selection disambiguates when the client uses several identity types (e.g. OBA's Bar Type service).
+
+| Path | Returns |
+|---|---|
+| `external_id` | The identity value itself, e.g. the member's Bar ID (**default** — preselected when you choose this source) |
+| `namespace` | The identity namespace |
+| `external_url` | The external URL stored on the identity |
+| `created_at` / `updated_at` | The identity's created / updated timestamps |
+| `data.{key}` | An extra key stored in the identity's `data` object (listed in Browse only when you hold an identity on that service; otherwise type the path) |
+
+> The value is read at render time from `GET /people/:id/service_identities` filtered by the selected service. If the member has no identity on that service, the **Fallback Value** applies. This field reads only; it never creates or updates service identities.
 
 ### Compared to JS Data Bind
 

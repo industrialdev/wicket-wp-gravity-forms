@@ -232,9 +232,7 @@ class ApiDataBind extends \GF_Field
 
         // Get fetched value from API if configured
         // Skip server-side fetch if using ORGSS binding (JavaScript will handle it)
-        $org_uuid_source = $this->orgUuidSource ?? 'static';
-        $live_update_enabled = $this->liveUpdateEnabled ?? false;
-        $should_skip_server_fetch = ($org_uuid_source === 'orgss_field' && $live_update_enabled);
+        $should_skip_server_fetch = $this->is_orgss_bound();
 
         if (empty($value) && !empty($this->apiDataSource) && (!$should_skip_server_fetch)
             && (!empty($this->apiFieldPath) || $this->apiDataSource === 'service_identity')) {
@@ -317,10 +315,7 @@ class ApiDataBind extends \GF_Field
     private function build_data_attributes($form): string
     {
         // Only add data attributes if ORGSS binding is enabled
-        $org_uuid_source = $this->orgUuidSource ?? 'static';
-        $live_update_enabled = $this->liveUpdateEnabled ?? false;
-
-        if ($org_uuid_source !== 'orgss_field' || !$live_update_enabled) {
+        if (!$this->is_orgss_bound()) {
             return '';
         }
 
@@ -334,6 +329,22 @@ class ApiDataBind extends \GF_Field
         $attributes .= ' data-api-bind-form-id="' . esc_attr($form['id']) . '"';
 
         return $attributes;
+    }
+
+    /**
+     * Whether this field is bound to an ORGSS selection for live organization updates.
+     *
+     * Must consider apiDataSource: orgUuidSource/liveUpdateEnabled are sticky editor
+     * properties that are not reset when a builder switches an already-bound field to
+     * another data source. Without the data-source guard such a field skips the
+     * server-side fetch AND pulls in the ORGSS front-end JS, which only knows how to
+     * fetch organizations, so the field renders permanently empty.
+     */
+    private function is_orgss_bound(): bool
+    {
+        return ($this->apiDataSource ?? '') === 'organization'
+            && ($this->orgUuidSource ?? 'static') === 'orgss_field'
+            && ($this->liveUpdateEnabled ?? false);
     }
 
     /**
@@ -367,7 +378,7 @@ class ApiDataBind extends \GF_Field
                 case 'organization':
                     return $this->fetch_organization_data($org_uuid, $field_path);
                 case 'service_identity':
-                    return $this->fetch_service_identity_data($this->apiServiceUuid ?? '', $field_path);
+                    return $this->fetch_service_identity_data((string) ($this->apiServiceUuid ?? ''), $field_path);
                 default:
                     return $this->get_fallback_value();
             }
@@ -1280,6 +1291,16 @@ class ApiDataBind extends \GF_Field
                     toggleServiceSelectorField(this.value);
                     updateFieldExamples(this.value);
 
+                    // Reset sticky ORGSS properties when leaving the organization source,
+                    // so a previously ORGSS-bound field does not carry orgUuidSource /
+                    // liveUpdateEnabled into another data source (the server-side fetch
+                    // would be skipped and the field would render empty).
+                    if (this.value !== 'organization') {
+                        $('#orgUuidSource').val('static');
+                        SetFieldProperty('orgUuidSource', 'static');
+                        SetFieldProperty('liveUpdateEnabled', false);
+                    }
+
                     // Default the field path to the identity value for service identities.
                     if (this.value === 'service_identity' && !$('#apiFieldPath').val()) {
                         $('#apiFieldPath').val('external_id');
@@ -1347,6 +1368,13 @@ class ApiDataBind extends \GF_Field
                 // Handle service selection change
                 $('#apiServiceUuid').off('change.api-data-bind').on('change.api-data-bind', function() {
                     validateCurrentConfiguration();
+                    updateBrowseButtonState('service_identity');
+
+                    // Refresh the Browse list if it is open, so a newly selected service
+                    // does not keep showing the previous service's fields.
+                    if ($('#fieldPathDropdownContainer').is(':visible')) {
+                        loadAvailableFields('service_identity');
+                    }
                 });
 
                 // Handle ORGSS field selection change
@@ -1398,6 +1426,7 @@ class ApiDataBind extends \GF_Field
                  */
                 var servicesCache = null;
                 function loadServiceOptions(savedUuid) {
+                    var $dropdown = $('#apiServiceUuid');
                     var $notice = $('#apiServiceNotice');
                     var selected = savedUuid || '';
 
@@ -1414,9 +1443,14 @@ class ApiDataBind extends \GF_Field
                             nonce: '<?php echo wp_create_nonce('gf_wicket_api_data_nonce'); ?>'
                         },
                         success: function(response) {
-                            if (response.success && response.data) {
+                            if (response.success && response.data && Object.keys(response.data).length) {
                                 servicesCache = response.data;
                                 populateServiceOptions(servicesCache, selected);
+                                $notice.html('<?php esc_html_e('Select the service whose identity value should be displayed (e.g. a Bar ID service). Required when clients use more than one service identity type.', 'wicket-gf'); ?>');
+                            } else if (response.success) {
+                                servicesCache = [];
+                                $dropdown.empty().append('<option value=""><?php esc_html_e('No services found.', 'wicket-gf'); ?></option>');
+                                $notice.html('<span style="color: #d63638;"><?php esc_html_e('The MDP has no services configured. Service identity data sources need at least one service.', 'wicket-gf'); ?></span>');
                             } else {
                                 $notice.html('<span style="color: #d63638;"><?php esc_html_e('Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf'); ?></span>');
                             }
@@ -1518,7 +1552,9 @@ class ApiDataBind extends \GF_Field
                         return { valid: false, message: '<?php esc_html_e('Please select a Service Identity Type.', 'wicket-gf'); ?>' };
                     }
 
-                    if (!fieldPath) {
+                    // service_identity defaults its path to external_id server-side, so an
+                    // empty path is valid there; every other source still requires one.
+                    if (!fieldPath && dataSource !== 'service_identity') {
                         return { valid: false, message: '<?php esc_html_e('Please enter a field path.', 'wicket-gf'); ?>' };
                     }
 
@@ -1574,7 +1610,7 @@ class ApiDataBind extends \GF_Field
                     // For service_identity, require a selected service first
                     if (dataSource === 'service_identity' && !serviceUuid) {
                         showCustomFieldPath();
-                        $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Please select a Service Identity Type first.', 'wicket-gf'); ?></span>');
+                        $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Please select a Service Identity Type first.', 'wicket-gf'); ?></span>');
                         return;
                     }
 
@@ -1582,13 +1618,13 @@ class ApiDataBind extends \GF_Field
                     if (dataSource === 'organization') {
                         if (!organizationUuid) {
                             showCustomFieldPath();
-                            $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Please enter Organization UUID first.', 'wicket-gf'); ?></span>');
+                            $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Please enter Organization UUID first.', 'wicket-gf'); ?></span>');
                             return;
                         }
 
                         if (!isValidUuid(organizationUuid)) {
                             showCustomFieldPath();
-                            $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Please enter a valid Organization UUID format.', 'wicket-gf'); ?></span>');
+                            $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Please enter a valid Organization UUID format.', 'wicket-gf'); ?></span>');
                             return;
                         }
                     }
@@ -1613,12 +1649,12 @@ class ApiDataBind extends \GF_Field
                                 populateFieldDropdown(response.data);
                             } else {
                                 showCustomFieldPath();
-                                $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Failed to load fields. Please use custom field path.', 'wicket-gf'); ?></span>');
+                                $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Failed to load fields. Please use custom field path.', 'wicket-gf'); ?></span>');
                             }
                         },
                         error: function() {
                             showCustomFieldPath();
-                            $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Error loading fields. Please use custom field path.', 'wicket-gf'); ?></span>');
+                            $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Error loading fields. Please use custom field path.', 'wicket-gf'); ?></span>');
                         }
                     });
                 }
@@ -1852,14 +1888,14 @@ class ApiDataBind extends \GF_Field
         }
 
         foreach ($form['fields'] as $field) {
-            // Check if this is an API Data Bind field with ORGSS binding enabled
-            if ($field->type === 'wicket_api_data_bind') {
-                $org_uuid_source = $field->orgUuidSource ?? 'static';
-                $live_update_enabled = $field->liveUpdateEnabled ?? false;
-
-                if ($org_uuid_source === 'orgss_field' && $live_update_enabled) {
-                    return true;
-                }
+            // Check if this is an API Data Bind field with ORGSS binding enabled.
+            // Data-source guard mirrors is_orgss_bound(): sticky editor properties must
+            // not enqueue the ORGSS JS for non-organization data sources.
+            if ($field->type === 'wicket_api_data_bind'
+                && ($field->apiDataSource ?? '') === 'organization'
+                && ($field->orgUuidSource ?? 'static') === 'orgss_field'
+                && ($field->liveUpdateEnabled ?? false)) {
+                return true;
             }
         }
 
@@ -2016,6 +2052,9 @@ class ApiDataBind extends \GF_Field
             }
             $services[$uuid] = $slug ? sprintf('%s (%s)', $name, $slug) : $name;
         }
+
+        // Alphabetical by label; UUID-keyed insertion order would otherwise leak raw API order.
+        asort($services);
 
         wp_send_json_success($services);
     }
