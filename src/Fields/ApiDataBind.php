@@ -192,6 +192,7 @@ class ApiDataBind extends \GF_Field
             'wicket_api_data_source_setting',
             'wicket_api_organization_uuid_setting',
             'wicket_api_orgss_binding_setting',
+            'wicket_api_service_selector_setting',
             'wicket_api_field_mapping_setting',
             'wicket_api_display_mode_setting',
             'wicket_api_fallback_value_setting',
@@ -210,6 +211,7 @@ class ApiDataBind extends \GF_Field
                 field.apiOrganizationUuid = '';
                 field.orgUuidSource = 'static';
                 field.orgssFieldId = '';
+                field.apiServiceUuid = '';
                 field.liveUpdateEnabled = false;
                 field.isRequired = false;
                 field.visibility = 'visible';
@@ -234,7 +236,8 @@ class ApiDataBind extends \GF_Field
         $live_update_enabled = $this->liveUpdateEnabled ?? false;
         $should_skip_server_fetch = ($org_uuid_source === 'orgss_field' && $live_update_enabled);
 
-        if (empty($value) && !empty($this->apiDataSource) && !empty($this->apiFieldPath) && !$should_skip_server_fetch) {
+        if (empty($value) && !empty($this->apiDataSource) && (!$should_skip_server_fetch)
+            && (!empty($this->apiFieldPath) || $this->apiDataSource === 'service_identity')) {
             $value = $this->fetch_value_from_api();
         }
 
@@ -362,6 +365,8 @@ class ApiDataBind extends \GF_Field
                     return $this->fetch_person_profile_data($field_path);
                 case 'organization':
                     return $this->fetch_organization_data($org_uuid, $field_path);
+                case 'service_identity':
+                    return $this->fetch_service_identity_data($this->apiServiceUuid ?? '', $field_path);
                 default:
                     return $this->get_fallback_value();
             }
@@ -630,6 +635,48 @@ class ApiDataBind extends \GF_Field
         }
 
         return $resolved[0] ?? null;
+    }
+
+    /**
+     * Fetch a service-identity value for the current person.
+     *
+     * Uses the base-plugin helper (GET /people/:id/service_identities?filter[service_uuid_eq]=…),
+     * then walks the configured field path into the identity's attributes. The common
+     * case is the external_id (e.g. a member's Bar ID on the "Bar Type" service), so an
+     * empty field path resolves to external_id.
+     *
+     * @param string $service_uuid UUID of the MDP service (the "Service Identity Type
+     *                              to read, e.g. the Bar Type service).
+     * @param string $field_path   Dot-notation path into the service identity record.
+     *
+     * @return string The extracted value, or the fallback value.
+     */
+    private function fetch_service_identity_data(string $service_uuid, string $field_path): string
+    {
+        if (!$this->is_wicket_api_available() || !function_exists('wicket_get_person_service_identity')) {
+            return $this->get_fallback_value();
+        }
+
+        if (!$this->is_valid_uuid($service_uuid)) {
+            return $this->get_fallback_value();
+        }
+
+        $person_uuid = wicket_current_person_uuid();
+        if (empty($person_uuid)) {
+            return $this->get_fallback_value();
+        }
+
+        $identity = wicket_get_person_service_identity($person_uuid, $service_uuid);
+        if ($identity === null) {
+            return $this->get_fallback_value();
+        }
+
+        if (empty($field_path)) {
+            $field_path = 'external_id';
+        }
+
+        // Wrap so extract_field_value()'s JSON:API 'data' unwrapping resolves attribute paths.
+        return $this->extract_field_value(['data' => $identity], $field_path);
     }
 
     /**
@@ -1027,6 +1074,9 @@ class ApiDataBind extends \GF_Field
                     <option value="person_profile">
                         <?php esc_html_e('Person Profile (Current User)', 'wicket-gf'); ?>
                     </option>
+                    <option value="service_identity">
+                        <?php esc_html_e('Service Identity (Current User)', 'wicket-gf'); ?>
+                    </option>
                     <option value="organization">
                         <?php esc_html_e('Organization', 'wicket-gf'); ?>
                     </option>
@@ -1073,6 +1123,20 @@ class ApiDataBind extends \GF_Field
                 </select>
                 <p class="instruction" id="orgssFieldNotice">
                     <?php esc_html_e('Select which ORGSS field this field should bind to. The field will automatically update when an organization is selected.', 'wicket-gf'); ?>
+                </p>
+            </li>
+
+            <!-- Service selector - Only shown when Service Identity is selected -->
+            <li class="wicket_api_service_selector_setting field_setting" style="display:none;">
+                <label for="apiServiceUuid" class="section_label">
+                    <?php esc_html_e('Service Identity Type', 'wicket-gf'); ?>
+                    <?php gform_tooltip('api_service_selector_setting'); ?>
+                </label>
+                <select id="apiServiceUuid" class="fieldwidth-3" onchange="SetFieldProperty('apiServiceUuid', this.value);">
+                    <option value=""><?php esc_html_e('Loading services...', 'wicket-gf'); ?></option>
+                </select>
+                <p class="instruction" id="apiServiceNotice">
+                    <?php esc_html_e('Select the service whose identity value should be displayed (e.g. a Bar ID service). Required when clients use more than one service identity type.', 'wicket-gf'); ?>
                 </p>
             </li>
 
@@ -1174,6 +1238,9 @@ class ApiDataBind extends \GF_Field
                     var orgUuidSource = field.orgUuidSource || 'static';
                     $('#orgUuidSource').val(orgUuidSource);
 
+                    // Load service identity settings
+                    $('#apiServiceUuid').val(field.apiServiceUuid || '');
+
                     // Automatically set liveUpdateEnabled based on UUID source
                     // (No UI for this setting - it's automatic)
                     if (orgUuidSource === 'orgss_field') {
@@ -1184,6 +1251,9 @@ class ApiDataBind extends \GF_Field
 
                     // Show/hide organization UUID field based on data source
                     toggleOrganizationUuidField(field.apiDataSource);
+
+                    // Show/hide service selector based on data source
+                    toggleServiceSelectorField(field.apiDataSource);
 
                     // Show field examples for data source
                     updateFieldExamples(field.apiDataSource);
@@ -1206,7 +1276,15 @@ class ApiDataBind extends \GF_Field
                 // Handle data source change
                 $('#apiDataSource').off('change.api-data-bind').on('change.api-data-bind', function() {
                     toggleOrganizationUuidField(this.value);
+                    toggleServiceSelectorField(this.value);
                     updateFieldExamples(this.value);
+
+                    // Default the field path to the identity value for service identities.
+                    if (this.value === 'service_identity' && !$('#apiFieldPath').val()) {
+                        $('#apiFieldPath').val('external_id');
+                        SetFieldProperty('apiFieldPath', 'external_id');
+                    }
+
                     validateCurrentConfiguration();
                 });
 
@@ -1265,6 +1343,11 @@ class ApiDataBind extends \GF_Field
                     validateCurrentConfiguration();
                 });
 
+                // Handle service selection change
+                $('#apiServiceUuid').off('change.api-data-bind').on('change.api-data-bind', function() {
+                    validateCurrentConfiguration();
+                });
+
                 // Handle ORGSS field selection change
                 $('#orgssFieldId').off('change.api-data-bind').on('change.api-data-bind', function() {
                     SetFieldProperty('orgssFieldId', this.value);
@@ -1294,6 +1377,66 @@ class ApiDataBind extends \GF_Field
                     }
                 }
 
+                function toggleServiceSelectorField(dataSource) {
+                    var $serviceSetting = $('.wicket_api_service_selector_setting');
+
+                    if (dataSource === 'service_identity') {
+                        $serviceSetting.show();
+                        loadServiceOptions();
+                    } else {
+                        $serviceSetting.hide();
+                    }
+                }
+
+                /**
+                 * Populate the Service Identity Type dropdown from the MDP services list.
+                 * Loaded once per editor session and cached in a module-level variable.
+                 */
+                var servicesCache = null;
+                function loadServiceOptions() {
+                    var $dropdown = $('#apiServiceUuid');
+                    var $notice = $('#apiServiceNotice');
+                    var selected = $dropdown.val() || '';
+
+                    if (servicesCache !== null) {
+                        populateServiceOptions(servicesCache, selected);
+                        return;
+                    }
+
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'gf_wicket_get_services',
+                            nonce: '<?php echo wp_create_nonce('gf_wicket_api_data_nonce'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success && response.data) {
+                                servicesCache = response.data;
+                                populateServiceOptions(servicesCache, selected);
+                            } else {
+                                $notice.html('<span style="color: #d63638;"><?php esc_html_e('Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf'); ?></span>');
+                            }
+                        },
+                        error: function() {
+                            $notice.html('<span style="color: #d63638;"><?php esc_html_e('Error loading services. Save the form and reload the editor to retry.', 'wicket-gf'); ?></span>');
+                        }
+                    });
+                }
+
+                function populateServiceOptions(services, selected) {
+                    var $dropdown = $('#apiServiceUuid');
+                    $dropdown.empty().append('<option value=""><?php esc_html_e('Select a service...', 'wicket-gf'); ?></option>');
+
+                    Object.keys(services).forEach(function(uuid) {
+                        $dropdown.append($('<option></option>').attr('value', uuid).text(services[uuid]));
+                    });
+
+                    if (selected) {
+                        $dropdown.val(selected);
+                    }
+                }
+
                 function updateFieldExamples(dataSource) {
                     var examples = '';
 
@@ -1316,6 +1459,14 @@ class ApiDataBind extends \GF_Field
                                 '<code>attributes.identifying_number</code> - <?php esc_html_e('ID Number', 'wicket-gf'); ?><br>' +
                                 '<code>addresses.primary.city</code> - <?php esc_html_e('Primary Address City', 'wicket-gf'); ?>';
                             break;
+                        case 'service_identity':
+                            examples = '<strong><?php esc_html_e('Service Identity Field Examples:', 'wicket-gf'); ?></strong><br>' +
+                                '<code>external_id</code> - <?php esc_html_e('The identity value (e.g. Bar ID) [default]', 'wicket-gf'); ?><br>' +
+                                '<code>namespace</code> - <?php esc_html_e('Identity namespace', 'wicket-gf'); ?><br>' +
+                                '<code>external_url</code> - <?php esc_html_e('External URL', 'wicket-gf'); ?><br>' +
+                                '<code>created_at</code> - <?php esc_html_e('Created date', 'wicket-gf'); ?><br>' +
+                                '<code>data.{key}</code> - <?php esc_html_e('Extra data stored on the identity', 'wicket-gf'); ?>';
+                            break;
                         default:
                             examples = '<strong><?php esc_html_e('Select a data source to see field path examples.', 'wicket-gf'); ?></strong>';
                     }
@@ -1329,10 +1480,11 @@ class ApiDataBind extends \GF_Field
                     var orgUuid = $('#apiOrganizationUuid').val();
                     var orgUuidSource = $('#orgUuidSource').val();
                     var orgssFieldId = $('#orgssFieldId').val();
+                    var serviceUuid = $('#apiServiceUuid').val();
                     var $statusDiv = $('.wicket-api-status');
                     var $message = $statusDiv.find('.status-message');
 
-                    var validation = validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId);
+                    var validation = validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId, serviceUuid);
 
                     if (validation.valid) {
                         $statusDiv.removeClass('error warning').addClass('success').css('background-color', '#d4edda').css('border', '1px solid #c3e6cb').css('color', '#155724').show();
@@ -1354,9 +1506,13 @@ class ApiDataBind extends \GF_Field
                     validateCurrentConfiguration();
                 }
 
-                function validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId) {
+                function validateConfiguration(dataSource, fieldPath, orgUuid, orgUuidSource, orgssFieldId, serviceUuid) {
                     if (!dataSource) {
                         return { valid: false, message: '<?php esc_html_e('Please select a data source.', 'wicket-gf'); ?>' };
+                    }
+
+                    if (dataSource === 'service_identity' && !serviceUuid) {
+                        return { valid: false, message: '<?php esc_html_e('Please select a Service Identity Type.', 'wicket-gf'); ?>' };
                     }
 
                     if (!fieldPath) {
@@ -1403,13 +1559,21 @@ class ApiDataBind extends \GF_Field
                         return;
                     }
 
-                    // Only show dropdown for person_profile and organization
-                    if (dataSource !== 'person_profile' && dataSource !== 'organization') {
+                    // Only show dropdown for person_profile, organization and service_identity
+                    if (dataSource !== 'person_profile' && dataSource !== 'organization' && dataSource !== 'service_identity') {
                         showCustomFieldPath();
                         return;
                     }
 
                     var organizationUuid = $('#apiOrganizationUuid').val();
+                    var serviceUuid = $('#apiServiceUuid').val();
+
+                    // For service_identity, require a selected service first
+                    if (dataSource === 'service_identity' && !serviceUuid) {
+                        showCustomFieldPath();
+                        $('#fieldPathExamples').html('<span style="color: #d63638;"><?php esc_html_e('Please select a Service Identity Type first.', 'wicket-gf'); ?></span>');
+                        return;
+                    }
 
                     // For organization, require valid UUID
                     if (dataSource === 'organization') {
@@ -1438,7 +1602,8 @@ class ApiDataBind extends \GF_Field
                             action: 'gf_wicket_get_api_data_fields',
                             nonce: '<?php echo wp_create_nonce('gf_wicket_api_data_nonce'); ?>',
                             data_source: dataSource,
-                            organization_uuid: organizationUuid
+                            organization_uuid: organizationUuid,
+                            service_uuid: serviceUuid
                         },
                         success: function(response) {
                             if (response.success && response.data) {
@@ -1559,7 +1724,7 @@ class ApiDataBind extends \GF_Field
                         return;
                     }
 
-                    if (dataSource === 'person_profile') {
+                    if (dataSource === 'person_profile' || dataSource === 'service_identity') {
                         $browseBtn.prop('disabled', false);
                         $browseBtn.text('<?php esc_html_e('Browse Available Fields', 'wicket-gf'); ?>');
                         return;
@@ -1772,6 +1937,7 @@ class ApiDataBind extends \GF_Field
 
         $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
         $organization_uuid = isset($_POST['organization_uuid']) ? sanitize_text_field(wp_unslash($_POST['organization_uuid'])) : null;
+        $service_uuid = isset($_POST['service_uuid']) ? sanitize_text_field(wp_unslash($_POST['service_uuid'])) : null;
 
         $fields = [];
 
@@ -1779,9 +1945,102 @@ class ApiDataBind extends \GF_Field
             $fields = self::get_person_profile_fields();
         } elseif ($data_source === 'organization' && !empty($organization_uuid)) {
             $fields = self::get_organization_fields_by_uuid($organization_uuid);
+        } elseif ($data_source === 'service_identity' && !empty($service_uuid)) {
+            $fields = self::get_service_identity_fields($service_uuid);
         }
 
         wp_send_json_success($fields);
+    }
+
+    /**
+     * AJAX handler to list MDP services (for the Service Identity Type selector).
+     *
+     * @return void Sends JSON response: uuid => display label.
+     */
+    public static function ajax_get_services()
+    {
+        check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
+
+        if (!function_exists('wicket_api_client')) {
+            wp_send_json_error('Wicket API not available');
+
+            return;
+        }
+
+        $client = wicket_api_client();
+        if ($client === false) {
+            wp_send_json_error('Wicket API client is not available');
+
+            return;
+        }
+
+        try {
+            $response = $client->get('services?page[size]=100');
+        } catch (\Exception $e) {
+            wp_send_json_error('Failed to fetch services');
+
+            return;
+        }
+
+        $services = [];
+        foreach (($response['data'] ?? []) as $service) {
+            $uuid = $service['id'] ?? null;
+            $name = $service['attributes']['name'] ?? null;
+            $slug = $service['attributes']['slug'] ?? null;
+            if (empty($uuid) || $name === null) {
+                continue;
+            }
+            $services[$uuid] = $slug ? sprintf('%s (%s)', $name, $slug) : $name;
+        }
+
+        wp_send_json_success($services);
+    }
+
+    /**
+     * Available field paths for the service_identity data source.
+     *
+     * Baseline covers the attributes every service identity carries. When the current
+     * user has an identity on the service, extra data.* keys stored on it are discovered.
+     *
+     * @param string $service_uuid UUID of the MDP service.
+     *
+     * @return array path => display label
+     */
+    private static function get_service_identity_fields(string $service_uuid): array
+    {
+        $fields = [
+            'external_id'   => __('Service Identity Value (e.g. Bar ID)', 'wicket-gf'),
+            'namespace'     => __('Namespace', 'wicket-gf'),
+            'external_url'  => __('External URL', 'wicket-gf'),
+            'created_at'    => __('Created Date', 'wicket-gf'),
+            'updated_at'    => __('Updated Date', 'wicket-gf'),
+        ];
+
+        if (!function_exists('wicket_current_person_uuid') || !function_exists('wicket_get_person_service_identity')) {
+            return $fields;
+        }
+
+        $person_uuid = wicket_current_person_uuid();
+        if (empty($person_uuid)) {
+            return $fields;
+        }
+
+        $identity = wicket_get_person_service_identity($person_uuid, $service_uuid);
+        if ($identity === null) {
+            return $fields;
+        }
+
+        $extra_data = $identity['attributes']['data'] ?? null;
+        if (is_array($extra_data)) {
+            foreach ($extra_data as $key => $value) {
+                if (is_array($value) || is_object($value)) {
+                    continue;
+                }
+                $fields['data.' . $key] = __('Extra Data', 'wicket-gf') . ' → ' . ucfirst(str_replace('_', ' ', (string) $key));
+            }
+        }
+
+        return $fields;
     }
 
     /**
@@ -2319,3 +2578,4 @@ class ApiDataBind extends \GF_Field
 // Register AJAX handlers
 add_action('wp_ajax_gf_wicket_get_api_data_fields', [ApiDataBind::class, 'ajax_get_api_data_fields']);
 add_action('wp_ajax_gf_wicket_api_data_bind_fetch_value', [ApiDataBind::class, 'ajax_fetch_value_for_live_update']);
+add_action('wp_ajax_gf_wicket_get_services', [ApiDataBind::class, 'ajax_get_services']);
