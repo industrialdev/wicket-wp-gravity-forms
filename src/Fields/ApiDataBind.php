@@ -1879,6 +1879,15 @@ class ApiDataBind extends \GF_Field
         // Verify nonce for security
         check_ajax_referer('wicket_gf_api_data_bind', 'nonce');
 
+        // Front-end endpoint for members filling a form: no editor capability, but
+        // it must never serve anonymous requests (wp_ajax_ already gates this; fail
+        // closed regardless).
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Insufficient permissions');
+
+            return;
+        }
+
         // Get and sanitize parameters
         $org_uuid = isset($_POST['org_uuid']) ? sanitize_text_field(wp_unslash($_POST['org_uuid'])) : '';
         $field_path = isset($_POST['field_path']) ? sanitize_text_field(wp_unslash($_POST['field_path'])) : '';
@@ -1938,6 +1947,12 @@ class ApiDataBind extends \GF_Field
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
 
+        if (!current_user_can('gravityforms_edit_forms')) {
+            wp_send_json_error('Insufficient permissions');
+
+            return;
+        }
+
         $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
         $organization_uuid = isset($_POST['organization_uuid']) ? sanitize_text_field(wp_unslash($_POST['organization_uuid'])) : null;
         $service_uuid = isset($_POST['service_uuid']) ? sanitize_text_field(wp_unslash($_POST['service_uuid'])) : null;
@@ -1963,6 +1978,12 @@ class ApiDataBind extends \GF_Field
     public static function ajax_get_services()
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
+
+        if (!current_user_can('gravityforms_edit_forms')) {
+            wp_send_json_error('Insufficient permissions');
+
+            return;
+        }
 
         if (!function_exists('wicket_api_client')) {
             wp_send_json_error('Wicket API not available');
