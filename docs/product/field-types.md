@@ -121,7 +121,8 @@ Pulls a single value **from** the Wicket API into a form field at render time, a
 
 | Setting | Description |
 |---|---|
-| **API Data Source** | `Person Profile (Current User)` or `Organization` |
+| **API Data Source** | `Person Profile (Current User)`, `Service Identity (Current User)`, or `Organization` |
+| **Service Identity Type** | (Service Identity only) which MDP service to read (e.g. the Bar ID service). Required when a client uses more than one service identity type |
 | **Organization UUID Source** | (Organization only) `Static UUID`, or `Bind to ORGSS Field` to pull the UUID from an Org. Search field in the same form |
 | **Organization UUID** | (Static source) the org UUID to fetch from |
 | **Select ORGSS Field** | (ORGSS source) which Org. Search field supplies the UUID |
@@ -153,6 +154,20 @@ Relationship collections (addresses, emails, phones, web_addresses) can hold sev
 - **`.0` / `.1`** — positional, in whatever order the API returns. Avoid for anything that must be stable.
 
 > Organizations are connected to a person via **roles** scoped to an organization. A member with no org-scoped role returns nothing for `organizations.*`.
+
+### Service Identity paths
+
+With the `Service Identity (Current User)` source, the field path addresses the current member's identity on the selected service. The field reads the first identity the MDP returns for that service (per-service uniqueness depends on the service's uniqueness scope). The service selection disambiguates when the client uses several identity types (e.g. OBA's Bar Type service).
+
+| Path | Returns |
+|---|---|
+| `external_id` | The identity value itself, e.g. the member's Bar ID (**default** — preselected when you choose this source) |
+| `namespace` | The identity namespace |
+| `external_url` | The external URL stored on the identity |
+| `created_at` / `updated_at` | The identity's created / updated timestamps |
+| `data.{key}` | An extra key stored in the identity's `data` object (listed in Browse only when you hold an identity on that service; otherwise type the path) |
+
+> The value is read at render time from `GET /people/:id/service_identities` filtered by the selected service. If the member has no identity on that service, the **Fallback Value** applies. This field reads only; it never creates or updates service identities.
 
 ### Compared to JS Data Bind
 

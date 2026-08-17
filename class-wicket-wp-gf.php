@@ -1315,6 +1315,7 @@ class Wicket_Gf_Main
         $tooltips['live_update_organization_uuid_setting'] = __('Enter the UUID of the organization whose data you want to bind to this field.', 'wicket-gf');
         $tooltips['live_update_schema_slug_setting'] = __('Select the schema or data category to bind from the chosen data source.', 'wicket-gf');
         $tooltips['live_update_value_key_setting'] = __('Choose the specific field/property to bind from the selected schema.', 'wicket-gf');
+        $tooltips['api_service_selector_setting'] = __('Choose the service whose identity value is read (e.g. a Bar ID service). Needed when the client uses more than one service identity type.', 'wicket-gf');
 
         return $tooltips;
     }
