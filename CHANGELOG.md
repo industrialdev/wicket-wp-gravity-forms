@@ -5,6 +5,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.5.0] - 2026-08-17
+
+### Added
+- **fields:** add service identity data source to API Data Bind
+
+### Fixed
+- **fields:** scope ORGSS binding to organization source, editor hardening
+- **fields:** capability-check ApiDataBind AJAX handlers
+- **fields:** service identity empty path and editor reopen bugs
+
+
 ## [2.4.19] - 2026-08-13
 
 ### Added
