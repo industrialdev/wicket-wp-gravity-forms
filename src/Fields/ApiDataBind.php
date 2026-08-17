@@ -341,7 +341,8 @@ class ApiDataBind extends \GF_Field
      */
     private function fetch_value_from_api(): string
     {
-        if (empty($this->apiDataSource) || empty($this->apiFieldPath)) {
+        // Service identity defaults its field path to external_id, so an empty path is valid there.
+        if (empty($this->apiDataSource) || (empty($this->apiFieldPath) && $this->apiDataSource !== 'service_identity')) {
             return $this->get_fallback_value();
         }
 
@@ -1253,7 +1254,7 @@ class ApiDataBind extends \GF_Field
                     toggleOrganizationUuidField(field.apiDataSource);
 
                     // Show/hide service selector based on data source
-                    toggleServiceSelectorField(field.apiDataSource);
+                    toggleServiceSelectorField(field.apiDataSource, field.apiServiceUuid || '');
 
                     // Show field examples for data source
                     updateFieldExamples(field.apiDataSource);
@@ -1377,12 +1378,12 @@ class ApiDataBind extends \GF_Field
                     }
                 }
 
-                function toggleServiceSelectorField(dataSource) {
+                function toggleServiceSelectorField(dataSource, savedUuid) {
                     var $serviceSetting = $('.wicket_api_service_selector_setting');
 
                     if (dataSource === 'service_identity') {
                         $serviceSetting.show();
-                        loadServiceOptions();
+                        loadServiceOptions(savedUuid || $('#apiServiceUuid').val() || '');
                     } else {
                         $serviceSetting.hide();
                     }
@@ -1391,12 +1392,14 @@ class ApiDataBind extends \GF_Field
                 /**
                  * Populate the Service Identity Type dropdown from the MDP services list.
                  * Loaded once per editor session and cached in a module-level variable.
+                 * The saved UUID is threaded through directly: reading it back off the
+                 * <select> before its options exist silently loses the selection (the
+                 * same trap the ORGSS selector documents below).
                  */
                 var servicesCache = null;
-                function loadServiceOptions() {
-                    var $dropdown = $('#apiServiceUuid');
+                function loadServiceOptions(savedUuid) {
                     var $notice = $('#apiServiceNotice');
-                    var selected = $dropdown.val() || '';
+                    var selected = savedUuid || '';
 
                     if (servicesCache !== null) {
                         populateServiceOptions(servicesCache, selected);
