@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.5.1] - 2026-08-21
+
+### Fixed
+- **orgss:** stop checkbox script fighting GF footer visibility
+
+
 ## [2.5.0] - 2026-08-17
 
 ### Added
