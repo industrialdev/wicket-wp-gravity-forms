@@ -23,8 +23,12 @@ class MdpFieldDiscovery
 {
     /**
      * Transient key for caching json_schemas discovery results.
+     *
+     * v2: entries are property-level with a 'type' key
+     * (see discoverSchemaFields()). Versioned so stale v1 transients
+     * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v2';
 
     /**
      * Transient key for caching preferences discovery results.
@@ -43,7 +47,7 @@ class MdpFieldDiscovery
      */
     public function getAllTargetFields(): array
     {
-        $objects = ['person_profile', 'org_profile', 'additional_info', 'preferences'];
+        $objects = ['person_profile', 'org_profile', 'additional_info', 'org_additional_info', 'preferences'];
         $result = [];
         foreach ($objects as $object) {
             $result[$object] = $this->getTargetFields($object);
@@ -61,11 +65,12 @@ class MdpFieldDiscovery
     public function getTargetFields(string $target_object): array
     {
         return match ($target_object) {
-            'person_profile'   => $this->getPersonProfileFields(),
-            'org_profile'      => $this->getOrgProfileFields(),
-            'additional_info'  => $this->getAdditionalInfoFields(),
-            'preferences'      => $this->getPreferencesFields(),
-            default            => [],
+            'person_profile'      => $this->getPersonProfileFields(),
+            'org_profile'         => $this->getOrgProfileFields(),
+            'additional_info'     => $this->getAdditionalInfoFields(),
+            'org_additional_info' => $this->getAdditionalInfoFields(),
+            'preferences'         => $this->getPreferencesFields(),
+            default               => [],
         };
     }
 
@@ -134,22 +139,63 @@ class MdpFieldDiscovery
     /**
      * Additional Info fields (dynamic discovery via json_schemas API).
      *
-     * Each JSON Schema key becomes a target field option.
+     * The MDP API validates each data_field `value` against the schema's
+     * JSON Schema, so a target must point at one scalar property inside a
+     * schema, not at the schema as a whole. Values use the composite
+     * format `data_field.<schema_key>.<property_name>`.
      * Results are cached as a transient for CACHE_TTL seconds.
      *
      * @return array<array{value: string, label: string}>
      */
     public function getAdditionalInfoFields(): array
     {
+        $fields = [];
+        foreach ($this->getScalarSchemaProperties() as $prop) {
+            $fields[] = [
+                'value' => $prop['value'],
+                'label' => $prop['label'],
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Map of additional-info target value string to schema property type.
+     *
+     * Used by the sync engine to cast submitted GF strings to the type the
+     * schema expects (booleans/numbers must not be sent as strings).
+     *
+     * @return array<string, string> value string => 'boolean'|'number'|'integer'|'string'
+     */
+    public function getPropertyTypeMap(): array
+    {
+        $map = [];
+        foreach ($this->getScalarSchemaProperties() as $prop) {
+            $map[$prop['value']] = $prop['type'];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Scalar properties across all JSON Schemas (cached raw discovery).
+     *
+     * @return array<int, array{value: string, label: string, type: string}>
+     */
+    protected function getScalarSchemaProperties(): array
+    {
         $cached = get_transient(self::CACHE_KEY_SCHEMAS);
-        if ($cached !== false) {
+        if (is_array($cached)) {
             return $cached;
         }
 
         $fields = $this->discoverSchemaFields();
 
         $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
-        set_transient(self::CACHE_KEY_SCHEMAS, $fields, $ttl);
+        if (!empty($fields)) {
+            set_transient(self::CACHE_KEY_SCHEMAS, $fields, $ttl);
+        }
 
         return $fields;
     }
@@ -172,7 +218,9 @@ class MdpFieldDiscovery
         $fields = $this->discoverPreferenceFields();
 
         $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
-        set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
+        if (!empty($fields)) {
+            set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
+        }
 
         return $fields;
     }
@@ -187,12 +235,15 @@ class MdpFieldDiscovery
     }
 
     /**
-     * Discover fields from JSON Schemas API endpoint.
+     * Discover scalar properties from the JSON Schemas API endpoint.
      *
-     * Fetches GET /json_schemas and maps each schema's key + title
-     * to the {value, label} format.
+     * Fetches GET /json_schemas and walks each schema's `properties`.
+     * Only scalar-typed properties are exposed (string, number, integer,
+     * boolean, or an enum with a scalar type). Array/object properties
+     * (repeaters) need structural values a single GF field cannot supply
+     * and are skipped.
      *
-     * @return array<array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string, type: string}>
      */
     protected function discoverSchemaFields(): array
     {
@@ -227,15 +278,39 @@ class MdpFieldDiscovery
                 // Prevents locale-dependent cache poisoning across admins.
                 $language = 'en';
 
-                $label = $uiSchema['ui:i18n']['label'][$language]
+                $schemaLabel = $uiSchema['ui:i18n']['label'][$language]
                     ?? $uiSchema['ui:i18n']['label']['en']
                     ?? $attrs['schema']['title']
                     ?? ucwords(str_replace(['_', '-'], ' ', $key));
 
-                $fields[] = [
-                    'value' => 'data_field.' . sanitize_text_field($key),
-                    'label' => sanitize_text_field($label),
-                ];
+                $properties = $attrs['schema']['properties'] ?? [];
+                if (!is_array($properties)) {
+                    continue;
+                }
+
+                foreach ($properties as $prop_name => $definition) {
+                    if (!is_array($definition)) {
+                        continue;
+                    }
+
+                    $type = is_string($definition['type'] ?? null) ? $definition['type'] : '';
+                    if (isset($definition['enum']) && $type === '') {
+                        $type = 'string';
+                    }
+
+                    if (!in_array($type, ['string', 'number', 'integer', 'boolean'], true)) {
+                        continue;
+                    }
+
+                    $propLabel = $definition['title']
+                        ?? ucwords(str_replace(['_', '-'], ' ', (string) $prop_name));
+
+                    $fields[] = [
+                        'value' => 'data_field.' . sanitize_text_field($key) . '.' . sanitize_text_field((string) $prop_name),
+                        'label' => sanitize_text_field($schemaLabel) . ': ' . sanitize_text_field($propLabel),
+                        'type'  => $type,
+                    ];
+                }
             }
 
             return $fields;
@@ -340,18 +415,16 @@ class MdpFieldDiscovery
         }
 
         try {
-            $person = $client->people->fetch($person_uuid);
-            if (function_exists('wicket_convert_obj_to_array')) {
-                $person_array = wicket_convert_obj_to_array($person);
-            } else {
-                $person_array = (array) $person;
-            }
+            // Raw GET, not the SDK fetch helper: the SDK model throws on some
+            // person payloads, and we only need the attributes object.
+            $response = $client->get("people/$person_uuid");
+            $person_array = is_array($response) ? $response : wicket_convert_obj_to_array($response);
 
-            $communications = $person_array['data']['communications'] ?? [];
+            $communications = $person_array['data']['attributes']['data']['communications'] ?? [];
             $sublists = $communications['sublists'] ?? [];
 
             if (!is_array($sublists)) {
-                return [];
+                $sublists = [];
             }
 
             $fields = [];

@@ -78,7 +78,11 @@ class MdpSyncEngine
         $log_ctx = ['form_id' => $form_id, 'entity_type' => $form_config['entity_type']];
 
         if (!$this->is_sync_eligible($form_config)) {
-            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config', $log_ctx);
+            // Forms with no MDP-enabled fields stay silent: no meta noise on
+            // plain submissions. A half-configured form gets a visible skip.
+            if ($this->form_has_mapped_fields($form)) {
+                $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config', $log_ctx);
+            }
 
             return;
         }
@@ -196,6 +200,22 @@ class MdpSyncEngine
             'entity_type' => $form['wicket_mdp_entity_type'] ?? '',
             'uuid_source_field' => $form['wicket_mdp_uuid_source_field'] ?? '',
         ];
+    }
+
+    /**
+     * Whether any field on the form has MDP mapping enabled.
+     *
+     * @param array $form GF form object.
+     */
+    protected function form_has_mapped_fields(array $form): bool
+    {
+        foreach ($form['fields'] ?? [] as $field) {
+            if (is_object($field) && !empty($field->wicket_enable_mdp_mapping)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -370,25 +390,54 @@ class MdpSyncEngine
             return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
         }
 
-        $endpoint = $entity_type === 'organization' ? "organizations/$uuid" : "people/$uuid";
-
         try {
-            $client->patch($endpoint, ['json' => $payload]);
+            $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
 
-            $objects = array_fill_keys(array_keys($grouped), true);
+            // MDP contract: data_fields PATCHes must carry the complete value
+            // structure per schema (GET + merge + PATCH, with version).
+            if (!empty($payload['data']['attributes']['data_fields'])) {
+                $merged = $this->merge_data_fields(
+                    $entity_type,
+                    $uuid,
+                    $payload['data']['attributes']['data_fields']
+                );
 
-            return ['success' => true, 'message' => 'MDP sync successful', 'objects' => $objects];
-        } catch (RequestException $e) {
-            $body = '';
-            if ($e->hasResponse()) {
-                $body = (string) $e->getResponse()->getBody();
+                if ($merged === null) {
+                    return [
+                        'success' => false,
+                        'message' => 'Could not fetch current record to merge additional info data_fields',
+                        'objects' => array_fill_keys(array_keys($grouped), false),
+                    ];
+                }
+
+                $payload['data']['attributes']['data_fields'] = $merged;
             }
 
-            return [
-                'success' => false,
-                'message' => sprintf('API error (%d): %s', $e->getCode(), $body),
-                'objects' => array_fill_keys(array_keys($grouped), false),
-            ];
+            if (empty($payload['data']['attributes'])) {
+                return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
+            }
+
+            $endpoint = $entity_type === 'organization' ? "organizations/$uuid" : "people/$uuid";
+
+            try {
+                $client->patch($endpoint, ['json' => $payload]);
+
+                $objects = array_fill_keys(array_keys($grouped), true);
+
+                return ['success' => true, 'message' => 'MDP sync successful', 'objects' => $objects];
+            } catch (RequestException $e) {
+                $body = '';
+                if ($e->hasResponse()) {
+                    // Truncated: API error bodies can echo submitted values. No PII in logs.
+                    $body = substr((string) $e->getResponse()->getBody(), 0, 500);
+                }
+
+                return [
+                    'success' => false,
+                    'message' => sprintf('API error (%d): %s', $e->getCode(), $body),
+                    'objects' => array_fill_keys(array_keys($grouped), false),
+                ];
+            }
         } catch (\Throwable $e) {
             return [
                 'success' => false,
@@ -426,16 +475,22 @@ class MdpSyncEngine
                     break;
 
                 case 'additional_info':
-                    // Data fields (schema-based)
+                case 'org_additional_info':
+                    // Schema-based data fields. The MDP API validates each
+                    // data_field value against its JSON Schema, so targets are
+                    // property-level: 'data_field.<schema_slug>.<property>'.
+                    // Values are staged per schema slug; push_to_mdp() merges
+                    // them into the record's full data_fields before the PATCH.
                     $data_fields = [];
                     foreach ($fields as $field) {
-                        $schema_key = $this->extract_data_field_key($field['target_field']);
-                        if ($schema_key !== '') {
-                            $data_fields[] = [
-                                'schema_slug' => $schema_key,
-                                'value' => $field['value'],
-                            ];
+                        $parsed = $this->parse_data_field_target($field['target_field']);
+                        if ($parsed === null) {
+                            continue;
                         }
+                        $data_fields[$parsed['schema_slug']][] = [
+                            'property' => $parsed['property'],
+                            'value'    => $field['value'],
+                        ];
                     }
                     if (!empty($data_fields)) {
                         $attributes['data_fields'] = $data_fields;
@@ -443,18 +498,18 @@ class MdpSyncEngine
                     break;
 
                 case 'preferences':
-                    // Communications sublists
+                    // Communications sublists. The MDP API expects booleans;
+                    // GF entry values are strings ('1', 'true', ...).
                     $communications = [];
                     foreach ($fields as $field) {
                         $pref_key = $this->extract_communications_key($field['target_field']);
                         if ($pref_key === 'email') {
-                            $communications['email'] = $field['value'];
+                            $communications['email'] = $this->to_bool($field['value']);
                         } elseif ($pref_key !== '') {
-                            // Navigate into sublists
                             if (!isset($communications['sublists'])) {
                                 $communications['sublists'] = [];
                             }
-                            $communications['sublists'][$pref_key] = $field['value'];
+                            $communications['sublists'][$pref_key] = $this->to_bool($field['value']);
                         }
                     }
                     if (!empty($communications)) {
@@ -488,17 +543,138 @@ class MdpSyncEngine
     }
 
     /**
-     * Extract the schema key from a data_field value string.
+     * Parse a composite data_field target into schema slug + property.
      *
-     * 'data_field.custom-fields' → 'custom-fields'
+     * 'data_field.custom-fields.custom_field' →
+     * ['schema_slug' => 'custom-fields', 'property' => 'custom_field']
+     *
+     * @return array{schema_slug: string, property: string}|null
      */
-    protected function extract_data_field_key(string $field): string
+    protected function parse_data_field_target(string $field): ?array
     {
-        if (str_starts_with($field, 'data_field.')) {
-            return substr($field, strlen('data_field.'));
+        if (!str_starts_with($field, 'data_field.')) {
+            return null;
         }
 
-        return '';
+        $rest = substr($field, strlen('data_field.'));
+        $dot = strpos($rest, '.');
+        if ($dot === false || $dot === 0 || $dot === strlen($rest) - 1) {
+            return null;
+        }
+
+        return [
+            'schema_slug' => substr($rest, 0, $dot),
+            'property'    => substr($rest, $dot + 1),
+        ];
+    }
+
+    /**
+     * Merge staged property values into the record's full data_fields.
+     *
+     * Implements the MDP API GET + merge + PATCH contract: data_fields are
+     * complete JSON structures validated against schemas, so a partial PATCH
+     * could fail validation or wipe sibling properties. Existing entries keep
+     * their value object and version (409 record_conflict protection).
+     *
+     * @param string $entity_type 'person' or 'organization'.
+     * @param string $uuid        Entity UUID.
+     * @param array  $staged      map of schema_slug => list of {property, value}.
+     * @return array|null Full data_fields array for the PATCH, or null when the
+     *                    current record cannot be fetched.
+     */
+    protected function merge_data_fields(string $entity_type, string $uuid, array $staged): ?array
+    {
+        try {
+            $client = wicket_api_client();
+            $path = $entity_type === 'organization' ? "organizations/$uuid" : "people/$uuid";
+            $response = $client->get($path);
+            $body = is_array($response) ? $response : wicket_convert_obj_to_array($response);
+            $current = $body['data']['attributes']['data_fields'] ?? [];
+            if (!is_array($current)) {
+                $current = [];
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $type_map = [];
+        if (isset($this->discovery)) {
+            $type_map = $this->discovery->getPropertyTypeMap();
+        }
+
+        // Merge staged values into matching existing entries; preserve
+        // everything else untouched (including entries without schema_slug).
+        $pending = $staged;
+        $merged = [];
+        foreach (array_values($current) as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $slug = is_string($entry['schema_slug'] ?? null) ? $entry['schema_slug'] : '';
+            if ($slug !== '' && isset($pending[$slug])) {
+                $value = is_array($entry['value'] ?? null) ? $entry['value'] : [];
+                foreach ($pending[$slug] as $staged_prop) {
+                    $type_key = 'data_field.' . $slug . '.' . $staged_prop['property'];
+                    $value[$staged_prop['property']] = $this->cast_value(
+                        $staged_prop['value'],
+                        $type_map[$type_key] ?? ''
+                    );
+                }
+                $entry['value'] = $value;
+                unset($pending[$slug]);
+            }
+
+            $merged[] = $entry;
+        }
+
+        // Slugs with no existing entry become new data_fields
+        foreach ($pending as $slug => $staged_props) {
+            $value = [];
+            foreach ($staged_props as $staged_prop) {
+                $type_key = 'data_field.' . $slug . '.' . $staged_prop['property'];
+                $value[$staged_prop['property']] = $this->cast_value(
+                    $staged_prop['value'],
+                    $type_map[$type_key] ?? ''
+                );
+            }
+            $merged[] = [
+                'schema_slug' => $slug,
+                'value'       => $value,
+            ];
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Cast a submitted GF string to the schema property's expected type.
+     *
+     * @param mixed  $value Raw submitted value.
+     * @param string $type  'boolean'|'number'|'integer'|'string' (empty = leave as-is).
+     */
+    protected function cast_value(mixed $value, string $type): mixed
+    {
+        return match ($type) {
+            'boolean' => $this->to_bool($value),
+            'number'  => is_numeric($value) ? $value + 0 : $value,
+            'integer' => is_numeric($value) ? (int) $value : $value,
+            default   => $value,
+        };
+    }
+
+    /**
+     * Interpret a submitted string as a boolean.
+     *
+     * GF checkboxes submit '1' when checked and nothing when unchecked.
+     */
+    protected function to_bool(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'on', 'yes'], true);
     }
 
     /**

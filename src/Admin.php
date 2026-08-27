@@ -407,11 +407,23 @@ class Admin
     /**
      * Render the MDP Sync Status meta box on the entry detail page.
      *
-     * @param array $entry GF entry object.
-     * @param array $form  GF form object.
+     * GF invokes meta box callbacks as callback( object_array, meta_box )
+     * where object_array is ['form' => …, 'entry' => …, 'mode' => …].
+     *
+     * @param array $object_array Form/entry/mode array passed by do_meta_boxes().
+     * @param array $meta_box     Meta box definition.
      */
-    public static function render_mdp_sync_status_meta_box($entry, $form): void
+    public static function render_mdp_sync_status_meta_box($object_array, array $meta_box = []): void
     {
+        // Defensive: support a direct ($entry, $form) call shape too.
+        if (is_array($object_array) && array_key_exists('entry', $object_array)) {
+            $entry = $object_array['entry'];
+            $form = $object_array['form'] ?? [];
+        } else {
+            $entry = $object_array;
+            $form = $meta_box;
+        }
+
         $entry_id = (int) ($entry['id'] ?? 0);
         if ($entry_id <= 0) {
             echo '<p>' . esc_html__('No sync data available.', 'wicket-gf') . '</p>';
