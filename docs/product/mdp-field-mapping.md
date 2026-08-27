@@ -35,9 +35,11 @@ Select **Person** or **Organization**. This determines which MDP target objects 
 
 Select the form field that will contain the Person or Organization UUID. This is also a form-level setting, configured in the same section. At submission time the sync reads the UUID from this field's submitted value to locate the MDP record to update.
 
-The form cannot be saved while MDP Mapping is enabled on any field but no UUID Source Field is selected. The error message is: `Select a UUID field to enable MDP mapping.`
+The form cannot be saved in the Form Editor while MDP Mapping is enabled on any field but no UUID Source Field is selected. The error message is: `Select a UUID field to enable MDP mapping.` Configs written outside the editor (import, REST, CLI) are not blocked; at submission time they skip with a visible Skipped status until a UUID Source Field is set.
 
 If the UUID source field is empty at submission time, no MDP update is attempted. The entry is marked **Failed** and the failure is logged.
+
+A Target Object must belong to the form's Entity Type. The editor blocks the save with an error when a mapping points at an object from the other entity (for example a Person Profile mapping on a form switched to Organization). The sync engine also refuses to send such a mapping as a last-resort guard.
 
 ### Target Object
 
@@ -51,9 +53,11 @@ Select a target object from the dropdown (filtered by Entity Type):
 | **Org Profile** | Organization | Organization attributes | Legal Name |
 | **Org Additional Info** | Organization | Properties inside organization JSON Schemas | Same discovery as Additional Info |
 
-> Additional Info and Org Additional Info require an active MDP API connection to discover available fields. The Target Field list shows one entry per scalar property (text, number, boolean) inside each schema. Repeater (array/object) properties are not mappable from a single GF field and are hidden. If no fields appear, verify the Wicket base plugin is configured with valid API credentials.
+> Additional Info and Org Additional Info require an active MDP API connection to discover available fields. The Target Field list shows one entry per scalar property (text, number, boolean) inside each schema. Repeater (array/object) properties are not mappable from a single GF field and are hidden. If the API is unreachable, saved Additional Info and Preferences mappings are left untouched on save (never stripped on a failed discovery), but the editor blocks saving new mappings until the API responds.
 
-> The MDP API validates each additional-info value against its JSON Schema and requires complete `data_fields` structures on update. The sync fetches the record, merges your value into the matching schema entry (preserving sibling properties and the version), then patches. This prevents partial-update validation errors and accidental data loss.
+> Multi-value fields (checkbox, multi select) mapped to a Preference send only the first selected value, cast to a boolean.
+
+> The MDP API validates each additional-info value against its JSON Schema and requires complete `data_fields` structures on update. The sync fetches the record, merges your value into the matching schema entry (preserving sibling properties and the version, matching entries keyed by either `schema_slug` or a legacy `$schema` URN), then patches. This prevents partial-update validation errors and accidental data loss.
 
 ### Target Field
 

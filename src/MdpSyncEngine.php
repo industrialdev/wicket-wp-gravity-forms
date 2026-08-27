@@ -36,6 +36,17 @@ class MdpSyncEngine
     public const STATUS_SKIPPED = 'skipped';
 
     /**
+     * Target objects that belong to each entity type.
+     *
+     * A mapping whose target object is not in the entity's list would write
+     * person attributes to an organization record (or vice versa).
+     */
+    private const OBJECTS_BY_ENTITY = [
+        'person' => ['person_profile', 'additional_info', 'preferences'],
+        'organization' => ['org_profile', 'org_additional_info'],
+    ];
+
+    /**
      * Field discovery service.
      *
      * @var MdpFieldDiscovery
@@ -163,7 +174,10 @@ class MdpSyncEngine
         $form_config = $this->get_form_config($form);
 
         if (!$this->is_sync_eligible($form_config)) {
-            $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+            // Same noise guard as schedule_sync(): plain forms stay silent.
+            if ($this->form_has_mapped_fields($form)) {
+                $this->record_status($entry_id, self::STATUS_SKIPPED, 'Missing required form-level MDP config');
+            }
 
             return;
         }
@@ -246,6 +260,8 @@ class MdpSyncEngine
             return $mapped;
         }
 
+        $entity_type = (string) ($form['wicket_mdp_entity_type'] ?? '');
+
         foreach ($form['fields'] as $field) {
             if (!is_object($field)) {
                 continue;
@@ -263,8 +279,23 @@ class MdpSyncEngine
                 continue;
             }
 
+            // Last-resort guard: a mapping whose target object does not belong
+            // to the form's entity type would write person attributes to an
+            // organization record (or vice versa). Never send it.
+            if ($entity_type !== '' && !in_array($target_object, self::OBJECTS_BY_ENTITY[$entity_type] ?? [], true)) {
+                $this->write_log(
+                    (int) ($form['id'] ?? 0),
+                    (int) ($entry['id'] ?? 0),
+                    $entity_type,
+                    '',
+                    self::STATUS_SKIPPED,
+                    sprintf('Field %s: target object %s does not belong to entity type %s', $field->id ?? '', $target_object, $entity_type)
+                );
+                continue;
+            }
+
             // Get submitted value for this field
-            $value = $this->get_field_value($field, $entry);
+            $value = $this->get_field_value($field, $entry, $target_object);
             if ($value === '' || $value === null) {
                 continue;
             }
@@ -284,18 +315,23 @@ class MdpSyncEngine
      *
      * Uses GF's rgars() pattern for multi-input fields.
      *
-     * @param object $field GF field object.
-     * @param array  $entry GF entry object.
+     * @param object $field         GF field object.
+     * @param array  $entry         GF entry object.
+     * @param string $target_object Target object key. Boolean targets
+     *                              (preferences) take the first non-empty
+     *                              input value instead of joining inputs.
      * @return string|null
      */
-    protected function get_field_value(object $field, array $entry): ?string
+    protected function get_field_value(object $field, array $entry, string $target_object = ''): ?string
     {
         $field_id = (string) ($field->id ?? '');
         if ($field_id === '') {
             return null;
         }
 
-        // Multi-input fields (name, address) — combine all inputs
+        // Multi-input fields (name, address, checkbox) — combine all inputs,
+        // except for boolean targets where a joined string would silently
+        // collapse to false; only the first selected value is meaningful.
         if (!empty($field->inputs) && is_array($field->inputs)) {
             $parts = [];
             foreach ($field->inputs as $input) {
@@ -305,6 +341,9 @@ class MdpSyncEngine
                 }
                 $val = $entry[$input_id] ?? '';
                 if ($val !== '') {
+                    if ($target_object === 'preferences') {
+                        return (string) $val;
+                    }
                     $parts[] = $val;
                 }
             }
@@ -391,8 +430,6 @@ class MdpSyncEngine
         }
 
         try {
-            $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
-
             // MDP contract: data_fields PATCHes must carry the complete value
             // structure per schema (GET + merge + PATCH, with version).
             if (!empty($payload['data']['attributes']['data_fields'])) {
@@ -605,6 +642,14 @@ class MdpSyncEngine
         // Merge staged values into matching existing entries; preserve
         // everything else untouched (including entries without schema_slug).
         $pending = $staged;
+        // Slug -> schema UUID, so legacy entries keyed only by `$schema`
+        // (urn:uuid:<id>) can still be matched and merged instead of being
+        // duplicated as a second entry for the same schema.
+        $id_map = [];
+        if (isset($this->discovery)) {
+            $id_map = $this->discovery->getSchemaIdMap();
+        }
+
         $merged = [];
         foreach (array_values($current) as $entry) {
             if (!is_array($entry)) {
@@ -612,6 +657,16 @@ class MdpSyncEngine
             }
 
             $slug = is_string($entry['schema_slug'] ?? null) ? $entry['schema_slug'] : '';
+            if ($slug === '' && isset($entry['$schema']) && is_string($entry['$schema'])) {
+                // Legacy shape: resolve the slug from the $schema URN
+                foreach ($id_map as $map_slug => $uuid) {
+                    if ($uuid !== '' && str_contains($entry['$schema'], $uuid)) {
+                        $slug = $map_slug;
+                        break;
+                    }
+                }
+            }
+
             if ($slug !== '' && isset($pending[$slug])) {
                 $value = is_array($entry['value'] ?? null) ? $entry['value'] : [];
                 foreach ($pending[$slug] as $staged_prop) {
@@ -628,8 +683,11 @@ class MdpSyncEngine
             $merged[] = $entry;
         }
 
-        // Slugs with no existing entry become new data_fields
+        // Slugs with no existing entry become new data_fields. Cast the slug
+        // back to string: PHP coerces numeric array keys to int, which would
+        // emit an unquoted "schema_slug":2024 the API rejects.
         foreach ($pending as $slug => $staged_props) {
+            $slug = (string) $slug;
             $value = [];
             foreach ($staged_props as $staged_prop) {
                 $type_key = 'data_field.' . $slug . '.' . $staged_prop['property'];

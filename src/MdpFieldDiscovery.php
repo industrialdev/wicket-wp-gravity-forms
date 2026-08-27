@@ -24,11 +24,30 @@ class MdpFieldDiscovery
     /**
      * Transient key for caching json_schemas discovery results.
      *
-     * v2: entries are property-level with a 'type' key
-     * (see discoverSchemaFields()). Versioned so stale v1 transients
+     * v3: payload is ['properties' => rows, 'ids' => [slug => uuid]]
+     * (see discoverSchemaFields()). Versioned so stale v1/v2 transients
      * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v2';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v3';
+
+    /**
+     * Transient marking a recent discovery failure (short TTL).
+     *
+     * During an MDP API outage, this stops every form save from re-issuing
+     * a synchronous API call, and lets consumers distinguish "API failed"
+     * from "API answered, genuinely zero fields" before mutating anything.
+     */
+    private const CACHE_KEY_API_FAIL = 'wicket_gf_mdp_api_fail';
+
+    /**
+     * Short TTL for the failure marker (seconds).
+     */
+    private const CACHE_TTL_FAIL = 60;
+
+    /**
+     * Whether the most recent discovery attempt in this request failed.
+     */
+    private bool $discovery_failed = false;
 
     /**
      * Transient key for caching preferences discovery results.
@@ -185,19 +204,71 @@ class MdpFieldDiscovery
      */
     protected function getScalarSchemaProperties(): array
     {
+        return $this->getSchemaDiscoveryPayload()['properties'];
+    }
+
+    /**
+     * Map of schema slug to schema UUID (cached raw discovery).
+     *
+     * Lets the sync engine match legacy data_fields entries that only carry
+     * a `$schema` URN instead of `schema_slug`.
+     *
+     * @return array<string, string> slug => schema UUID
+     */
+    public function getSchemaIdMap(): array
+    {
+        return $this->getSchemaDiscoveryPayload()['ids'];
+    }
+
+    /**
+     * Whether the most recent discovery attempt failed (API unreachable,
+     * error response, or preference source unavailable).
+     *
+     * Consumers must treat an empty field list as "unknown" while this is
+     * true: never strip saved mappings based on a failed discovery.
+     */
+    public function discoveryFailed(): bool
+    {
+        if ($this->discovery_failed) {
+            return true;
+        }
+
+        return (bool) get_transient(self::CACHE_KEY_API_FAIL);
+    }
+
+    /**
+     * Cached discovery payload: scalar properties + slug-to-UUID map.
+     *
+     * @return array{properties: array<int, array{value: string, label: string, type: string}>, ids: array<string, string>}
+     */
+    protected function getSchemaDiscoveryPayload(): array
+    {
+        if (get_transient(self::CACHE_KEY_API_FAIL)) {
+            $this->discovery_failed = true;
+
+            return ['properties' => [], 'ids' => []];
+        }
+
         $cached = get_transient(self::CACHE_KEY_SCHEMAS);
-        if (is_array($cached)) {
+        if (is_array($cached) && isset($cached['properties'], $cached['ids'])) {
             return $cached;
         }
 
-        $fields = $this->discoverSchemaFields();
+        $payload = $this->discoverSchemaFields();
 
-        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
-        if (!empty($fields)) {
-            set_transient(self::CACHE_KEY_SCHEMAS, $fields, $ttl);
+        if ($payload['failed']) {
+            $this->discovery_failed = true;
+            set_transient(self::CACHE_KEY_API_FAIL, 1, self::CACHE_TTL_FAIL);
+
+            return ['properties' => [], 'ids' => []];
         }
 
-        return $fields;
+        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
+        if (!empty($payload['properties'])) {
+            set_transient(self::CACHE_KEY_SCHEMAS, $payload, $ttl);
+        }
+
+        return $payload;
     }
 
     /**
@@ -210,17 +281,31 @@ class MdpFieldDiscovery
      */
     public function getPreferencesFields(): array
     {
+        if (get_transient(self::CACHE_KEY_API_FAIL)) {
+            $this->discovery_failed = true;
+
+            return [];
+        }
+
         $cached = get_transient(self::CACHE_KEY_PREFS);
-        if ($cached !== false) {
+        if (is_array($cached) && $cached !== []) {
             return $cached;
         }
 
         $fields = $this->discoverPreferenceFields();
 
-        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
-        if (!empty($fields)) {
-            set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
+        if ($fields === []) {
+            // Empty preferences are ambiguous (no sublists configured vs no
+            // API access). Treat as failure so consumers never strip saved
+            // preference mappings on a suspected outage.
+            $this->discovery_failed = true;
+            set_transient(self::CACHE_KEY_API_FAIL, 1, self::CACHE_TTL_FAIL);
+
+            return [];
         }
+
+        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
+        set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
 
         return $fields;
     }
@@ -232,6 +317,7 @@ class MdpFieldDiscovery
     {
         delete_transient(self::CACHE_KEY_SCHEMAS);
         delete_transient(self::CACHE_KEY_PREFS);
+        delete_transient(self::CACHE_KEY_API_FAIL);
     }
 
     /**
@@ -243,33 +329,44 @@ class MdpFieldDiscovery
      * (repeaters) need structural values a single GF field cannot supply
      * and are skipped.
      *
-     * @return array<int, array{value: string, label: string, type: string}>
+     * @return array{properties: array<int, array{value: string, label: string, type: string}>, ids: array<string, string>, failed: bool}
      */
     protected function discoverSchemaFields(): array
     {
         if (!function_exists('wicket_api_client')) {
-            return [];
+            return ['properties' => [], 'ids' => [], 'failed' => true];
         }
 
         try {
             $client = wicket_api_client();
             if (!$client) {
-                return [];
+                return ['properties' => [], 'ids' => [], 'failed' => true];
             }
 
             $response = $client->get('json_schemas');
             $schemas = $response['data'] ?? [];
 
             if (empty($schemas) || !is_array($schemas)) {
-                return [];
+                // API answered but returned nothing usable. Treat as failure:
+                // a tenant with zero schemas is not a real state, and treating
+                // it as empty would let the sanitizer wipe saved mappings.
+                return ['properties' => [], 'ids' => [], 'failed' => true];
             }
 
             $fields = [];
+            $ids = [];
             foreach ($schemas as $schema) {
                 $attrs = $schema['attributes'] ?? [];
                 $key = $attrs['key'] ?? '';
                 if ($key === '') {
                     continue;
+                }
+
+                // Record the schema UUID so legacy `$schema`-keyed data_fields
+                // entries can be matched during merge.
+                $schema_id = is_string($schema['id'] ?? null) ? $schema['id'] : '';
+                if ($schema_id !== '') {
+                    $ids[sanitize_text_field($key)] = $schema_id;
                 }
 
                 // Try to get a human-readable label from ui_schema or fall back to key
@@ -313,9 +410,9 @@ class MdpFieldDiscovery
                 }
             }
 
-            return $fields;
+            return ['properties' => $fields, 'ids' => $ids, 'failed' => false];
         } catch (\Throwable $e) {
-            return [];
+            return ['properties' => [], 'ids' => [], 'failed' => true];
         }
     }
 
