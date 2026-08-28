@@ -1153,9 +1153,11 @@ class OrgSearchSelect extends \GF_Field
 
                                 // Element left the DOM — self-remove stale window listeners and bail.
                                 if (!checkbox || !form || !document.body.contains(checkbox)) {
-                                    window.removeEventListener("gform_post_render", setVisibility);
                                     window.removeEventListener("orgss-selection-made", setVisibility);
                                     window.removeEventListener("wicket:org_search_select_cleared", setVisibility);
+                                    if (window.jQuery) {
+                                        window.jQuery(document).off("gform_post_render.wicketOrgssField");
+                                    }
                                     return;
                                 }
 
@@ -1243,11 +1245,33 @@ class OrgSearchSelect extends \GF_Field
                                 selectedOrgInput.addEventListener("input", setVisibility);
                             }
 
-                            window.addEventListener("gform_post_render", setVisibility);
                             window.addEventListener("orgss-selection-made", setVisibility);
                             window.addEventListener("wicket:org_search_select_cleared", setVisibility);
 
-                            setVisibility();
+                            // gform_post_render is triggered through jQuery, so a native
+                            // window listener never fires. Bind through jQuery when present
+                            // so post-render and AJAX page-swap passes re-run us. Namespaced
+                            // and deduped: AJAX swaps re-execute this script, so each
+                            // instance replaces the previous binding instead of
+                            // accumulating handlers (the element-detach cleanup below cannot
+                            // fire for same-ID replacement nodes).
+                            if (window.jQuery) {
+                                window.jQuery(document)
+                                    .off("gform_post_render.wicketOrgssField")
+                                    .on("gform_post_render.wicketOrgssField", setVisibility);
+                            }
+
+                            // This script executes while the HTML is still parsing and the
+                            // GF page footer (carrying the next/submit buttons) renders after
+                            // this field. An immediate setVisibility() finds zero buttons and
+                            // leaves them visible. Defer the first run until the document is
+                            // fully parsed; the gform_post_render hook above re-runs after
+                            // GF finishes rendering.
+                            if (document.readyState === "loading") {
+                                document.addEventListener("DOMContentLoaded", setVisibility);
+                            } else {
+                                setVisibility();
+                            }
                         }());
                     </script>',
                     esc_attr($skip_checkbox_id),
