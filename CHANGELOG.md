@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.5.2] - 2026-08-28
+
+### Fixed
+- **orgss:** keep Next hidden on fresh ORGSS page load
+
+### Documentation
+- add PR description template #norelease
+
+
 ## [2.5.1] - 2026-08-21
 
 ### Fixed
