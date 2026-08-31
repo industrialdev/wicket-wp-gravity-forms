@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.5.3] - 2026-08-31
+
+### Added
+- **mdp:** complete field mapping sync per WWID-812 spec
+
+### Fixed
+- **mdp:** harden sync per peer review of WWID-812
+
+
 ## [2.5.2] - 2026-08-28
 
 ### Fixed
