@@ -31,6 +31,16 @@ All MDP configuration happens in the field settings panel when you select a fiel
 
 Select **Person** or **Organization**. This determines which MDP target objects are available. Entity Type is a form-level setting (shared across all fields), but is configured inline for convenience. Setting it on any field applies it to the entire form.
 
+### UUID Source Field
+
+Select the form field that will contain the Person or Organization UUID. This is also a form-level setting, configured in the same section. At submission time the sync reads the UUID from this field's submitted value to locate the MDP record to update.
+
+The form cannot be saved in the Form Editor while MDP Mapping is enabled on any field but no UUID Source Field is selected. The error message is: `Select a UUID field to enable MDP mapping.` Configs written outside the editor (import, REST, CLI) are not blocked; at submission time they skip with a visible Skipped status until a UUID Source Field is set.
+
+If the UUID source field is empty at submission time, no MDP update is attempted. The entry is marked **Failed** and the failure is logged.
+
+A Target Object must belong to the form's Entity Type. The editor blocks the save with an error when a mapping points at an object from the other entity (for example a Person Profile mapping on a form switched to Organization). The sync engine also refuses to send such a mapping as a last-resort guard.
+
 ### Target Object
 
 Select a target object from the dropdown (filtered by Entity Type):
@@ -38,11 +48,16 @@ Select a target object from the dropdown (filtered by Entity Type):
 | Target Object | Entity | Description | Example Fields |
 |---|---|---|---|
 | **Person Profile** | Person | Top-level person attributes | First Name, Last Name, Job Title, Language |
-| **Additional Info** | Person | Custom schema-based fields from Wicket | Discovers available schemas via MDP API |
-| **Preferences** | Person | Communication opt-in/sublist toggles | Email Opt-in, specific communication sublists |
+| **Additional Info** | Person | Properties inside custom JSON Schemas from Wicket | Schema property values discovered via MDP API |
+| **Preferences** | Person | Communication opt-in/sublist toggles (sent as booleans) | Email Opt-in, specific communication sublists |
 | **Org Profile** | Organization | Organization attributes | Legal Name |
+| **Org Additional Info** | Organization | Properties inside organization JSON Schemas | Same discovery as Additional Info |
 
-> Additional Info and Preferences require an active MDP API connection to discover available fields. If no fields appear, verify the Wicket base plugin is configured with valid API credentials.
+> Additional Info and Org Additional Info require an active MDP API connection to discover available fields. The Target Field list shows one entry per scalar property (text, number, boolean) inside each schema. Repeater (array/object) properties are not mappable from a single GF field and are hidden. If the API is unreachable, saved Additional Info and Preferences mappings are left untouched on save (never stripped on a failed discovery), but the editor blocks saving new mappings until the API responds.
+
+> Multi-value fields (checkbox, multi select) mapped to a Preference send only the first selected value, cast to a boolean.
+
+> The MDP API validates each additional-info value against its JSON Schema and requires complete `data_fields` structures on update. The sync fetches the record, merges your value into the matching schema entry (preserving sibling properties and the version, matching entries keyed by either `schema_slug` or a legacy `$schema` URN), then patches. This prevents partial-update validation errors and accidental data loss.
 
 ### Target Field
 
@@ -98,10 +113,12 @@ Log location is configured in the Wicket Base Plugin settings.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Status stays **Pending** | WP-Cron not firing | Ensure WP-Cron is enabled; check server cron if `DISABLE_WP_CRON` is set |
-| Status is **Skipped** | No Entity Type configured | Set Entity Type when enabling MDP Mapping on a field |
+| Status is **Skipped** | No Entity Type or UUID Source Field configured | Set both in the MDP Mapping section of any mapped field |
 | Status is **Failed** with API error | Invalid credentials or network issue | Check Wicket base plugin API configuration |
 | **Failed** with "Could not resolve entity UUID" | UUID source was empty at submission time | Ensure the UUID source field receives a value before form submit |
-| Target Field dropdown is empty | MDP API unreachable or no schemas/preferences defined | Verify API connectivity; additional info and preferences are discovered dynamically |
+| Target Field dropdown is empty | MDP API unreachable, or the person used for preference discovery has no communication sublists | Verify API connectivity; preferences discover from the browsing admin's person record when no config endpoint exists |
+| Save blocked with "Select a UUID field to enable MDP mapping." | MDP Mapping enabled without a form-level UUID Source Field | Pick a UUID Source Field in the MDP Mapping section |
+| Additional Info value rejected by schema validation | Submitted value does not match the property's schema type or enum | Use a GF field whose value matches the schema property (booleans as checkboxes, enum values as choices) |
 
 ## Re-Sync Wicket Member Fields
 

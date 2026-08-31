@@ -23,8 +23,31 @@ class MdpFieldDiscovery
 {
     /**
      * Transient key for caching json_schemas discovery results.
+     *
+     * v3: payload is ['properties' => rows, 'ids' => [slug => uuid]]
+     * (see discoverSchemaFields()). Versioned so stale v1/v2 transients
+     * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v3';
+
+    /**
+     * Transient marking a recent discovery failure (short TTL).
+     *
+     * During an MDP API outage, this stops every form save from re-issuing
+     * a synchronous API call, and lets consumers distinguish "API failed"
+     * from "API answered, genuinely zero fields" before mutating anything.
+     */
+    private const CACHE_KEY_API_FAIL = 'wicket_gf_mdp_api_fail';
+
+    /**
+     * Short TTL for the failure marker (seconds).
+     */
+    private const CACHE_TTL_FAIL = 60;
+
+    /**
+     * Whether the most recent discovery attempt in this request failed.
+     */
+    private bool $discovery_failed = false;
 
     /**
      * Transient key for caching preferences discovery results.
@@ -43,7 +66,7 @@ class MdpFieldDiscovery
      */
     public function getAllTargetFields(): array
     {
-        $objects = ['person_profile', 'org_profile', 'additional_info', 'preferences'];
+        $objects = ['person_profile', 'org_profile', 'additional_info', 'org_additional_info', 'preferences'];
         $result = [];
         foreach ($objects as $object) {
             $result[$object] = $this->getTargetFields($object);
@@ -61,11 +84,12 @@ class MdpFieldDiscovery
     public function getTargetFields(string $target_object): array
     {
         return match ($target_object) {
-            'person_profile'   => $this->getPersonProfileFields(),
-            'org_profile'      => $this->getOrgProfileFields(),
-            'additional_info'  => $this->getAdditionalInfoFields(),
-            'preferences'      => $this->getPreferencesFields(),
-            default            => [],
+            'person_profile'      => $this->getPersonProfileFields(),
+            'org_profile'         => $this->getOrgProfileFields(),
+            'additional_info'     => $this->getAdditionalInfoFields(),
+            'org_additional_info' => $this->getAdditionalInfoFields(),
+            'preferences'         => $this->getPreferencesFields(),
+            default               => [],
         };
     }
 
@@ -134,24 +158,117 @@ class MdpFieldDiscovery
     /**
      * Additional Info fields (dynamic discovery via json_schemas API).
      *
-     * Each JSON Schema key becomes a target field option.
+     * The MDP API validates each data_field `value` against the schema's
+     * JSON Schema, so a target must point at one scalar property inside a
+     * schema, not at the schema as a whole. Values use the composite
+     * format `data_field.<schema_key>.<property_name>`.
      * Results are cached as a transient for CACHE_TTL seconds.
      *
      * @return array<array{value: string, label: string}>
      */
     public function getAdditionalInfoFields(): array
     {
+        $fields = [];
+        foreach ($this->getScalarSchemaProperties() as $prop) {
+            $fields[] = [
+                'value' => $prop['value'],
+                'label' => $prop['label'],
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Map of additional-info target value string to schema property type.
+     *
+     * Used by the sync engine to cast submitted GF strings to the type the
+     * schema expects (booleans/numbers must not be sent as strings).
+     *
+     * @return array<string, string> value string => 'boolean'|'number'|'integer'|'string'
+     */
+    public function getPropertyTypeMap(): array
+    {
+        $map = [];
+        foreach ($this->getScalarSchemaProperties() as $prop) {
+            $map[$prop['value']] = $prop['type'];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Scalar properties across all JSON Schemas (cached raw discovery).
+     *
+     * @return array<int, array{value: string, label: string, type: string}>
+     */
+    protected function getScalarSchemaProperties(): array
+    {
+        return $this->getSchemaDiscoveryPayload()['properties'];
+    }
+
+    /**
+     * Map of schema slug to schema UUID (cached raw discovery).
+     *
+     * Lets the sync engine match legacy data_fields entries that only carry
+     * a `$schema` URN instead of `schema_slug`.
+     *
+     * @return array<string, string> slug => schema UUID
+     */
+    public function getSchemaIdMap(): array
+    {
+        return $this->getSchemaDiscoveryPayload()['ids'];
+    }
+
+    /**
+     * Whether the most recent discovery attempt failed (API unreachable,
+     * error response, or preference source unavailable).
+     *
+     * Consumers must treat an empty field list as "unknown" while this is
+     * true: never strip saved mappings based on a failed discovery.
+     */
+    public function discoveryFailed(): bool
+    {
+        if ($this->discovery_failed) {
+            return true;
+        }
+
+        return (bool) get_transient(self::CACHE_KEY_API_FAIL);
+    }
+
+    /**
+     * Cached discovery payload: scalar properties + slug-to-UUID map.
+     *
+     * @return array{properties: array<int, array{value: string, label: string, type: string}>, ids: array<string, string>}
+     */
+    protected function getSchemaDiscoveryPayload(): array
+    {
+        if (get_transient(self::CACHE_KEY_API_FAIL)) {
+            $this->discovery_failed = true;
+
+            return ['properties' => [], 'ids' => []];
+        }
+
         $cached = get_transient(self::CACHE_KEY_SCHEMAS);
-        if ($cached !== false) {
+        if (is_array($cached) && isset($cached['properties'], $cached['ids'])) {
             return $cached;
         }
 
-        $fields = $this->discoverSchemaFields();
+        $payload = $this->discoverSchemaFields();
+
+        if ($payload['failed']) {
+            $this->discovery_failed = true;
+            set_transient(self::CACHE_KEY_API_FAIL, 1, self::CACHE_TTL_FAIL);
+
+            return ['properties' => [], 'ids' => []];
+        }
 
         $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
-        set_transient(self::CACHE_KEY_SCHEMAS, $fields, $ttl);
+        if (!empty($payload['properties'])) {
+            set_transient(self::CACHE_KEY_SCHEMAS, $payload, $ttl);
+        }
 
-        return $fields;
+        return $payload;
     }
 
     /**
@@ -164,12 +281,28 @@ class MdpFieldDiscovery
      */
     public function getPreferencesFields(): array
     {
+        if (get_transient(self::CACHE_KEY_API_FAIL)) {
+            $this->discovery_failed = true;
+
+            return [];
+        }
+
         $cached = get_transient(self::CACHE_KEY_PREFS);
-        if ($cached !== false) {
+        if (is_array($cached) && $cached !== []) {
             return $cached;
         }
 
         $fields = $this->discoverPreferenceFields();
+
+        if ($fields === []) {
+            // Empty preferences are ambiguous (no sublists configured vs no
+            // API access). Treat as failure so consumers never strip saved
+            // preference mappings on a suspected outage.
+            $this->discovery_failed = true;
+            set_transient(self::CACHE_KEY_API_FAIL, 1, self::CACHE_TTL_FAIL);
+
+            return [];
+        }
 
         $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
         set_transient(self::CACHE_KEY_PREFS, $fields, $ttl);
@@ -184,41 +317,56 @@ class MdpFieldDiscovery
     {
         delete_transient(self::CACHE_KEY_SCHEMAS);
         delete_transient(self::CACHE_KEY_PREFS);
+        delete_transient(self::CACHE_KEY_API_FAIL);
     }
 
     /**
-     * Discover fields from JSON Schemas API endpoint.
+     * Discover scalar properties from the JSON Schemas API endpoint.
      *
-     * Fetches GET /json_schemas and maps each schema's key + title
-     * to the {value, label} format.
+     * Fetches GET /json_schemas and walks each schema's `properties`.
+     * Only scalar-typed properties are exposed (string, number, integer,
+     * boolean, or an enum with a scalar type). Array/object properties
+     * (repeaters) need structural values a single GF field cannot supply
+     * and are skipped.
      *
-     * @return array<array{value: string, label: string}>
+     * @return array{properties: array<int, array{value: string, label: string, type: string}>, ids: array<string, string>, failed: bool}
      */
     protected function discoverSchemaFields(): array
     {
         if (!function_exists('wicket_api_client')) {
-            return [];
+            return ['properties' => [], 'ids' => [], 'failed' => true];
         }
 
         try {
             $client = wicket_api_client();
             if (!$client) {
-                return [];
+                return ['properties' => [], 'ids' => [], 'failed' => true];
             }
 
             $response = $client->get('json_schemas');
             $schemas = $response['data'] ?? [];
 
             if (empty($schemas) || !is_array($schemas)) {
-                return [];
+                // API answered but returned nothing usable. Treat as failure:
+                // a tenant with zero schemas is not a real state, and treating
+                // it as empty would let the sanitizer wipe saved mappings.
+                return ['properties' => [], 'ids' => [], 'failed' => true];
             }
 
             $fields = [];
+            $ids = [];
             foreach ($schemas as $schema) {
                 $attrs = $schema['attributes'] ?? [];
                 $key = $attrs['key'] ?? '';
                 if ($key === '') {
                     continue;
+                }
+
+                // Record the schema UUID so legacy `$schema`-keyed data_fields
+                // entries can be matched during merge.
+                $schema_id = is_string($schema['id'] ?? null) ? $schema['id'] : '';
+                if ($schema_id !== '') {
+                    $ids[sanitize_text_field($key)] = $schema_id;
                 }
 
                 // Try to get a human-readable label from ui_schema or fall back to key
@@ -227,20 +375,44 @@ class MdpFieldDiscovery
                 // Prevents locale-dependent cache poisoning across admins.
                 $language = 'en';
 
-                $label = $uiSchema['ui:i18n']['label'][$language]
+                $schemaLabel = $uiSchema['ui:i18n']['label'][$language]
                     ?? $uiSchema['ui:i18n']['label']['en']
                     ?? $attrs['schema']['title']
                     ?? ucwords(str_replace(['_', '-'], ' ', $key));
 
-                $fields[] = [
-                    'value' => 'data_field.' . sanitize_text_field($key),
-                    'label' => sanitize_text_field($label),
-                ];
+                $properties = $attrs['schema']['properties'] ?? [];
+                if (!is_array($properties)) {
+                    continue;
+                }
+
+                foreach ($properties as $prop_name => $definition) {
+                    if (!is_array($definition)) {
+                        continue;
+                    }
+
+                    $type = is_string($definition['type'] ?? null) ? $definition['type'] : '';
+                    if (isset($definition['enum']) && $type === '') {
+                        $type = 'string';
+                    }
+
+                    if (!in_array($type, ['string', 'number', 'integer', 'boolean'], true)) {
+                        continue;
+                    }
+
+                    $propLabel = $definition['title']
+                        ?? ucwords(str_replace(['_', '-'], ' ', (string) $prop_name));
+
+                    $fields[] = [
+                        'value' => 'data_field.' . sanitize_text_field($key) . '.' . sanitize_text_field((string) $prop_name),
+                        'label' => sanitize_text_field($schemaLabel) . ': ' . sanitize_text_field($propLabel),
+                        'type'  => $type,
+                    ];
+                }
             }
 
-            return $fields;
+            return ['properties' => $fields, 'ids' => $ids, 'failed' => false];
         } catch (\Throwable $e) {
-            return [];
+            return ['properties' => [], 'ids' => [], 'failed' => true];
         }
     }
 
@@ -340,18 +512,16 @@ class MdpFieldDiscovery
         }
 
         try {
-            $person = $client->people->fetch($person_uuid);
-            if (function_exists('wicket_convert_obj_to_array')) {
-                $person_array = wicket_convert_obj_to_array($person);
-            } else {
-                $person_array = (array) $person;
-            }
+            // Raw GET, not the SDK fetch helper: the SDK model throws on some
+            // person payloads, and we only need the attributes object.
+            $response = $client->get("people/$person_uuid");
+            $person_array = is_array($response) ? $response : wicket_convert_obj_to_array($response);
 
-            $communications = $person_array['data']['communications'] ?? [];
+            $communications = $person_array['data']['attributes']['data']['communications'] ?? [];
             $sublists = $communications['sublists'] ?? [];
 
             if (!is_array($sublists)) {
-                return [];
+                $sublists = [];
             }
 
             $fields = [];
