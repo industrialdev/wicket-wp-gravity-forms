@@ -186,8 +186,10 @@ const WicketMDPAutoValidation = {
         // Use Wicket.ready to ensure we're working with the official API
         if (typeof window.Wicket !== 'undefined' && window.Wicket.ready) {
             window.Wicket.ready(() => {
-                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields
-                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target)');
+                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields.
+                // API Data Bind targets (wicket-gf-api-data-bind-target) carry their own fetched value;
+                // merging widget payloads into them corrupts the entry (e.g. NJBIA form 146 Employee Count).
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target):not(.wicket-gf-api-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target):not(.wicket-gf-api-data-bind-target)');
 
                 if (hiddenInputs.length > 0) {
                     this.log(`Updating ${hiddenInputs.length} hidden fields`, widgetData.incompleteRequiredFields);
@@ -720,8 +722,10 @@ const WicketMDPAutoValidation = {
             window.Wicket.ready(() => {
                 this.log('Updating all widget data before form submission');
 
-                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields
-                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target)');
+                // Find all hidden inputs that might contain widget data, but EXCLUDE data bind fields.
+                // API Data Bind targets (wicket-gf-api-data-bind-target) carry their own fetched value;
+                // merging widget payloads into them corrupts the entry (e.g. NJBIA form 146 Employee Count).
+                const hiddenInputs = document.querySelectorAll('input[type="hidden"][name*="wicket"]:not(.wicket-gf-hidden-data-bind-target):not(.wicket-gf-api-data-bind-target), input[type="hidden"][class*="wicket"]:not(.wicket-gf-hidden-data-bind-target):not(.wicket-gf-api-data-bind-target)');
 
                 hiddenInputs.forEach((input) => {
                     try {
