@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.5.4] - 2026-09-01
+
+### Fixed
+- stop widget validation payloads clobbering API Data Bind fields
+
+
 ## [2.5.3] - 2026-08-31
 
 ### Added
