@@ -308,6 +308,7 @@ class Wicket_Gf_Main
         add_action('gform_entries_first_column', [$this, 'entries_list_first_column_content'], 10, 5);
         add_filter('gform_get_field_value', [$this, 'gf_change_user_name'], 3);
         add_filter('gform_entry_detail_meta_boxes', [Admin::class, 'register_meta_box'], 10, 3);
+        add_action('admin_notices', [Admin::class, 'render_cron_notice']);
         add_filter('gform_confirmation_settings_fields', [$this, 'extend_confirmation_settings_fields'], 10, 3);
         add_filter('gform_pre_confirmation_save', [$this, 'save_self_redirect_confirmation'], 10, 3);
         add_filter('gform_confirmation', [$this, 'handle_self_redirect_confirmation'], 10, 4);
