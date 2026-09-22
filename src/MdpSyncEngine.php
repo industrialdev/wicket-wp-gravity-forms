@@ -149,7 +149,25 @@ class MdpSyncEngine
             }
         }
 
-        // Synchronous path: scheduling failed, or async disabled by filter
+        // Synchronous path: scheduling failed, or async disabled by filter.
+        // Started/terminal log pair: a "starting" line with no terminal after
+        // it means the request died mid-push.
+        if ($async) {
+            $this->log_line('warning', 'Async scheduling failed; falling back to synchronous push.', [
+                'form_id' => $form_id,
+                'entry_id' => $entry_id,
+                'entity_type' => $payload['entity_type'],
+                'uuid' => $uuid,
+            ]);
+        }
+
+        $this->log_line('debug', 'MDP sync push starting (synchronous).', [
+            'form_id' => $form_id,
+            'entry_id' => $entry_id,
+            'entity_type' => $payload['entity_type'],
+            'uuid' => $uuid,
+        ]);
+
         $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
         $this->record_sync_results($entry_id, $results, $log_ctx);
     }
@@ -175,6 +193,10 @@ class MdpSyncEngine
             return;
         }
 
+        // Started/terminal log pair: a "starting" line with no terminal after
+        // it means the cron run died mid-push.
+        $this->log_line('debug', 'MDP sync push starting (cron).', $log_ctx);
+
         $results = $this->push_to_mdp($entity_type, $uuid, $grouped);
         $this->record_sync_results($entry_id, $results, $log_ctx);
     }
@@ -194,10 +216,14 @@ class MdpSyncEngine
     public function process_overdue_syncs(): void
     {
         if (get_transient('doing_cron')) {
+            $this->log_line('debug', 'MDP sync drain skipped: a cron run is in flight.');
+
             return;
         }
 
         if (get_transient(self::DRAIN_LOCK)) {
+            $this->log_line('debug', 'MDP sync drain skipped: another drain holds the lock.');
+
             return;
         }
 
@@ -207,6 +233,8 @@ class MdpSyncEngine
         }
 
         set_transient(self::DRAIN_LOCK, 1, 5 * MINUTE_IN_SECONDS);
+
+        $processed = 0;
 
         foreach ($due as $event) {
             $args = $event['args'] ?? [];
@@ -219,26 +247,32 @@ class MdpSyncEngine
             if ($removed === false) {
                 // A real update_option failure, distinct from losing a race.
                 // The event stays queued; the next drain retries it.
-                $this->log_warning('MDP sync cron event could not be unscheduled; will retry on the next admin request.');
+                $this->log_line('warning', 'MDP sync cron event could not be unscheduled; will retry on the next admin request.');
                 continue;
             }
 
             if (!$removed) {
                 // A real cron run claimed it first.
+                $this->log_line('debug', 'MDP sync cron event was claimed by a concurrent run; skipped.');
                 continue;
             }
 
             $payload = $args[0] ?? null;
 
             if (!is_array($payload)) {
-                $this->log_warning('MDP sync cron event had a malformed payload; dropped.', ['payload_type' => gettype($payload)]);
+                $this->log_line('warning', 'MDP sync cron event had a malformed payload; dropped.', ['payload_type' => gettype($payload)]);
                 continue;
             }
 
             $this->process_scheduled_sync($payload);
+            $processed++;
         }
 
         delete_transient(self::DRAIN_LOCK);
+
+        if ($processed > 0) {
+            $this->log_line('info', 'MDP sync drain processed overdue event(s).', ['count' => $processed]);
+        }
     }
 
     /**
@@ -273,17 +307,17 @@ class MdpSyncEngine
     }
 
     /**
-     * Write a warning to the centralized Wicket log (Wicket()->log()).
+     * Write to the centralized Wicket log (Wicket()->log()).
      *
      * Falls back silently if Wicket() is not available.
      */
-    private function log_warning(string $message, array $context = []): void
+    private function log_line(string $level, string $message, array $context = []): void
     {
         if (!function_exists('Wicket')) {
             return;
         }
 
-        Wicket()->log()->warning($message, $context + ['source' => 'wicket-gf-mdp-sync']);
+        Wicket()->log()->{$level}($message, $context + ['source' => 'wicket-gf-mdp-sync']);
     }
 
     /**

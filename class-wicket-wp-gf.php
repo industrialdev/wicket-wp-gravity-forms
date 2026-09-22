@@ -2845,7 +2845,16 @@ class Wicket_Gf_Main
             'methods'  => 'POST',
             'callback' => ['Wicket_Gf_Main', 'resync_wicket_member_fields'],
             'permission_callback' => function () {
-                return current_user_can('gravityforms_edit_forms');
+                $allowed = current_user_can('gravityforms_edit_forms');
+
+                if (!$allowed && function_exists('Wicket')) {
+                    Wicket()->log()->warning('Resync route denied.', [
+                        'source'  => 'wicket-gf-mdp-sync',
+                        'user_id' => get_current_user_id(),
+                    ]);
+                }
+
+                return $allowed;
             },
         ]);
     }
@@ -2982,6 +2991,14 @@ class Wicket_Gf_Main
     {
         // Implementation for resyncing member fields
         update_option('wicket_gf_member_fields', []);
+
+        if (function_exists('Wicket')) {
+            Wicket()->log()->info('Field discovery cache flushed via resync route.', [
+                'source'  => 'wicket-gf-mdp-sync',
+                'user_id' => get_current_user_id(),
+            ]);
+        }
+
         wp_send_json_success();
     }
 }
