@@ -552,13 +552,16 @@ class MdpSyncEngine
             return ['success' => false, 'message' => 'API client init failed: ' . $e->getMessage(), 'objects' => []];
         }
 
-        $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
-
-        if (empty($payload['data']['attributes'])) {
-            return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
-        }
-
         try {
+            // Guarded with the request below: this runs on every mapped
+            // submission now, and a TypeError here must degrade to a failed
+            // sync status, never a 500 after the entry was saved.
+            $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
+
+            if (empty($payload['data']['attributes'])) {
+                return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
+            }
+
             // MDP contract: data_fields PATCHes must carry the complete value
             // structure per schema (GET + merge + PATCH, with version).
             if (!empty($payload['data']['attributes']['data_fields'])) {
