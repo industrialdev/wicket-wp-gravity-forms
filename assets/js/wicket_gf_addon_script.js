@@ -12,6 +12,9 @@ jQuery(document).ready(function ($) {
             method: "POST",
             body: formdata,
             redirect: "follow",
+            headers: {
+                "X-WP-Nonce": wicketGfAddonSettings.restNonce,
+            },
         };
 
         fetch("/wp-json/wicket-gf/v1/resync-member-fields", requestOptions)

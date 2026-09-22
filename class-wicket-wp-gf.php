@@ -1563,6 +1563,10 @@ class Wicket_Gf_Main
                 if ($_GET['subview'] == 'wicketmap') {
                     wp_enqueue_style('wicket-gf-addon-style', plugins_url('assets/css/wicket_gf_addon_styles.css', __FILE__), [], WICKET_WP_GF_VERSION, 'all');
                     wp_enqueue_script('wicket-gf-addon-script', plugins_url('assets/js/wicket_gf_addon_script.js', __FILE__), ['jquery'], null, true);
+                    // Cookie-authenticated REST writes need the wp_rest nonce.
+                    wp_localize_script('wicket-gf-addon-script', 'wicketGfAddonSettings', [
+                        'restNonce' => wp_create_nonce('wp_rest'),
+                    ]);
                 }
             }
 
@@ -2841,7 +2845,7 @@ class Wicket_Gf_Main
             'methods'  => 'POST',
             'callback' => ['Wicket_Gf_Main', 'resync_wicket_member_fields'],
             'permission_callback' => function () {
-                return true;
+                return current_user_can('gravityforms_edit_forms');
             },
         ]);
     }
