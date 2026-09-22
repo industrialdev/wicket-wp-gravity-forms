@@ -80,10 +80,13 @@ class MdpSyncEngine
     }
 
     /**
-     * Schedule async MDP sync after form submission.
+     * Push mapped values to MDP after form submission.
      *
-     * Records PENDING status immediately, then schedules background processing.
-     * Falls back to synchronous processing if scheduling fails.
+     * Default is a synchronous push inside the submission request, with the
+     * terminal status written before the response. The
+     * wicket_gf_mdp_sync_async filter opts a site into the WP-Cron deferred
+     * path instead; if scheduling then fails, processing still falls back
+     * to synchronous.
      *
      * @param array $entry The GF entry object.
      * @param array $form  The GF form object.
@@ -132,10 +135,10 @@ class MdpSyncEngine
             'grouped'     => $grouped,
         ];
 
-        // Async is the default. The filter lets a site force synchronous
-        // pushes (no WP-Cron dependency); schedule_sync then behaves like
-        // process_submission().
-        $async = apply_filters('wicket_gf_mdp_sync_async', true, $form, $entry);
+        // Synchronous push is the default: submission requests complete with
+        // the terminal status already recorded, with no WP-Cron dependency.
+        // The filter opts a site into the deferred cron path instead.
+        $async = apply_filters('wicket_gf_mdp_sync_async', false, $form, $entry);
 
         if ($async) {
             // Record PENDING status immediately for UI visibility
