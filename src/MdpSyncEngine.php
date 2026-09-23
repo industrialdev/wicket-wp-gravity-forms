@@ -70,6 +70,12 @@ class MdpSyncEngine
     private const DRAIN_LOCK = 'wicket_gf_mdp_sync_drain_lock';
 
     /**
+     * Max due events drained per admin request. The rest stay due and the
+     * next request continues, so a backlog never stretches one response.
+     */
+    private const DRAIN_BATCH_LIMIT = 5;
+
+    /**
      * Register hooks: after_submission (schedules async) + cron callback.
      */
     public function register(): void
@@ -212,9 +218,20 @@ class MdpSyncEngine
      *
      * The core doing_cron lock is honored: an external wp-cron.php run in
      * flight owns the queue.
+     *
+     * Runs only on real wp-admin page loads by managers. admin-ajax fires
+     * admin_init for anonymous traffic too (heartbeat, front-end handlers);
+     * queue reads and blocking MDP pushes never happen in those requests.
+     * admin-post.php nopriv handlers also reach admin_init without
+     * DOING_AJAX, so the capability check is what closes them: never drop
+     * it believing the ajax check covers anonymous traffic.
      */
     public function process_overdue_syncs(): void
     {
+        if (wp_doing_ajax() || !current_user_can('manage_options')) {
+            return;
+        }
+
         if (get_transient('doing_cron')) {
             $this->log_line('debug', 'MDP sync drain skipped: a cron run is in flight.');
 
@@ -227,7 +244,7 @@ class MdpSyncEngine
             return;
         }
 
-        $due = self::due_sync_events();
+        $due = array_slice(self::due_sync_events(), 0, self::DRAIN_BATCH_LIMIT);
         if (empty($due)) {
             return;
         }
