@@ -5,6 +5,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.6.0] - 2026-09-25
+
+### Added
+- add lifecycle logging for MDP sync drain, pushes, and resync
+
+### Fixed
+- drain MDP syncs only on manager page loads, max five per request
+- guard payload build in sync push, surface resync failures
+- default MDP field sync to synchronous submission-time push
+- gate resync-member-fields route behind GF edit capability
+- recover syncs stranded by disabled WP-Cron; checkbox first-wins
+
+
 ## [2.5.4] - 2026-09-01
 
 ### Fixed
