@@ -61,7 +61,19 @@ class MdpSyncEngine
     /**
      * Cron hook name for async MDP sync processing.
      */
-    private const CRON_HOOK = 'wicket_gf_mdp_sync_process';
+    public const CRON_HOOK = 'wicket_gf_mdp_sync_process';
+
+    /**
+     * Transient lock so concurrent admin requests do not drain the same
+     * overdue sync events twice.
+     */
+    private const DRAIN_LOCK = 'wicket_gf_mdp_sync_drain_lock';
+
+    /**
+     * Max due events drained per admin request. The rest stay due and the
+     * next request continues, so a backlog never stretches one response.
+     */
+    private const DRAIN_BATCH_LIMIT = 5;
 
     /**
      * Register hooks: after_submission (schedules async) + cron callback.
@@ -70,13 +82,17 @@ class MdpSyncEngine
     {
         add_action('gform_after_submission', [$this, 'schedule_sync'], 10, 2);
         add_action(self::CRON_HOOK, [$this, 'process_scheduled_sync'], 10, 1);
+        add_action('admin_init', [$this, 'process_overdue_syncs']);
     }
 
     /**
-     * Schedule async MDP sync after form submission.
+     * Push mapped values to MDP after form submission.
      *
-     * Records PENDING status immediately, then schedules background processing.
-     * Falls back to synchronous processing if scheduling fails.
+     * Default is a synchronous push inside the submission request, with the
+     * terminal status written before the response. The
+     * wicket_gf_mdp_sync_async filter opts a site into the WP-Cron deferred
+     * path instead; if scheduling then fails, processing still falls back
+     * to synchronous.
      *
      * @param array $entry The GF entry object.
      * @param array $form  The GF form object.
@@ -115,9 +131,6 @@ class MdpSyncEngine
 
         $log_ctx['uuid'] = $uuid;
 
-        // Record PENDING status immediately for UI visibility
-        $this->record_status($entry_id, self::STATUS_PENDING, 'Scheduled for async MDP sync', $log_ctx);
-
         // Prepare minimal payload for the cron job
         $grouped = $this->group_by_target_object($mapped_values);
         $payload = [
@@ -128,13 +141,41 @@ class MdpSyncEngine
             'grouped'     => $grouped,
         ];
 
-        $scheduled = wp_schedule_single_event(time(), self::CRON_HOOK, [$payload]);
+        // Synchronous push is the default: submission requests complete with
+        // the terminal status already recorded, with no WP-Cron dependency.
+        // The filter opts a site into the deferred cron path instead.
+        $async = apply_filters('wicket_gf_mdp_sync_async', false, $form, $entry);
 
-        // Fallback: if scheduling fails, process synchronously
-        if ($scheduled === false) {
-            $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
-            $this->record_sync_results($entry_id, $results, $log_ctx);
+        if ($async) {
+            // Record PENDING status immediately for UI visibility
+            $this->record_status($entry_id, self::STATUS_PENDING, 'Scheduled for async MDP sync', $log_ctx);
+
+            if (wp_schedule_single_event(time(), self::CRON_HOOK, [$payload]) !== false) {
+                return;
+            }
         }
+
+        // Synchronous path: scheduling failed, or async disabled by filter.
+        // Started/terminal log pair: a "starting" line with no terminal after
+        // it means the request died mid-push.
+        if ($async) {
+            $this->log_line('warning', 'Async scheduling failed; falling back to synchronous push.', [
+                'form_id' => $form_id,
+                'entry_id' => $entry_id,
+                'entity_type' => $payload['entity_type'],
+                'uuid' => $uuid,
+            ]);
+        }
+
+        $this->log_line('debug', 'MDP sync push starting (synchronous).', [
+            'form_id' => $form_id,
+            'entry_id' => $entry_id,
+            'entity_type' => $payload['entity_type'],
+            'uuid' => $uuid,
+        ]);
+
+        $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
+        $this->record_sync_results($entry_id, $results, $log_ctx);
     }
 
     /**
@@ -158,8 +199,142 @@ class MdpSyncEngine
             return;
         }
 
+        // Started/terminal log pair: a "starting" line with no terminal after
+        // it means the cron run died mid-push.
+        $this->log_line('debug', 'MDP sync push starting (cron).', $log_ctx);
+
         $results = $this->push_to_mdp($entity_type, $uuid, $grouped);
         $this->record_sync_results($entry_id, $results, $log_ctx);
+    }
+
+    /**
+     * Drain sync events that WP-Cron never ran.
+     *
+     * Common pattern: DISABLE_WP_CRON=true plus an external trigger hitting
+     * wp-cron.php. When that trigger is missing or late, nothing executes
+     * cron events and scheduled syncs sit at PENDING forever. Admin requests
+     * pick up events that are due now and process them inline, so a
+     * submission is never stranded behind a dead cron pipeline.
+     *
+     * The core doing_cron lock is honored: an external wp-cron.php run in
+     * flight owns the queue.
+     *
+     * Runs only on real wp-admin page loads by managers. admin-ajax fires
+     * admin_init for anonymous traffic too (heartbeat, front-end handlers);
+     * queue reads and blocking MDP pushes never happen in those requests.
+     * admin-post.php nopriv handlers also reach admin_init without
+     * DOING_AJAX, so the capability check is what closes them: never drop
+     * it believing the ajax check covers anonymous traffic.
+     */
+    public function process_overdue_syncs(): void
+    {
+        if (wp_doing_ajax() || !current_user_can('manage_options')) {
+            return;
+        }
+
+        if (get_transient('doing_cron')) {
+            $this->log_line('debug', 'MDP sync drain skipped: a cron run is in flight.');
+
+            return;
+        }
+
+        if (get_transient(self::DRAIN_LOCK)) {
+            $this->log_line('debug', 'MDP sync drain skipped: another drain holds the lock.');
+
+            return;
+        }
+
+        $due = array_slice(self::due_sync_events(), 0, self::DRAIN_BATCH_LIMIT);
+        if (empty($due)) {
+            return;
+        }
+
+        set_transient(self::DRAIN_LOCK, 1, 5 * MINUTE_IN_SECONDS);
+
+        $processed = 0;
+
+        foreach ($due as $event) {
+            $args = $event['args'] ?? [];
+
+            // Claim before firing. Core removes an event from the queue
+            // before running it, so matching that order closes the window
+            // where a concurrent wp-cron.php run would fire it a second time.
+            $removed = wp_clear_scheduled_hook(self::CRON_HOOK, $args);
+
+            if ($removed === false) {
+                // A real update_option failure, distinct from losing a race.
+                // The event stays queued; the next drain retries it.
+                $this->log_line('warning', 'MDP sync cron event could not be unscheduled; will retry on the next admin request.');
+                continue;
+            }
+
+            if (!$removed) {
+                // A real cron run claimed it first.
+                $this->log_line('debug', 'MDP sync cron event was claimed by a concurrent run; skipped.');
+                continue;
+            }
+
+            $payload = $args[0] ?? null;
+
+            if (!is_array($payload)) {
+                $this->log_line('warning', 'MDP sync cron event had a malformed payload; dropped.', ['payload_type' => gettype($payload)]);
+                continue;
+            }
+
+            $this->process_scheduled_sync($payload);
+            $processed++;
+        }
+
+        delete_transient(self::DRAIN_LOCK);
+
+        if ($processed > 0) {
+            $this->log_line('info', 'MDP sync drain processed overdue event(s).', ['count' => $processed]);
+        }
+    }
+
+    /**
+     * Count of due sync events (consumed by the admin cron notice).
+     */
+    public static function count_due_syncs(): int
+    {
+        return count(self::due_sync_events());
+    }
+
+    /**
+     * Sync events due right now, flattened across timestamps.
+     *
+     * wp_get_ready_cron_jobs() returns [timestamp => [hook => [key => event]]],
+     * not a hook-keyed array.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function due_sync_events(): array
+    {
+        $events = [];
+
+        foreach (wp_get_ready_cron_jobs() as $cronhooks) {
+            foreach ($cronhooks[self::CRON_HOOK] ?? [] as $event) {
+                if (is_array($event)) {
+                    $events[] = $event;
+                }
+            }
+        }
+
+        return $events;
+    }
+
+    /**
+     * Write to the centralized Wicket log (Wicket()->log()).
+     *
+     * Falls back silently if Wicket() is not available.
+     */
+    private function log_line(string $level, string $message, array $context = []): void
+    {
+        if (!function_exists('Wicket')) {
+            return;
+        }
+
+        Wicket()->log()->{$level}($message, $context + ['source' => 'wicket-gf-mdp-sync']);
     }
 
     /**
@@ -317,9 +492,11 @@ class MdpSyncEngine
      *
      * @param object $field         GF field object.
      * @param array  $entry         GF entry object.
-     * @param string $target_object Target object key. Boolean targets
-     *                              (preferences) take the first non-empty
-     *                              input value instead of joining inputs.
+     * @param string $target_object Target object key. Preferences targets and
+     *                              checkbox fields take the first non-empty
+     *                              input value instead of joining inputs: a
+     *                              checkbox is a set of discrete choices, not
+     *                              parts of one value.
      * @return string|null
      */
     protected function get_field_value(object $field, array $entry, string $target_object = ''): ?string
@@ -329,9 +506,12 @@ class MdpSyncEngine
             return null;
         }
 
-        // Multi-input fields (name, address, checkbox) — combine all inputs,
-        // except for boolean targets where a joined string would silently
-        // collapse to false; only the first selected value is meaningful.
+        // Multi-input fields (name, address, checkbox): name/address inputs
+        // are parts of one value and join with a space. A checkbox is a set
+        // of discrete choices, so only the first selected choice is sent
+        // (joined choices would produce a value no MDP property accepts).
+        $is_checkbox = ($field->type ?? '') === 'checkbox';
+
         if (!empty($field->inputs) && is_array($field->inputs)) {
             $parts = [];
             foreach ($field->inputs as $input) {
@@ -341,7 +521,7 @@ class MdpSyncEngine
                 }
                 $val = $entry[$input_id] ?? '';
                 if ($val !== '') {
-                    if ($target_object === 'preferences') {
+                    if ($target_object === 'preferences' || $is_checkbox) {
                         return (string) $val;
                     }
                     $parts[] = $val;
@@ -423,13 +603,16 @@ class MdpSyncEngine
             return ['success' => false, 'message' => 'API client init failed: ' . $e->getMessage(), 'objects' => []];
         }
 
-        $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
-
-        if (empty($payload['data']['attributes'])) {
-            return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
-        }
-
         try {
+            // Guarded with the request below: this runs on every mapped
+            // submission now, and a TypeError here must degrade to a failed
+            // sync status, never a 500 after the entry was saved.
+            $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
+
+            if (empty($payload['data']['attributes'])) {
+                return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
+            }
+
             // MDP contract: data_fields PATCHes must carry the complete value
             // structure per schema (GET + merge + PATCH, with version).
             if (!empty($payload['data']['attributes']['data_fields'])) {

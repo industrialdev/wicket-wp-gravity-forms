@@ -12,11 +12,24 @@ jQuery(document).ready(function ($) {
             method: "POST",
             body: formdata,
             redirect: "follow",
+            headers: {
+                "X-WP-Nonce": wicketGfAddonSettings.restNonce,
+            },
         };
 
         fetch("/wp-json/wicket-gf/v1/resync-member-fields", requestOptions)
-            .then((response) => response.text())
+            .then((response) => {
+                if (!response.ok) {
+                    // Stale nonce or lost capability: a reload alone will not fix it
+                    window.alert("Field resync failed. Reload the page and try again.");
+                    return null;
+                }
+                return response.text();
+            })
             .then((result) => {
+                if (result === null) {
+                    return;
+                }
                 let queryString = window.location.search;
                 let urlParams = new URLSearchParams(queryString);
                 if (

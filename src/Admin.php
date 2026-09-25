@@ -492,6 +492,47 @@ class Admin
         echo '</div>';
     }
 
+    /**
+     * Warn when scheduled MDP syncs are stranded.
+     *
+     * DISABLE_WP_CRON=true sites depend on an external trigger hitting
+     * wp-cron.php. When that trigger is missing or late, sync events pile
+     * up due and entries sit at Pending. Point the admin at the manual URL
+     * so a browser visit can run the queue immediately.
+     */
+    public static function render_cron_notice(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        if (!defined('DISABLE_WP_CRON') || !DISABLE_WP_CRON) {
+            return;
+        }
+
+        $count = MdpSyncEngine::count_due_syncs();
+        if ($count === 0) {
+            return;
+        }
+
+        $cron_url = site_url('wp-cron.php');
+
+        printf(
+            '<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s</p></div>',
+            esc_html__('MDP sync waiting on WP-Cron:', 'wicket-gf'),
+            sprintf(
+                esc_html(_n(
+                    '%1$d sync event is due but WP-Cron is disabled (DISABLE_WP_CRON). Open %2$s in your browser to run it now, or add an external cron hitting that URL every minute.',
+                    '%1$d sync events are due but WP-Cron is disabled (DISABLE_WP_CRON). Open %2$s in your browser to run them now, or add an external cron hitting that URL every minute.',
+                    $count,
+                    'wicket-gf'
+                )),
+                $count,
+                '<code>' . esc_url($cron_url) . '</code>'
+            )
+        );
+    }
+
     public static function render_custom_meta_box($entry, $form)
     {
         echo '<div class="wicket-gf-admin__custom-meta inside gf_entry_wrap" style="margin-bottom:1em;">';
