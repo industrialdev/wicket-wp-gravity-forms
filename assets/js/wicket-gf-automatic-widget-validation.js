@@ -63,6 +63,13 @@ const WicketMDPAutoValidation = {
         const forceLoggingFromQuery = window.location.search.indexOf('wicketGfDebug=1') !== -1;
         this.enableLogging = Boolean(forceLoggingFromQuery);
         this.i18n = Object.assign({}, this.i18n, config.i18n || {});
+        // PHP-provided clauses per resource key (from the widget's
+        // requiredResources config): 'an address of type "Mailing"'. The
+        // banner prints these instead of bare key labels so the required
+        // type is visible (WWID-2641). Values arrive HTML-escaped.
+        this.resourceClauses = (config.resourceClauses && typeof config.resourceClauses === 'object')
+            ? config.resourceClauses
+            : {};
 
         this.log('Initializing automatic MDP widget validation');
         this.log('Configuration:', {
@@ -1088,10 +1095,23 @@ const WicketMDPAutoValidation = {
 
         // Format as a bulleted list
         const bulletList = missingItems
-            .map(item => `<li>${this.formatFieldName(item)}</li>`)
+            .map(item => `<li>${this.formatMissingItem(item)}</li>`)
             .join('');
 
         return `<ul style="margin: 0 0 0 16px; padding: 0; list-style-type: disc;">${bulletList}</ul>`;
+    },
+
+    /**
+     * Render one missing item. Resource keys with a PHP-provided clause name
+     * the required type(s) ("an address of type \"Mailing\""); everything
+     * else keeps the label formatter.
+     */
+    formatMissingItem(item) {
+        const clause = this.resourceClauses ? this.resourceClauses[item] : null;
+        if (clause) {
+            return clause;
+        }
+        return this.formatFieldName(item);
     },
 
     /**

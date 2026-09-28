@@ -514,37 +514,18 @@ jQuery(document).ready(function($) {
             return null;
         }
 
-        $config = json_decode($required_resources_json, true);
-        if (!is_array($config)) {
+        $available = self::resource_requirement_clauses($required_resources_json);
+        if ($available === []) {
             return null;
         }
 
         $clauses = [];
         foreach ($incomplete as $resource_key) {
-            if (!is_string($resource_key) || !isset(self::INCOMPLETE_RESOURCE_LABELS[$resource_key])) {
+            if (!is_string($resource_key) || !isset($available[$resource_key])) {
                 continue;
             }
 
-            $clause = self::INCOMPLETE_RESOURCE_LABELS[$resource_key];
-            $types = $config[$resource_key] ?? null;
-            if (is_string($types)) {
-                $types = [$types];
-            }
-
-            if (is_array($types) && count($types) > 0) {
-                $names = [];
-                foreach ($types as $type) {
-                    if (is_string($type) && trim($type) !== '') {
-                        $names[] = '"' . esc_html(self::humanize_type_slug($type)) . '"';
-                    }
-                }
-
-                if ($names !== []) {
-                    $clause .= ' of type ' . implode(' or ', array_unique($names));
-                }
-            }
-
-            $clauses[] = $clause;
+            $clauses[] = $available[$resource_key];
         }
 
         if ($clauses === []) {
@@ -556,6 +537,150 @@ jQuery(document).ready(function($) {
         }
 
         return sprintf(__('The organization profile is missing: %s.', 'wicket-gf'), implode(', ', $clauses));
+    }
+
+    /**
+     * Map every known resource key in the config to its humanized clause
+     * ("addresses" => 'an address of type "Mailing"'). Shared by the
+     * validation message and the client-side banner: the auto-validation JS
+     * renders incomplete resource keys itself, so the localized config hands
+     * it these clauses instead of letting it print bare key labels that hide
+     * the required type (WWID-2641). Type names are escaped because both
+     * consumers render the text as HTML.
+     */
+    public static function resource_requirement_clauses(string $required_resources_json): array
+    {
+        $config = json_decode($required_resources_json, true);
+        if (!is_array($config)) {
+            return [];
+        }
+
+        $clauses = [];
+        foreach ($config as $resource_key => $types) {
+            if (!is_string($resource_key) || !isset(self::INCOMPLETE_RESOURCE_LABELS[$resource_key])) {
+                continue;
+            }
+
+            $clauses[$resource_key] = self::clause_for_resource($resource_key, $types);
+        }
+
+        return $clauses;
+    }
+
+    /**
+     * Merge every widget's required-resources config on the form into one
+     * clause map for the shared banner. The banner JS keeps a flat list of
+     * incomplete resource keys across all widgets (person, org), so when two
+     * configured widgets demand different types for the same resource, the
+     * type naming degrades to the typeless clause: a wrong typed demand is
+     * more misleading than no type at all.
+     *
+     * @param array<int, string> $required_resources_json_list Raw JSON configs.
+     * @return array<string, string>
+     */
+    public static function merged_resource_clauses(array $required_resources_json_list): array
+    {
+        $type_sets = [];
+        $conflicted = [];
+
+        foreach ($required_resources_json_list as $config_json) {
+            $config = json_decode((string) $config_json, true);
+            if (!is_array($config)) {
+                continue;
+            }
+
+            foreach ($config as $resource_key => $types) {
+                if (!is_string($resource_key) || !isset(self::INCOMPLETE_RESOURCE_LABELS[$resource_key])) {
+                    continue;
+                }
+
+                if (is_string($types)) {
+                    $types = [$types];
+                }
+                if (!is_array($types)) {
+                    $types = [];
+                }
+
+                $types = array_values(array_unique(array_filter(
+                    array_map(static fn ($type): string => is_string($type) ? trim($type) : '', $types),
+                    static fn (string $type): bool => $type !== ''
+                )));
+
+                if (!array_key_exists($resource_key, $type_sets)) {
+                    $type_sets[$resource_key] = $types;
+                    continue;
+                }
+
+                // Order-insensitive equality: the display keeps the first
+                // config's authored order.
+                $known = $type_sets[$resource_key];
+                $sorted_known = $known;
+                $sorted_types = $types;
+                sort($sorted_known);
+                sort($sorted_types);
+
+                if ($sorted_known !== $sorted_types) {
+                    $conflicted[$resource_key] = true;
+                }
+            }
+        }
+
+        $clauses = [];
+        foreach ($type_sets as $resource_key => $types) {
+            $clauses[$resource_key] = self::clause_for_resource(
+                $resource_key,
+                isset($conflicted[$resource_key]) ? [] : $types
+            );
+        }
+
+        return $clauses;
+    }
+
+    /** Humanized banner/message clause for one resource: label plus an optional type list. */
+    private static function clause_for_resource(string $resource_key, mixed $types): string
+    {
+        $clause = self::INCOMPLETE_RESOURCE_LABELS[$resource_key];
+
+        if (is_string($types)) {
+            $types = [$types];
+        }
+
+        if (is_array($types) && count($types) > 0) {
+            $names = [];
+            foreach ($types as $type) {
+                if (is_string($type) && trim($type) !== '') {
+                    $names[] = '"' . esc_html(self::humanize_type_slug($type)) . '"';
+                }
+            }
+
+            if ($names !== []) {
+                $clause .= ' of type ' . implode(' or ', array_unique($names));
+            }
+        }
+
+        return $clause;
+    }
+
+    /** Every required-resources JSON on the form: org fields (with default) plus person profile fields with a custom config. */
+    private static function form_required_resource_configs($form): array
+    {
+        $configs = [];
+
+        foreach ($form['fields'] ?? [] as $field) {
+            if ($field instanceof self) {
+                $configs[] = self::field_required_resources_config($field);
+                continue;
+            }
+
+            if (isset($field->wwidget_profile_required_resources)
+                && is_string($field->wwidget_profile_required_resources)
+                && $field->wwidget_profile_required_resources !== ''
+            ) {
+                $configs[] = $field->wwidget_profile_required_resources;
+            }
+        }
+
+        return $configs;
     }
 
     /** Effective required-resources config for a field instance: admin setting, else the plugin default. */
@@ -595,15 +720,15 @@ jQuery(document).ready(function($) {
 
     public static function enqueue_validation_scripts($form, $is_ajax): void
     {
-        $has_widget = false;
+        $org_field = null;
         foreach ($form['fields'] as $field) {
             if ($field instanceof self) {
-                $has_widget = true;
+                $org_field = $field;
                 break;
             }
         }
 
-        if (!$has_widget) {
+        if ($org_field === null) {
             return;
         }
 
@@ -621,5 +746,27 @@ jQuery(document).ready(function($) {
             'debugMode'           => defined('WP_ENV') && WP_ENV === 'development',
             'i18n'                => wicket_gf_get_frontend_i18n_strings(),
         ]);
+
+        // Four field classes localize the same handle+object name and the
+        // last assignment wins execution, so per-field data cannot ride the
+        // shared localize: the clause map would be clobbered whenever
+        // another widget field localizes after this one. The inline (after)
+        // script prints after the localize blocks and the script tag, so it
+        // merges over whatever the localize race left behind (WWID-2641).
+        // The map merges every configured widget on the form and degrades
+        // conflicting type demands to typeless clauses: the banner list is
+        // flat across widgets, so attributing one widget's types to another
+        // would name a requirement it never made.
+        wp_add_inline_script(
+            'wicket-gf-automatic-widget-validation',
+            sprintf(
+                'window.WicketMDPAutoValidationConfig = Object.assign(window.WicketMDPAutoValidationConfig || {}, {resourceClauses: %s});',
+                wp_json_encode(
+                    self::merged_resource_clauses(self::form_required_resource_configs($form)),
+                    JSON_HEX_TAG | JSON_UNESCAPED_SLASHES
+                )
+            ),
+            'after'
+        );
     }
 }
