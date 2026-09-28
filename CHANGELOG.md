@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.6.2] - 2026-09-28
+
+### Fixed
+- derive widget validation state from latest per-widget payload
+
+
 ## [2.6.1] - 2026-09-28
 
 ### Fixed
