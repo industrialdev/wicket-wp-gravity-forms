@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.6.1] - 2026-09-28
+
+### Fixed
+- serve cached MDP discovery over fail flag, summarize API errors
+
+### Documentation
+- align AGENTS.md with actual layout, scripts, and test policy
+
+
 ## [2.6.0] - 2026-09-25
 
 ### Added
