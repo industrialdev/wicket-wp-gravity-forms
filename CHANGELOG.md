@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.6.3] - 2026-09-28
+
+### Fixed
+- name the required type in the widget validation banner
+- name the missing resource type in org profile validation
+
+
 ## [2.6.2] - 2026-09-28
 
 ### Fixed
