@@ -194,7 +194,15 @@ class Validation
                         if ($is_incomplete) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                            if (!empty($field->errorMessage)) {
+                                $field->validation_message = $field->errorMessage;
+                            } elseif ($resources_incomplete) {
+                                // Shared builder: this filter runs after the field's own
+                                // validate(), so it must not clobber the type-aware message.
+                                $field->validation_message = Fields\WidgetProfileOrg::incomplete_resources_message($value_array, Fields\WidgetProfileOrg::field_required_resources_config($field)) ?? __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                            } else {
+                                $field->validation_message = __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                            }
                             \Wicket()->log()->debug('Org validation: Field ' . $field_id . ' failed validation (forward navigation)', [
                                 'source'               => 'gravityforms-state-debug',
                                 'flag_false'           => $flag_false,
@@ -222,7 +230,11 @@ class Validation
                         if (isset($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
                             $org_validation_failed = true;
                             $field->failed_validation = true;
-                            $field->validation_message = !empty($field->errorMessage) ? $field->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                            if (!empty($field->errorMessage)) {
+                                $field->validation_message = $field->errorMessage;
+                            } else {
+                                $field->validation_message = Fields\WidgetProfileOrg::incomplete_resources_message($value_array, Fields\WidgetProfileOrg::field_required_resources_config($field)) ?? __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                            }
                             break;
                         }
                     } else {

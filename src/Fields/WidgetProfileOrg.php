@@ -20,6 +20,14 @@ class WidgetProfileOrg extends \GF_Field
      * the widget enforces nothing.
      */
     private const DEFAULT_REQUIRED_RESOURCES = '{"addresses": "mailing", "emails": "work", "phones": "work", "webAddresses": "website"}';
+
+    /** Human labels for resource keys the widget can report as incomplete. */
+    private const INCOMPLETE_RESOURCE_LABELS = [
+        'addresses'    => 'an address',
+        'emails'       => 'an email address',
+        'phones'       => 'a phone number',
+        'webAddresses' => 'a web address',
+    ];
     public $wwidget_org_profile_uuid = '';
     public $wwidget_org_profile_required_resources = '';
 
@@ -443,7 +451,13 @@ jQuery(document).ready(function($) {
 
             if ($is_incomplete) {
                 $this->failed_validation = true;
-                $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                if (!empty($this->errorMessage)) {
+                    $this->validation_message = $this->errorMessage;
+                } elseif ($resources_incomplete) {
+                    $this->validation_message = self::incomplete_resources_message($value_array, self::field_required_resources_config($this)) ?? __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                } else {
+                    $this->validation_message = __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+                }
             }
 
             return;
@@ -474,8 +488,97 @@ jQuery(document).ready(function($) {
 
         if (!empty($value_array['incompleteRequiredResources']) && count($value_array['incompleteRequiredResources']) > 0) {
             $this->failed_validation = true;
-            $this->validation_message = !empty($this->errorMessage) ? $this->errorMessage : __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+            if (!empty($this->errorMessage)) {
+                $this->validation_message = $this->errorMessage;
+            } else {
+                $this->validation_message = self::incomplete_resources_message($value_array, self::field_required_resources_config($this)) ?? __('Please ensure the organization has at least one address, email, phone, and web address.', 'wicket-gf');
+            }
         }
+    }
+
+    /**
+     * Build a type-aware validation message from the same required-resources
+     * config the widget enforces, naming the missing resource and its required
+     * type(s) so users can act. WWID-2641: a "mailing" address requirement was
+     * invisible: users saw "Addresses" fail with an address already saved.
+     *
+     * Returns null when no specific message can be built (no incomplete
+     * resources, malformed config, or only unknown resource keys); callers
+     * fall back to the generic message. All config-derived type names are
+     * escaped because GF renders validation messages as raw HTML.
+     */
+    public static function incomplete_resources_message(array $value_array, string $required_resources_json): ?string
+    {
+        $incomplete = $value_array['incompleteRequiredResources'] ?? null;
+        if (!is_array($incomplete) || count($incomplete) === 0) {
+            return null;
+        }
+
+        $config = json_decode($required_resources_json, true);
+        if (!is_array($config)) {
+            return null;
+        }
+
+        $clauses = [];
+        foreach ($incomplete as $resource_key) {
+            if (!is_string($resource_key) || !isset(self::INCOMPLETE_RESOURCE_LABELS[$resource_key])) {
+                continue;
+            }
+
+            $clause = self::INCOMPLETE_RESOURCE_LABELS[$resource_key];
+            $types = $config[$resource_key] ?? null;
+            if (is_string($types)) {
+                $types = [$types];
+            }
+
+            if (is_array($types) && count($types) > 0) {
+                $names = [];
+                foreach ($types as $type) {
+                    if (is_string($type) && trim($type) !== '') {
+                        $names[] = '"' . esc_html(self::humanize_type_slug($type)) . '"';
+                    }
+                }
+
+                if ($names !== []) {
+                    $clause .= ' of type ' . implode(' or ', array_unique($names));
+                }
+            }
+
+            $clauses[] = $clause;
+        }
+
+        if ($clauses === []) {
+            return null;
+        }
+
+        if (count($clauses) === 1) {
+            return sprintf(__('The organization profile is missing %s.', 'wicket-gf'), $clauses[0]);
+        }
+
+        return sprintf(__('The organization profile is missing: %s.', 'wicket-gf'), implode(', ', $clauses));
+    }
+
+    /** Effective required-resources config for a field instance: admin setting, else the plugin default. */
+    public static function field_required_resources_config($field = null): string
+    {
+        if ($field !== null
+            && isset($field->wwidget_org_profile_required_resources)
+            && is_string($field->wwidget_org_profile_required_resources)
+            && $field->wwidget_org_profile_required_resources !== ''
+        ) {
+            return $field->wwidget_org_profile_required_resources;
+        }
+
+        return self::DEFAULT_REQUIRED_RESOURCES;
+    }
+
+    /** "billing_address" -> "Billing Address" (underscore-aware title case). */
+    private static function humanize_type_slug(string $slug): string
+    {
+        $words = explode(' ', str_replace('_', ' ', trim($slug)));
+        $words = array_map(static fn (string $word): string => ucfirst(strtolower($word)), $words);
+
+        return implode(' ', array_values(array_filter($words, static fn (string $word): bool => $word !== '')));
     }
 
     private function get_filtered_incomplete_required_fields(array $value_array): array
