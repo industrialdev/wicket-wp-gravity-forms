@@ -646,15 +646,11 @@ class MdpSyncEngine
 
                 return ['success' => true, 'message' => 'MDP sync successful', 'objects' => $objects];
             } catch (RequestException $e) {
-                $body = '';
-                if ($e->hasResponse()) {
-                    // Truncated: API error bodies can echo submitted values. No PII in logs.
-                    $body = substr((string) $e->getResponse()->getBody(), 0, 500);
-                }
+                $body = $e->hasResponse() ? (string) $e->getResponse()->getBody() : '';
 
                 return [
                     'success' => false,
-                    'message' => sprintf('API error (%d): %s', $e->getCode(), $body),
+                    'message' => $this->summarize_api_error((int) $e->getCode(), $body),
                     'objects' => array_fill_keys(array_keys($grouped), false),
                 ];
             }
@@ -665,6 +661,61 @@ class MdpSyncEngine
                 'objects' => array_fill_keys(array_keys($grouped), false),
             ];
         }
+    }
+
+    /**
+     * Build a log-safe summary of an MDP API error response.
+     *
+     * Raw error bodies echo submitted values (kept out of logs) and a
+     * truncated body hides every validation error behind the first.
+     * Validation envelopes are summarized per failing field: schema slug
+     * or field name plus the schema-side messages. meta.value stays out.
+     * Non-envelope bodies fall back to the truncated raw body.
+     *
+     * @param int    $status HTTP status code.
+     * @param string $body   Raw response body.
+     */
+    protected function summarize_api_error(int $status, string $body): string
+    {
+        $decoded = json_decode($body, true);
+        $errors = is_array($decoded['errors'] ?? null) ? $decoded['errors'] : [];
+
+        if ($errors === []) {
+            return sprintf('API error (%d): %s', $status, substr($body, 0, 500));
+        }
+
+        $parts = [];
+        foreach (array_slice($errors, 0, 5) as $error) {
+            $meta = is_array($error['meta'] ?? null) ? $error['meta'] : [];
+            $locus = (string) ($meta['schema_slug'] ?? ($error['field'] ?? ''));
+            $piece = (string) ($error['title'] ?? 'error');
+
+            if ($locus !== '') {
+                $piece .= ' [' . $locus . ']';
+            }
+
+            $schema_messages = [];
+            foreach ((array) ($meta['json_schema'] ?? []) as $schema_error) {
+                if (is_array($schema_error) && isset($schema_error['message'])) {
+                    $schema_messages[] = mb_substr((string) $schema_error['message'], 0, 200);
+                }
+            }
+
+            if ($schema_messages !== []) {
+                $piece .= ': ' . implode('; ', array_slice($schema_messages, 0, 2));
+            }
+
+            $parts[] = $piece;
+        }
+
+        $total = count($errors);
+        $summary = sprintf('API error (%d): %d validation error(s): %s', $status, $total, implode(' | ', $parts));
+
+        if ($total > 5) {
+            $summary .= sprintf(' (+%d more)', $total - 5);
+        }
+
+        return mb_substr($summary, 0, 1000);
     }
 
     /**

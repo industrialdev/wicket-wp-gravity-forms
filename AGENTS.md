@@ -3,41 +3,35 @@
 ## Project Structure & Module Organization
 This plugin lives at `src/web/app/plugins/wicket-wp-gravity-forms`.
 - Core bootstrap: `class-wicket-wp-gf.php`
-- Runtime PHP modules: `includes/`
-- Admin-specific code: `admin/`
+- Runtime PHP modules: `src/` (`Admin.php`, `MappingAddOn.php`, the `Mdp*` sync engine family, `Fields/`, `helpers.php`)
 - Frontend assets: `assets/js`, `assets/css`, `assets/images`
-- Tests: `tests/unit` (PHPUnit-style `*Test.php`), `tests/Browser` (Pest browser `*.pest.php`)
-- Tooling/config: `composer.json`, `phpunit.xml`, `phpcs.xml`, `.php-cs-fixer.dist.php`, `.ci/`
+- Tests: none in this repo. Stack tests live in the `qa/` workspace (wicket-warden); do not add tests here.
+- Tooling/config: `composer.json`, `phpcs.xml`, `.php-cs-fixer.dist.php`, `.editorconfig`, `.ci/`
 
-## Build, Test, and Development Commands
-Use Composer scripts as the source of truth:
+## Build, Verify, and Development Commands
+Use Composer scripts as the source of truth (`composer.json`):
 - `composer install`: install PHP dependencies.
-- `composer test`: run default Pest suite.
-- `composer test:unit`: run unit tests only.
-- `composer test:browser`: run browser tests (loads `.env` if present).
-- `composer test:coverage`: generate HTML coverage in `coverage/`.
-- `composer lint`: run PHP CS Fixer in dry-run mode.
-- `composer format` or `composer cs:fix`: apply formatting fixes.
-- `composer check`: run lint + tests.
+- `composer check`: PHP CS Fixer dry-run over the repo. This is the pre-PR gate.
+- `composer cs:lint`: same formatting check, standalone.
+- `composer cs:format` or `composer cs:fix`: apply formatting fixes.
 - `composer production`: build production vendor tree (`--no-dev`, optimized autoloader).
 
 ## Coding Style & Naming Conventions
 - PHP target is 8.2+ (see `composer.json`), WordPress-compatible patterns.
 - Follow PSR-12 and project `.editorconfig` (4 spaces for PHP, LF endings; CSS uses 2 spaces).
-- Prefer `declare(strict_types=1);` for new PHP files.
-- Class names: PascalCase (`WicketGfMainTest`); methods: snake_case in legacy classes may remain for compatibility, new test methods use descriptive `test_*` names.
+- `declare(strict_types=1);` on new PHP files (the legacy bootstrap and helper scripts predate it).
+- Class names: PascalCase (`MdpSyncEngine`, `MappingAddOn`); methods: snake_case (WordPress style).
 - Keep changes minimal and backward compatible.
 
-## Testing Guidelines
-- Unit suite is defined in `phpunit.xml` under `tests/unit` with `*Test.php` suffix.
-- Browser suite is `tests/Browser` with `.pest.php` suffix and requires local WP + Playwright.
-- For browser tests, copy `.env.example` to `.env` and set `WICKET_BROWSER_BASE_URL` and credentials.
-- Add/adjust tests for behavior changes; run `composer check` before opening a PR.
+## Testing and Verification
+- This repo has no test suite and must not grow one. The stack QA suite (wicket-warden) owns tests: see `qa/` in the `wicket-wp-stack` workspace, run with `wicket test` from there.
+- Run `composer check` before opening a PR. `php -l` on edited files is the fast syntax pass.
+- Verify MDP sync behavior changes on the Memberships Test staging site when practical, then record the evidence in the PR.
 
 ## Commit & Pull Request Guidelines
-Recent history favors short, imperative commit subjects (examples: `restore format`, `fixes improper org uuid`, `Orgss tests added`).
+- Use Conventional Commits prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `perf:`, `refactor:`); the release bot groups changelog entries by prefix.
 - Keep commit titles concise, action-first, and scoped to one change.
-- PRs should include: problem statement, approach, test evidence (`composer test`/`composer check` output), and linked issue.
+- PRs use the repo template: problem statement, approach, verification evidence, and the linked task.
 - Include screenshots or recordings for admin/UI behavior changes.
 
 ## Release Process (Automated)

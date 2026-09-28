@@ -243,15 +243,19 @@ class MdpFieldDiscovery
      */
     protected function getSchemaDiscoveryPayload(): array
     {
+        // Cache first: a fresh cache must survive intermittent fetch failures.
+        // The fail flag blanks the payload only when there is nothing cached,
+        // otherwise a 60s outage window degrades type casting for live syncs
+        // (booleans sent as strings) even though valid schema data exists.
+        $cached = get_transient(self::CACHE_KEY_SCHEMAS);
+        if (is_array($cached) && isset($cached['properties'], $cached['ids'])) {
+            return $cached;
+        }
+
         if (get_transient(self::CACHE_KEY_API_FAIL)) {
             $this->discovery_failed = true;
 
             return ['properties' => [], 'ids' => []];
-        }
-
-        $cached = get_transient(self::CACHE_KEY_SCHEMAS);
-        if (is_array($cached) && isset($cached['properties'], $cached['ids'])) {
-            return $cached;
         }
 
         $payload = $this->discoverSchemaFields();
@@ -281,15 +285,17 @@ class MdpFieldDiscovery
      */
     public function getPreferencesFields(): array
     {
+        // Cache first, same rationale as getSchemaDiscoveryPayload(): a
+        // transient fetch failure must not blank a valid cached list.
+        $cached = get_transient(self::CACHE_KEY_PREFS);
+        if (is_array($cached) && $cached !== []) {
+            return $cached;
+        }
+
         if (get_transient(self::CACHE_KEY_API_FAIL)) {
             $this->discovery_failed = true;
 
             return [];
-        }
-
-        $cached = get_transient(self::CACHE_KEY_PREFS);
-        if (is_array($cached) && $cached !== []) {
-            return $cached;
         }
 
         $fields = $this->discoverPreferenceFields();
