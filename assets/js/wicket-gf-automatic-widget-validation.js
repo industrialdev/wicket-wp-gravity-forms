@@ -6,6 +6,11 @@
  * Uses the official MDP widget API for dynamic field detection.
  */
 
+// Field keys the widget reports as incomplete but the user cannot edit inside
+// the widget. Mirrors ignoredIncompleteFieldKeys in the widget-profile-org
+// component and VALIDATION_IGNORED_HIDDEN_FIELDS in WidgetProfileOrg.php.
+const NON_EDITABLE_INCOMPLETE_KEYS = ['type'];
+
 const WicketMDPAutoValidation = {
 
     /**
@@ -169,14 +174,15 @@ const WicketMDPAutoValidation = {
         // Extract validation information from the event payload
         const validationInfo = this.extractValidationInfo(widgetData);
 
+        // Store the widget's latest payload first so the state derivation in
+        // updateValidationState() sees this event
+        this.trackWidget(eventType, widgetData, validationInfo);
+
         if (validationInfo) {
-            this.updateValidationState(eventType, validationInfo);
+            this.updateValidationState(eventType);
             // Update hidden form fields with current widget data
             this.updateHiddenFormFields(widgetData);
         }
-
-        // Store widget reference for tracking
-        this.trackWidget(eventType, widgetData);
     },
 
     /**
@@ -248,7 +254,14 @@ const WicketMDPAutoValidation = {
                                  validationInfo.incompleteRequiredResources.length > 0 ||
                                  validationInfo.notFound.length > 0;
 
-        if (hasValidationData) {
+        // A payload that explicitly carries the validation keys asserts
+        // completeness even when every list is empty (complete save). Without
+        // this check a completing save could not register and the old blocked
+        // state would persist (WWID-2641).
+        const hasValidationKeys = ['incompleteRequiredFields', 'incompleteRequiredResources', 'notFound']
+            .some(key => Object.prototype.hasOwnProperty.call(widgetData, key));
+
+        if (hasValidationData || hasValidationKeys) {
             this.log('Validation data found:', validationInfo);
             return validationInfo;
         }
@@ -269,70 +282,152 @@ const WicketMDPAutoValidation = {
     /**
      * Track active widgets and their states
      */
-    trackWidget(eventType, widgetData) {
-        const widgetId = widgetData.resource?.id || eventType;
+    /**
+     * Map an event type to its widget kind slot. Every event from one widget
+     * component describes the same form field, so they must share one slot:
+     * save-success events carry the saved resource's id (an address, an email),
+     * not the widget's, so keying by resource id accumulated stale one-shot
+     * entries that permanently poisoned the derived blocked set (WWID-2641).
+     */
+    widgetKindForEvent(eventType) {
+        if (eventType.indexOf('profile-org') !== -1 || eventType === 'wicket_current_org_data_updated') return 'profile-org';
+        if (eventType.indexOf('profile-ind') !== -1 || eventType === 'wicket_current_person_data_updated') return 'profile-ind';
+        if (eventType.indexOf('additional-info') !== -1) return 'additional-info';
+        if (eventType.indexOf('prefs-person') !== -1) return 'prefs-person';
+        if (eventType.indexOf('common') !== -1) return 'common';
+        return eventType;
+    },
 
-        this.activeWidgets.set(widgetId, {
+    /**
+     * Widget kind for a rendered widget container, matching slot names used
+     * by widgetKindForEvent; null for containers we do not track.
+     */
+    widgetKindForElement(widget) {
+        if (widget.classList.contains('wicket__widgets--organization')) return 'profile-org';
+        if (widget.classList.contains('wicket__widgets--person')) return 'profile-ind';
+        if (widget.classList.contains('wicket__widgets--additional-info')) return 'additional-info';
+        if (widget.classList.contains('wicket__widgets--preferences')) return 'prefs-person';
+        return null;
+    },
+
+    /**
+     * Refresh widget slots from the components' own hidden payloads.
+     *
+     * The component re-serializes its live model into input_<id> as the user
+     * saves resources, so that payload is fresher than save-success event
+     * snapshots, which can lag a save by a refetch (observed live: the event
+     * still reported all four incomplete after the address had committed).
+     * The server validates this same field, so anchoring the click-time
+     * decision on it keeps the red box and the server in agreement (WWID-2641).
+     */
+    syncFromHiddenPayloads() {
+        let synced = false;
+        document.querySelectorAll('.wicket__widgets').forEach(widget => {
+            if (!this.isWidgetVisible(widget)) return;
+            const kind = this.widgetKindForElement(widget);
+            if (!kind) {
+                this.log('Unmapped widget container kind; hidden-payload sync skipped', widget.className);
+                return;
+            }
+
+            // The component's hidden inputs are GF-field siblings of the
+            // widget container, not children — scope to the field wrapper.
+            const fieldWrapper = widget.closest('.gfield') || widget.parentElement;
+            if (!fieldWrapper) return;
+
+            fieldWrapper.querySelectorAll('input[type="hidden"]').forEach(input => {
+                if (!/^input_\d+$/.test(input.name) || !input.value) return;
+                let data;
+                try { data = JSON.parse(input.value); } catch (e) { return; }
+                if (!data || typeof data !== 'object') return;
+                if (data.incompleteRequiredResources === undefined && data.incompleteRequiredFields === undefined) return;
+
+                const info = {
+                    incompleteRequiredFields: Array.isArray(data.incompleteRequiredFields) ? data.incompleteRequiredFields : [],
+                    incompleteRequiredResources: Array.isArray(data.incompleteRequiredResources) ? data.incompleteRequiredResources : [],
+                    notFound: Array.isArray(data.notFound) ? data.notFound : []
+                };
+                this.trackWidget(kind, { resource: { id: input.name } }, info);
+                synced = true;
+            });
+        });
+
+        // Re-derive after the slots changed; without this the refreshed Map
+        // values never reach currentValidationState, because only real widget
+        // events trigger the derivation (WWID-2641 round-3 review).
+        if (synced) {
+            this.updateValidationState('hidden-payload-sync');
+        }
+    },
+
+    trackWidget(eventType, widgetData, validationInfo = null) {
+        const kind = this.widgetKindForEvent(eventType);
+        const previous = this.activeWidgets.get(kind);
+
+        this.activeWidgets.set(kind, {
             eventType,
             data: widgetData,
+            instanceId: widgetData.resource?.id || (previous ? previous.instanceId : null),
+            // Payloads flagged hasProfileData assert nothing about completeness
+            // (extractValidationInfo fallback); keep the last-known payload so
+            // a data-less event cannot make a widget look complete
+            validationInfo: (validationInfo && !validationInfo.hasProfileData)
+                ? validationInfo
+                : (previous ? previous.validationInfo : null),
             lastUpdate: Date.now()
         });
 
-        this.log(`Tracking widget: ${widgetId}, total widgets: ${this.activeWidgets.size}`);
+        this.log(`Tracking widget slot: ${kind}, total slots: ${this.activeWidgets.size}`);
     },
 
     /**
-     * Update the overall validation state based on widget events
+     * Derive the overall validation state from each widget slot's LATEST
+     * payload (one slot per widget kind, see widgetKindForEvent).
+     *
+     * Deriving from current state (instead of union-merging every event
+     * payload across time) lets a saved resource unblock navigation
+     * immediately. The old merge only cleared when one save reported a fully
+     * complete org, so an org that loaded incomplete stayed blocked in the red
+     * box even after the user filled everything (WWID-2641).
      */
-    updateValidationState(eventType, validationInfo) {
-        // Merge validation data from all widgets
-        this.currentValidationState.incompleteRequiredFields = [
-            ...new Set([...this.currentValidationState.incompleteRequiredFields, ...validationInfo.incompleteRequiredFields])
-        ];
+    updateValidationState(eventType) {
+        const fields = new Set();
+        const resources = new Set();
 
-        this.currentValidationState.incompleteRequiredResources = [
-            ...new Set([...this.currentValidationState.incompleteRequiredResources, ...validationInfo.incompleteRequiredResources])
-        ];
+        this.activeWidgets.forEach((widget, kind) => {
+            const info = widget.validationInfo;
+            if (!info) return;
 
+            // The 'common' component mirrors person/org state the dedicated
+            // slots and hidden payloads already cover, and its snapshots go
+            // stale between events; counting it re-blocks completed orgs
+            // (WWID-2641 live repro).
+            if (kind === 'common') return;
+
+            info.incompleteRequiredFields.forEach((field) => {
+                if (!NON_EDITABLE_INCOMPLETE_KEYS.includes(field)) {
+                    fields.add(field);
+                }
+            });
+
+            info.incompleteRequiredResources.forEach((resource) => resources.add(resource));
+        });
+
+        this.currentValidationState.incompleteRequiredFields = [...fields];
+        this.currentValidationState.incompleteRequiredResources = [...resources];
         this.currentValidationState.hasRequiredFields = true;
         this.currentValidationState.widgetsReady = true;
 
-        this.log(`Validation updated: ${this.currentValidationState.incompleteRequiredFields.length} incomplete fields`, this.currentValidationState.incompleteRequiredFields);
+        this.log(`Validation updated on ${eventType}: ${fields.size} incomplete fields, ${resources.size} incomplete resources`, {
+            incompleteRequiredFields: this.currentValidationState.incompleteRequiredFields,
+            incompleteRequiredResources: this.currentValidationState.incompleteRequiredResources
+        });
 
-        // If this was a save-success event, the widget might be complete
-        if (eventType.includes('save-success')) {
-            this.validateWidgetCompletion(eventType, validationInfo);
+        // Every widget now reports complete, so drop the banner. The old code
+        // only hid it from the clear-on-complete path of a save-success event.
+        if (fields.size === 0 && resources.size === 0) {
+            this.hideValidationErrors();
         }
-    },
-
-    /**
-     * Validate if a widget is complete after a save event
-     */
-    validateWidgetCompletion(eventType, validationInfo) {
-        const isComplete = validationInfo.incompleteRequiredFields.length === 0 &&
-                         validationInfo.incompleteRequiredResources.length === 0 &&
-                         validationInfo.notFound.length === 0;
-
-        this.log(`Widget ${eventType} completion check:`, { isComplete, validationInfo });
-
-        if (isComplete) {
-            // Remove this widget's fields from incomplete list
-            this.clearWidgetIncompleteFields(eventType);
-        }
-    },
-
-    /**
-     * Clear incomplete fields for a specific widget
-     */
-    clearWidgetIncompleteFields(eventType) {
-        // This is a simplified approach - in practice you might want to track
-        // which fields belong to which widget more precisely
-        this.log(`Clearing incomplete fields for widget: ${eventType}`);
-
-        // Reset validation state to trigger fresh validation
-        this.currentValidationState.incompleteRequiredFields = [];
-        this.currentValidationState.incompleteRequiredResources = [];
-        this.hideValidationErrors();
     },
 
     /**
@@ -382,7 +477,6 @@ const WicketMDPAutoValidation = {
                 });
             }
         });
-
         if (visibleWidgets > 0) {
             this.log(`Found ${visibleWidgets} visible widgets to validate`);
         }
@@ -447,6 +541,13 @@ const WicketMDPAutoValidation = {
             : [];
 
         requiredIndicators.forEach((indicator) => {
+            // Same read-only skip as getIncompleteFieldsFromHTML: this scanner
+            // also writes field-level state and must not flag display fields
+            // the user cannot edit (WWID-2641)
+            if (indicator.closest('.InputStatic')) {
+                return;
+            }
+
             const label = this.findFieldLabel(indicator);
             if (label) {
                 const fieldValue = this.getFieldValue(indicator);
@@ -832,6 +933,10 @@ const WicketMDPAutoValidation = {
      * Update validation state by parsing HTML of all widgets
      */
     updateValidationFromHTML() {
+        // Anchor the blocked set on the components' live hidden payloads first,
+        // then let the DOM scan refresh the field-level list on top.
+        this.syncFromHiddenPayloads();
+
         const widgetSelectors = [
             '[id*="profile-"]',
             '.wicket__widgets',
@@ -907,6 +1012,13 @@ const WicketMDPAutoValidation = {
         const requiredIndicators = widgetElement.querySelectorAll('.required-symbol');
 
         requiredIndicators.forEach((indicator) => {
+            // Read-only display fields cannot be edited in the widget, so
+            // listing them traps the step (WWID-2641: "Type" on existing orgs
+            // missing it). The widget's own events report editable-field gaps.
+            if (indicator.closest('.InputStatic')) {
+                return;
+            }
+
             const label = this.findFieldLabel(indicator);
             if (label) {
                 const fieldValue = this.getFieldValue(indicator);
