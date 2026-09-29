@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.6.4] - 2026-09-29
+
+### Fixed
+- state multi-type resource requirements with "and"
+
+
 ## [2.6.3] - 2026-09-28
 
 ### Fixed
