@@ -636,7 +636,7 @@ jQuery(document).ready(function($) {
         return $clauses;
     }
 
-    /** Humanized banner/message clause for one resource: label plus an optional type list. */
+    /** Humanized banner/message clause for one resource: label plus one phrase per required type. The MDP widget demands every listed type (OrganizationProfile.js .every()), so multiple types join with "and" and repeat the resource noun. */
     private static function clause_for_resource(string $resource_key, mixed $types): string
     {
         $clause = self::INCOMPLETE_RESOURCE_LABELS[$resource_key];
@@ -646,15 +646,15 @@ jQuery(document).ready(function($) {
         }
 
         if (is_array($types) && count($types) > 0) {
-            $names = [];
-            foreach ($types as $type) {
+            $phrases = [];
+            foreach (array_unique($types, SORT_STRING) as $type) {
                 if (is_string($type) && trim($type) !== '') {
-                    $names[] = '"' . esc_html(self::humanize_type_slug($type)) . '"';
+                    $phrases[] = $clause . __(' of type ', 'wicket-gf') . '"' . esc_html(self::humanize_type_slug($type)) . '"';
                 }
             }
 
-            if ($names !== []) {
-                $clause .= ' of type ' . implode(' or ', array_unique($names));
+            if ($phrases !== []) {
+                $clause = implode(__(' and ', 'wicket-gf'), $phrases);
             }
         }
 
