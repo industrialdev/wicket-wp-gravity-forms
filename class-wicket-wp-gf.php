@@ -64,6 +64,7 @@ use WicketGF\Fields\WidgetAdditionalInfo;
 use WicketGF\Fields\WidgetPrefs;
 use WicketGF\Fields\WidgetProfile;
 use WicketGF\Fields\WidgetProfileOrg;
+use WicketGF\ImportUpdate;
 use WicketGF\MappingAddOn;
 use WicketGF\MdpFieldDiscovery;
 use WicketGF\MdpSyncEngine;
@@ -1416,6 +1417,7 @@ class Wicket_Gf_Main
         require_once WICKET_GF_PATH . 'src/tweaks.php';
         NonceHandler::init();
         SecureUploads::init();
+        ImportUpdate::init();
         ConsentFieldExtension::get_instance();
     }
 
