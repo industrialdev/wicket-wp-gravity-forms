@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace WicketGF;
 
 use GFAPI;
+use GFCache;
 use GFCommon;
 use GFExport;
 use GFFormsModel;
@@ -43,6 +44,14 @@ class ImportUpdate
     private const RESULT_NOT_SINGLE = 'notsingle';
     private const RESULT_FAILED = 'failed';
 
+    /**
+     * Per-user transient that carries the result across the redirect. The
+     * redirect URL keeps the same code as a query arg, but only for
+     * observability; the notice itself is consumed once from the transient so
+     * a refresh or bookmark of the redirect URL never replays the message.
+     */
+    private const RESULT_TRANSIENT = 'wicket_gf_import_result_';
+
     public static function init(): void
     {
         add_action('admin_init', [self::class, 'intercept_update_import']);
@@ -77,15 +86,10 @@ class ImportUpdate
             return;
         }
 
-        if (!class_exists('GFCommon') || !GFCommon::current_user_can_any('gravityforms_edit_forms')) {
-            wp_die(esc_html__('You do not have permission to access this page', 'wicket-gf'));
-        }
-
         check_admin_referer('gf_import_forms', 'gf_import_forms_nonce');
 
-        $target_id = absint(rgpost('wicket_gf_update_target'));
-        if ($target_id < 1 || !GFAPI::get_form($target_id)) {
-            self::redirect_with_result(self::RESULT_TARGET);
+        if (!class_exists('GFCommon') || !GFCommon::current_user_can_any('gravityforms_edit_forms')) {
+            wp_die(esc_html__('You do not have permission to access this page', 'wicket-gf'));
         }
 
         $files = $_FILES['gf_import_file'] ?? null;
@@ -103,6 +107,14 @@ class ImportUpdate
 
         if (($errors[0] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file($tmp_names[0])) {
             self::redirect_with_result(self::RESULT_NO_FILE);
+        }
+
+        $target_id = absint(rgpost('wicket_gf_update_target'));
+        $target_form = $target_id > 0 ? GFAPI::get_form($target_id) : null;
+
+        // Mirror the dropdown, which only offers active, non-trashed forms.
+        if (!is_array($target_form) || !empty($target_form['is_trash']) || !rgar($target_form, 'is_active')) {
+            self::redirect_with_result(self::RESULT_TARGET);
         }
 
         $result = self::update_from_file($tmp_names[0], $target_id);
@@ -170,6 +182,11 @@ class ImportUpdate
         $version = rgar($forms, 'version');
         if (!$version || version_compare((string) $version, self::MIN_IMPORT_VERSION, '<')) {
             return new WP_Error(self::RESULT_VERSION, 'The export file is not compatible with the current Gravity Forms version.');
+        }
+
+        // Parity with core import_json: reset the legacy-markup cache flag.
+        if (class_exists('GFCache')) {
+            GFCache::delete('legacy_is_in_use');
         }
 
         unset($forms['version']);
@@ -247,7 +264,6 @@ class ImportUpdate
                     targetRow.style.display = checkbox.checked ? '' : 'none';
                     rows.querySelector('#wicket_gf_update_target').disabled = !checkbox.checked;
                 });
-                form.dataset.wicketUpdateConfirm = '1';
                 form.addEventListener('submit', function (e) {
                     if (!checkbox.checked || window.confirm(<?php echo wp_json_encode(__('Update mode replaces the selected form: its fields, notifications, confirmations, and settings are overwritten with the file contents. Entries are kept, but this screen cannot undo the change. Continue?', 'wicket-gf')); ?>)) {
                         return;
@@ -260,10 +276,12 @@ class ImportUpdate
     }
 
     /**
-     * Queue the redirect result through the Gravity Forms message system so
-     * it renders exactly like core import results. GF's find_admin_notices()
-     * strips standard WP admin_notices output that lacks its gf-notice markup,
-     * so a custom admin_notices renderer does not survive on GF pages.
+     * Queue the stored redirect result through the Gravity Forms message
+     * system so it renders exactly like core import results. GF's
+     * find_admin_notices() strips standard WP admin_notices output that lacks
+     * its gf-notice markup, so a custom admin_notices renderer does not
+     * survive on GF pages. The transient is consumed on first read, so a
+     * refresh or bookmark of the redirect URL never replays the message.
      */
     public static function queue_result_notice(): void
     {
@@ -271,12 +289,16 @@ class ImportUpdate
             return;
         }
 
-        $result = rgget('wicket_gf_import');
-        if ($result === false) {
+        $key = self::RESULT_TRANSIENT . get_current_user_id();
+        $stored = get_transient($key);
+        if (!is_array($stored) || !isset($stored[0], $stored[1])) {
             return;
         }
 
-        $target_id = absint(rgget('wicket_gf_target'));
+        delete_transient($key);
+
+        $result = (string) $stored[0];
+        $target_id = absint($stored[1]);
 
         if ($result === self::RESULT_UPDATED && $target_id > 0) {
             $edit_link = sprintf(
@@ -307,10 +329,12 @@ class ImportUpdate
     }
 
     /**
-     * Redirect back to the import page with a result code.
+     * Store the result once for the acting user and redirect back to the
+     * import page. The query args stay on the URL for observability only.
      */
     private static function redirect_with_result(string $result, int $target_id = 0): void
     {
+        set_transient(self::RESULT_TRANSIENT . get_current_user_id(), [$result, $target_id], MINUTE_IN_SECONDS * 2);
         $url = add_query_arg(
             ['wicket_gf_import' => $result, 'wicket_gf_target' => $target_id],
             admin_url('admin.php?page=gf_export&subview=import_form')
