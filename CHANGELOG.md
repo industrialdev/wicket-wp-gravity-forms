@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.7.0] - 2026-09-30
+
+### Added
+- **import:** add opt-in update-existing-form mode (WWID-2663)
+
+### Fixed
+- **import:** harden update importer per review (WWID-2663)
+- **fields:** fail closed on malformed widget JSON settings (WWID-2665)
+
+
 ## [2.6.4] - 2026-09-29
 
 ### Fixed
