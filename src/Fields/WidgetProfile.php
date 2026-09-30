@@ -59,6 +59,10 @@ class WidgetProfile extends \GF_Field
                         'Profile Individual Widget: invalid MDP JSON Fields saved',
                         ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
                     );
+                    // Fail closed: malformed JSON is never stored. Consumers
+                    // see the empty default instead of a value they cannot
+                    // decode (WWID-2665).
+                    $this->wwidget_profile_mdp_json_fields = '';
                 }
             }
         }
@@ -80,6 +84,10 @@ class WidgetProfile extends \GF_Field
                         'Profile Individual Widget: invalid MDP Widget Config JSON saved',
                         ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
                     );
+                    // Fail closed: malformed JSON is never stored. Consumers
+                    // see the empty default instead of a value they cannot
+                    // decode (WWID-2665).
+                    $this->wwidget_profile_mdp_json_config = '';
                 }
             }
         }
