@@ -13,6 +13,11 @@ defined('ABSPATH') || exit;
  * Persists sync events to a custom table for browsable history.
  * Supports configurable retention via admin setting.
  *
+ * DEAD CODE (WWID-2665): sync logging now goes through Wicket()->log(),
+ * and nothing instantiates this class or MdpSyncLogsPage any more. Kept
+ * for the removal decision; do not build on it. If a browsable sync log
+ * ships again, re-register its retention setting with it (see Admin.php).
+ *
  * Table: {prefix}wicket_gf_mdp_sync_log
  */
 class MdpSyncLogger
