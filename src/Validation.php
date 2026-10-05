@@ -180,6 +180,12 @@ class Validation
                     \Wicket()->log()->debug('Org validation: Found org field ' . $field_id . ', value_length=' . strlen($value) . ', validation_flag=' . var_export($validation_flag, true), ['source' => 'gravityforms-state-debug']);
 
                     if ($is_navigating_forward) {
+                        // Deliberate near-duplicate of the standard-path org checks
+                        // below (WWID-2665 audit): forward navigation must fail fast
+                        // per page and surface resource messages, while the standard
+                        // path runs on submit with its own generic messages. The copies
+                        // intentionally differ in messaging and control flow; if you
+                        // change one, re-read the other.
                         $value_array = !empty($value) ? json_decode($value, true) : [];
                         if (!is_array($value_array)) {
                             $value_array = [];
