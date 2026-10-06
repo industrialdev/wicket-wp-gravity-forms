@@ -2847,9 +2847,7 @@ class Wicket_Gf_Main
             'methods'  => 'POST',
             'callback' => ['Wicket_Gf_Main', 'resync_wicket_member_fields'],
             'permission_callback' => function () {
-                // GF core grants admins only the dynamic gform_full_access; the raw
-                // primitive is absent from roles on stock installs (WWID-2732).
-                $allowed = GFCommon::current_user_can_any('gravityforms_edit_forms');
+                $allowed = self::current_user_can_edit_forms();
 
                 if (!$allowed && function_exists('Wicket')) {
                     Wicket()->log()->warning('Resync route denied.', [
@@ -2864,6 +2862,23 @@ class Wicket_Gf_Main
     }
 
     /**
+     * Editor capability gate shared by the editor AJAX/REST surfaces.
+     *
+     * GF core grants admins only the dynamic gform_full_access on stock
+     * installs (no Members plugin), so the raw primitive is absent from
+     * roles and would deny every admin (WWID-2732). Falls back to the raw
+     * primitive when GF core is unavailable.
+     */
+    private static function current_user_can_edit_forms(): bool
+    {
+        if (!class_exists('GFCommon')) {
+            return current_user_can('gravityforms_edit_forms');
+        }
+
+        return GFCommon::current_user_can_any('gravityforms_edit_forms');
+    }
+
+    /**
      * AJAX handler: validate a field slug for uniqueness within a form.
      *
      * Checks the database version of the form (not the editor's in-memory state)
@@ -2875,9 +2890,10 @@ class Wicket_Gf_Main
     {
         check_ajax_referer('wicket_gf_field_slug', 'nonce');
 
-        // Same dynamic-grant rationale as the resync route (WWID-2732).
-        if (!GFCommon::current_user_can_any('gravityforms_edit_forms')) {
+        if (!self::current_user_can_edit_forms()) {
             wp_send_json_error(['message' => __('Permission denied.', 'wicket-gf')]);
+
+            return;
         }
 
         $form_id = absint($_POST['form_id'] ?? 0);

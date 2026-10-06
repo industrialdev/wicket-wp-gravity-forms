@@ -767,7 +767,8 @@ class DataBindHidden extends \GF_Field
         check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
 
         // Editor-only surface: GF core grants admins only the dynamic
-        // gform_full_access, so gate through current_user_can_any (WWID-2732).
+        // gform_full_access on stock installs, so gate through
+        // current_user_can_any instead of the raw primitive (WWID-2732).
         if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions.');
 
@@ -1163,7 +1164,6 @@ class DataBindHidden extends \GF_Field
     {
         check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
 
-        // Same dynamic-grant rationale as ajax_get_mdp_schemas (WWID-2732).
         if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions.');
 

@@ -1983,8 +1983,8 @@ class ApiDataBind extends \GF_Field
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
 
-        // GF core grants admins only the dynamic gform_full_access; the raw
-        // primitive is absent from roles on stock installs (WWID-2732).
+        // GF core grants admins only the dynamic gform_full_access on stock
+        // installs, so the raw primitive would deny every admin (WWID-2732).
         if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions');
 
@@ -2017,7 +2017,6 @@ class ApiDataBind extends \GF_Field
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
 
-        // Same dynamic-grant rationale as ajax_get_api_data_fields (WWID-2732).
         if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions');
 

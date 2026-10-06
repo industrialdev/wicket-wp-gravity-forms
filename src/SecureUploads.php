@@ -395,8 +395,20 @@ class SecureUploads
      */
     public static function handle_download(): void
     {
-        $capability = (string) apply_filters('wicket_gf_secure_upload_capability', 'gravityforms_view_entries');
-        if (!is_user_logged_in() || !current_user_can($capability)) {
+        // A filtered capability is honored as-is. The default gains the dynamic
+        // gform_full_access fallback GF core grants admins on stock installs,
+        // where the raw primitive is absent from roles (WWID-2732).
+        $filtered_capability = apply_filters('wicket_gf_secure_upload_capability', null);
+
+        if (is_string($filtered_capability) && $filtered_capability !== '') {
+            $allowed = current_user_can($filtered_capability);
+        } elseif (class_exists('GFCommon')) {
+            $allowed = \GFCommon::current_user_can_any('gravityforms_view_entries');
+        } else {
+            $allowed = current_user_can('gravityforms_view_entries');
+        }
+
+        if (!is_user_logged_in() || !$allowed) {
             wp_die(esc_html__('You are not allowed to access this file.', 'wicket-gf'), '', ['response' => 403]);
         }
 
