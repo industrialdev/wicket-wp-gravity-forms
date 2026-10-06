@@ -1452,12 +1452,16 @@ class ApiDataBind extends \GF_Field
                                 $dropdown.empty().append('<option value=""><?php esc_html_e('No services found.', 'wicket-gf'); ?></option>');
                                 $notice.html('<span style="color: #d63638;"><?php esc_html_e('The MDP has no services configured. Service identity data sources need at least one service.', 'wicket-gf'); ?></span>');
                             } else {
-                                // Surface the server's denial reason; fall back to the
-                                // generic retry hint when no reason came back (WWID-2732).
+                                // Lead with the server's reason; fall back to the
+                                // generic retry hint when none came back.
                                 var reason = (response.data && typeof response.data === 'string') ? response.data : '';
+                                var failFormat = <?php
+                                    // translators: %s: reason the server returned for the failure.
+                                    echo wp_json_encode( __( 'Failed to load services: %s', 'wicket-gf' ) );
+                                ?>;
                                 var message = reason
-                                    ? '<?php esc_html_e('Failed to load services:', 'wicket-gf'); ?> ' + reason + '. <?php esc_html_e('Save the form and reload the editor to retry.', 'wicket-gf'); ?>'
-                                    : '<?php esc_html_e('Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf'); ?>';
+                                    ? failFormat.replace('%s', reason)
+                                    : <?php echo wp_json_encode( __( 'Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf' ) ); ?>;
                                 $notice.html($('<span style="color: #d63638;"></span>').text(message));
                             }
                         },
@@ -1654,13 +1658,17 @@ class ApiDataBind extends \GF_Field
                             if (response.success && response.data) {
                                 populateFieldDropdown(response.data);
                             } else {
-                                // Surface the server's denial reason; fall back to the
-                                // generic custom-path hint when no reason came back (WWID-2732).
-                                var reason = (response.data && typeof response.data === 'string') ? response.data : '';
-                                var message = reason
-                                    ? '<?php esc_html_e('Failed to load fields:', 'wicket-gf'); ?> ' + reason + '. <?php esc_html_e('Please use custom field path.', 'wicket-gf'); ?>'
-                                    : '<?php esc_html_e('Failed to load fields. Please use custom field path.', 'wicket-gf'); ?>';
+                                // Lead with the server's reason; fall back to the
+                                // generic custom-path hint when none came back.
                                 showCustomFieldPath();
+                                var reason = (response.data && typeof response.data === 'string') ? response.data : '';
+                                var failFormat = <?php
+                                    // translators: %s: reason the server returned for the failure.
+                                    echo wp_json_encode( __( 'Failed to load fields: %s', 'wicket-gf' ) );
+                                ?>;
+                                var message = reason
+                                    ? failFormat.replace('%s', reason)
+                                    : <?php echo wp_json_encode( __( 'Failed to load fields. Please use custom field path.', 'wicket-gf' ) ); ?>;
                                 $('.wicket-field-examples').html($('<span style="color: #d63638;"></span>').text(message));
                             }
                         },

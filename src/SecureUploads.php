@@ -19,8 +19,11 @@ namespace WicketGF;
  *   2. Default: <above-docroot>/gf-uploads-secure (derived from WP_CONTENT_DIR).
  *   3. The `wicket_gf_secure_uploads_base_dir` filter (applied last).
  *
- * The download capability defaults to `gravityforms_view_entries` and can be
- * changed with the `wicket_gf_secure_upload_capability` filter.
+ * The download capability defaults to `gravityforms_view_entries` (with the
+ * plugin's dynamic gform_full_access fallback while the
+ * `wicket_gf_secure_upload_capability` filter is untouched). A filter value
+ * replaces the capability outright and is checked as-is, so returning an empty
+ * value denies everyone.
  */
 class SecureUploads
 {
@@ -395,17 +398,18 @@ class SecureUploads
      */
     public static function handle_download(): void
     {
-        // A filtered capability is honored as-is. The default gains the dynamic
-        // gform_full_access fallback GF core grants admins on stock installs,
-        // where the raw primitive is absent from roles (WWID-2732).
-        $filtered_capability = apply_filters('wicket_gf_secure_upload_capability', null);
+        // A filtered capability is honored as-is and stays fail-closed: a
+        // filter returning '' or false denies. Only the untouched default
+        // gains the dynamic gform_full_access fallback GF core grants admins
+        // on stock installs, where the raw primitive is absent from roles
+        // (WWID-2732).
+        $default_capability = 'gravityforms_view_entries';
+        $capability = (string) apply_filters('wicket_gf_secure_upload_capability', $default_capability);
 
-        if (is_string($filtered_capability) && $filtered_capability !== '') {
-            $allowed = current_user_can($filtered_capability);
-        } elseif (class_exists('GFCommon')) {
-            $allowed = \GFCommon::current_user_can_any('gravityforms_view_entries');
+        if ($capability === $default_capability && class_exists('GFCommon')) {
+            $allowed = \GFCommon::current_user_can_any($default_capability);
         } else {
-            $allowed = current_user_can('gravityforms_view_entries');
+            $allowed = current_user_can($capability);
         }
 
         if (!is_user_logged_in() || !$allowed) {
