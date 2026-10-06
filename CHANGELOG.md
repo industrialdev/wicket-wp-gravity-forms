@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.7.1] - 2026-10-06
+
+### Maintenance
+- **logger:** flag MdpSyncLogger as dead code in source (WWID-2665)
+- **admin:** remove dead retention setting remnants; mark org-validation duplication deliberate (WWID-2665)
+- **ci:** fail closed when main moves before release push
+
+
 ## [2.7.0] - 2026-09-30
 
 ### Added
