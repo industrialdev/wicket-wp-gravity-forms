@@ -2847,7 +2847,9 @@ class Wicket_Gf_Main
             'methods'  => 'POST',
             'callback' => ['Wicket_Gf_Main', 'resync_wicket_member_fields'],
             'permission_callback' => function () {
-                $allowed = current_user_can('gravityforms_edit_forms');
+                // GF core grants admins only the dynamic gform_full_access; the raw
+                // primitive is absent from roles on stock installs (WWID-2732).
+                $allowed = GFCommon::current_user_can_any('gravityforms_edit_forms');
 
                 if (!$allowed && function_exists('Wicket')) {
                     Wicket()->log()->warning('Resync route denied.', [
@@ -2873,7 +2875,8 @@ class Wicket_Gf_Main
     {
         check_ajax_referer('wicket_gf_field_slug', 'nonce');
 
-        if (!current_user_can('gravityforms_edit_forms')) {
+        // Same dynamic-grant rationale as the resync route (WWID-2732).
+        if (!GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error(['message' => __('Permission denied.', 'wicket-gf')]);
         }
 

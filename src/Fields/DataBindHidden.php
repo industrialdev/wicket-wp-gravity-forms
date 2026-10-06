@@ -766,6 +766,14 @@ class DataBindHidden extends \GF_Field
     {
         check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
 
+        // Editor-only surface: GF core grants admins only the dynamic
+        // gform_full_access, so gate through current_user_can_any (WWID-2732).
+        if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
+            wp_send_json_error('Insufficient permissions.');
+
+            return;
+        }
+
         $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
         $organization_uuid = isset($_POST['organization_uuid']) ? sanitize_text_field(wp_unslash($_POST['organization_uuid'])) : null;
         $options = [];
@@ -1154,6 +1162,13 @@ class DataBindHidden extends \GF_Field
     public static function ajax_get_mdp_value_keys()
     {
         check_ajax_referer('gf_wicket_mdp_nonce', 'nonce');
+
+        // Same dynamic-grant rationale as ajax_get_mdp_schemas (WWID-2732).
+        if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
+            wp_send_json_error('Insufficient permissions.');
+
+            return;
+        }
 
         $data_source = isset($_POST['data_source']) ? sanitize_text_field(wp_unslash($_POST['data_source'])) : null;
         $schema_data_slug = isset($_POST['schema_data_slug']) ? sanitize_text_field(wp_unslash($_POST['schema_data_slug'])) : null;
