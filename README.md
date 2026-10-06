@@ -110,7 +110,7 @@ Because the rewrite happens before notifications fire, notification emails conta
 
 The directory must be writable by the web server user and should sit outside the document root. Add it to the site's `.gitignore` so uploaded documents are never committed.
 
-**Download access** requires the user to be logged in and hold the `gravityforms_view_entries` capability (or the plugin's dynamic `gform_full_access` fallback while the filter below is untouched); logged-out or unauthorised requests receive a `403`. A `wicket_gf_secure_upload_capability` filter value replaces the capability outright and is checked as-is, so returning an empty value denies everyone:
+**Download access** requires the user to be logged in and hold the `gravityforms_view_entries` capability (or the plugin's dynamic `gform_full_access` fallback whenever the effective capability is that default); logged-out or unauthorised requests receive a `403`. A `wicket_gf_secure_upload_capability` filter value replaces the capability outright and is checked as-is, so returning an empty value denies everyone:
 
 ```php
 // Restrict secure-file downloads to administrators only.

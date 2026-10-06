@@ -20,10 +20,10 @@ namespace WicketGF;
  *   3. The `wicket_gf_secure_uploads_base_dir` filter (applied last).
  *
  * The download capability defaults to `gravityforms_view_entries` (with the
- * plugin's dynamic gform_full_access fallback while the
- * `wicket_gf_secure_upload_capability` filter is untouched). A filter value
- * replaces the capability outright and is checked as-is, so returning an empty
- * value denies everyone.
+ * plugin's dynamic gform_full_access fallback whenever the effective
+ * capability is that default). A `wicket_gf_secure_upload_capability` filter
+ * value replaces the capability outright and is checked as-is, so returning
+ * an empty value denies everyone.
  */
 class SecureUploads
 {
@@ -399,10 +399,10 @@ class SecureUploads
     public static function handle_download(): void
     {
         // A filtered capability is honored as-is and stays fail-closed: a
-        // filter returning '' or false denies. Only the untouched default
-        // gains the dynamic gform_full_access fallback GF core grants admins
-        // on stock installs, where the raw primitive is absent from roles
-        // (WWID-2732).
+        // filter returning '' or false denies. The fallback applies whenever
+        // the effective capability is the default: GF core grants admins only
+        // the dynamic gform_full_access on stock installs, where the raw
+        // primitive is absent from roles (WWID-2732).
         $default_capability = 'gravityforms_view_entries';
         $capability = (string) apply_filters('wicket_gf_secure_upload_capability', $default_capability);
 

@@ -1460,7 +1460,7 @@ class ApiDataBind extends \GF_Field
                                     echo wp_json_encode( __( 'Failed to load services: %s', 'wicket-gf' ) );
                                 ?>;
                                 var message = reason
-                                    ? failFormat.replace('%s', reason)
+                                    ? failFormat.replace('%s', function () { return reason; })
                                     : <?php echo wp_json_encode( __( 'Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf' ) ); ?>;
                                 $notice.html($('<span style="color: #d63638;"></span>').text(message));
                             }
@@ -1667,7 +1667,7 @@ class ApiDataBind extends \GF_Field
                                     echo wp_json_encode( __( 'Failed to load fields: %s', 'wicket-gf' ) );
                                 ?>;
                                 var message = reason
-                                    ? failFormat.replace('%s', reason)
+                                    ? failFormat.replace('%s', function () { return reason; })
                                     : <?php echo wp_json_encode( __( 'Failed to load fields. Please use custom field path.', 'wicket-gf' ) ); ?>;
                                 $('.wicket-field-examples').html($('<span style="color: #d63638;"></span>').text(message));
                             }
