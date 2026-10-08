@@ -428,7 +428,7 @@ class OrgSearchSelect extends \GF_Field
                     $('#orgss_grant_org_editor_on_select').prop('checked', field.orgss_grant_org_editor_on_select || false);
                     $('#orgss_grant_org_editor_on_purchase').prop('checked', field.orgss_grant_org_editor_on_purchase || false);
                     $('#orgss_display_org_fields').val(field.orgss_display_org_fields || 'name');
-                    $('#orgss_display_org_type').val(field.orgss_display_org_type || false);
+                    $('#orgss_display_org_type').prop('checked', field.orgss_display_org_type || false);
 
                     // Handle active membership alert fields
                     $('#orgss_active_membership_alert_title_input').val(field.orgss_active_membership_alert_title || '');
