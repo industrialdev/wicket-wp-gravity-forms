@@ -310,6 +310,12 @@ class ApiDataBind extends \GF_Field
      * Per-request memo for API fetches. The render path and the save path
      * (and multiple same-config fields) each call fetch_value_from_api();
      * without the memo one submission doubles or triples MDP calls.
+     *
+     * Keyed on the field config plus the current person, and scoped to the
+     * PHP request: FPM resets statics between requests, so there is no
+     * cross-user bleed. Long-running CLI loops keep one string per distinct
+     * person/config and serve values captured at loop start; acceptable for
+     * a display field.
      */
     private static array $api_value_memo = [];
 
@@ -327,43 +333,63 @@ class ApiDataBind extends \GF_Field
      * - ORGSS-bound fields: keep the posted value. Front-end JS owns it (live
      *   organization selection); a save-time re-fetch cannot know that
      *   selection and would wipe it. Server-side resolution is a follow-up.
+     * - Hidden mode without a configured source: keep the posted value. Such
+     *   fields are populated by gform_field_value, query strings or other JS;
+     *   re-fetching would wipe their value with the fallback.
      * - Editable mode: respect a non-empty posted value (the member typed it
      *   deliberately), fetch when blank.
-     * - static/readonly/hidden: re-fetch so the entry holds the truth at
-     *   submission time; on API failure fall back to the configured fallback
-     *   value, never throw.
+     * - static/readonly/hidden with a source: re-fetch so the entry holds the
+     *   truth at submission time; on API failure fall back to the configured
+     *   fallback value, never throw.
+     *
+     * Every branch routes through parent::get_value_save_entry so GF's entry
+     * sanitization still applies to whatever is stored.
      */
     public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
     {
         if (\GFCommon::is_entry_detail()) {
-            return rgar($lead, (string) $this->id, $value);
+            return parent::get_value_save_entry(rgar($lead, (string) $this->id, $value), $form, $input_name, $lead_id, $lead);
         }
 
         if ($this->is_orgss_bound()) {
-            return $value;
+            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
         }
 
-        if (($this->apiDisplayMode ?? 'hidden') === 'editable' && !empty($value)) {
-            return $value;
+        $display_mode = $this->apiDisplayMode ?? 'hidden';
+
+        if ($display_mode !== 'editable' && empty($this->apiDataSource)) {
+            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
+        }
+
+        if ($display_mode === 'editable' && !empty($value)) {
+            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
         }
 
         $fetched = $this->fetch_value_from_api();
 
-        return $fetched !== '' ? $fetched : $this->get_fallback_value();
+        return parent::get_value_save_entry($fetched !== '' ? $fetched : $this->get_fallback_value(), $form, $input_name, $lead_id, $lead);
     }
 
     /**
-     * static/readonly/hidden have no reliable posted input, so GF's default
-     * "empty" check would flag them and block any submission once an admin
-     * marks the field required. Only editable mode carries a user-typed value.
+     * static/readonly/hidden carry a system-provided value with no posted
+     * input, so GF's default required check (which reads the POST) would
+     * block every submission once an admin marks the field required. Only
+     * editable mode carries a user-typed value that can be "missing".
      */
-    public function is_value_submission_empty($field_values)
+    public function validate($value, $form)
     {
         if (($this->apiDisplayMode ?? 'hidden') !== 'editable') {
+            return true;
+        }
+
+        if ($this->isRequired && empty($value)) {
+            $this->failed_validation = true;
+            $this->validation_message = empty($this->errorMessage) ? __('This field is required.', 'wicket-gf') : $this->errorMessage;
+
             return false;
         }
 
-        return empty(rgpost('input_' . $this->id));
+        return true;
     }
 
     /**
