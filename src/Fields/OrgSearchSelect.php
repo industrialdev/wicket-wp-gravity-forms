@@ -121,6 +121,14 @@ class OrgSearchSelect extends \GF_Field
                     <label for="orgss_hide_select_buttons" class="inline">Hide select buttons?</label>
                     <br />
 
+                    <input onchange="SetFieldProperty('orgss_hide_membership_status', this.checked)" type="checkbox" id="orgss_hide_membership_status" class="orgss_hide_membership_status">
+                    <label for="orgss_hide_membership_status" class="inline">Hide membership status on org cards?</label>
+                    <br />
+
+                    <input onchange="SetFieldProperty('orgss_hide_org_type', this.checked)" type="checkbox" id="orgss_hide_org_type" class="orgss_hide_org_type">
+                    <label for="orgss_hide_org_type" class="inline">Hide org type on org cards?</label>
+                    <br />
+
                     <input onchange="SetFieldProperty('orgss_display_removal_alert_message', this.checked)" type="checkbox" id="orgss_display_removal_alert_message" class="orgss_display_removal_alert_message">
                     <label for="orgss_display_removal_alert_message" class="inline">Display removal alert message?</label>
                     <br />
@@ -412,6 +420,8 @@ class OrgSearchSelect extends \GF_Field
                     $('#orgss_auto_advance').prop('checked', field.orgss_auto_advance || false);
                     $('#orgss_hide_remove_buttons').prop('checked', field.orgss_hide_remove_buttons || false);
                     $('#orgss_hide_select_buttons').prop('checked', field.orgss_hide_select_buttons || false);
+                    $('#orgss_hide_membership_status').prop('checked', field.orgss_hide_membership_status || false);
+                    $('#orgss_hide_org_type').prop('checked', field.orgss_hide_org_type || false);
                     $('#orgss_display_removal_alert_message').prop('checked', field.orgss_display_removal_alert_message || false);
                     $('#orgss_disable_selecting_orgs_with_active_membership').prop('checked', field.orgss_disable_selecting_orgs_with_active_membership || false);
                     $('#orgss_grant_roster_man_on_purchase').prop('checked', field.orgss_grant_roster_man_on_purchase || false);
@@ -622,6 +632,8 @@ class OrgSearchSelect extends \GF_Field
                 field.orgss_auto_advance = false;
                 field.orgss_hide_remove_buttons = false;
                 field.orgss_hide_select_buttons = false;
+                field.orgss_hide_membership_status = false;
+                field.orgss_hide_org_type = false;
                 field.orgss_display_removal_alert_message = false;
                 field.orgss_disable_selecting_orgs_with_active_membership = false;
                 field.orgss_grant_roster_man_on_purchase = false;
@@ -783,6 +795,8 @@ class OrgSearchSelect extends \GF_Field
         $orgss_display_org_type = false;
         $orgss_hide_remove_buttons = false;
         $orgss_hide_select_buttons = false;
+        $orgss_hide_membership_status = false;
+        $orgss_hide_org_type = false;
         $orgss_display_removal_alert_message = false;
 
         // NOTE: Most active-membership settings below are currently modal-only and not user-reachable
@@ -1001,6 +1015,12 @@ class OrgSearchSelect extends \GF_Field
                     if (isset($field->orgss_hide_select_buttons)) {
                         $orgss_hide_select_buttons = $field->orgss_hide_select_buttons;
                     }
+                    if (isset($field->orgss_hide_membership_status)) {
+                        $orgss_hide_membership_status = $field->orgss_hide_membership_status;
+                    }
+                    if (isset($field->orgss_hide_org_type)) {
+                        $orgss_hide_org_type = $field->orgss_hide_org_type;
+                    }
                     if (isset($field->orgss_display_removal_alert_message)) {
                         $orgss_display_removal_alert_message = $field->orgss_display_removal_alert_message;
                     }
@@ -1019,7 +1039,6 @@ class OrgSearchSelect extends \GF_Field
                 // Use standard GF naming convention
                 'selected_uuid_hidden_field_name'               => '', // GF renders its own canonical input_{id} hidden field; component copy suppressed to keep one owner
                 'checkbox_id_new_org'                           => $checkbox_id_new_org,
-                'allow_continue_without_org'                    => $allow_continue_without_org,
                 'auto_advance'                                  => $orgss_auto_advance,
                 'key'                                           => $id,
                 'org_term_singular'                             => $org_term_singular,
@@ -1067,6 +1086,8 @@ class OrgSearchSelect extends \GF_Field
                 'display_org_type'                              => $orgss_display_org_type,
                 'hide_remove_buttons'                           => $orgss_hide_remove_buttons,
                 'hide_select_buttons'                           => $orgss_hide_select_buttons,
+                'hide_membership_status'                        => $orgss_hide_membership_status,
+                'hide_org_type'                                 => $orgss_hide_org_type,
                 'display_removal_alert_message'                 => $orgss_display_removal_alert_message,
                 'form_id'                                       => $form['id'] ?? 0,
             ];
@@ -1424,6 +1445,12 @@ class OrgSearchSelect extends \GF_Field
         }
         if (isset($this->orgss_auto_advance)) {
             $this->orgss_auto_advance = (bool) $this->orgss_auto_advance;
+        }
+        if (isset($this->orgss_hide_membership_status)) {
+            $this->orgss_hide_membership_status = (bool) $this->orgss_hide_membership_status;
+        }
+        if (isset($this->orgss_hide_org_type)) {
+            $this->orgss_hide_org_type = (bool) $this->orgss_hide_org_type;
         }
     }
 
