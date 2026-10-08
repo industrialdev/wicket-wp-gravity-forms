@@ -307,6 +307,66 @@ class ApiDataBind extends \GF_Field
     }
 
     /**
+     * Per-request memo for API fetches. The render path and the save path
+     * (and multiple same-config fields) each call fetch_value_from_api();
+     * without the memo one submission doubles or triples MDP calls.
+     */
+    private static array $api_value_memo = [];
+
+    /**
+     * WWID-2748: capture the value server-side at save time.
+     *
+     * The field is display-only at render: static mode emits a <div> (nothing
+     * is POSTed) and hidden/readonly posts a render-time snapshot that page
+     * cache can make stale or wrong-user. Without this override GF stored ''
+     * and every notification merge tag read blank.
+     *
+     * Value policy:
+     * - Admin entry edit: keep the stored value. Nothing is posted for static
+     *   mode and a re-fetch would store the editing admin's person data.
+     * - ORGSS-bound fields: keep the posted value. Front-end JS owns it (live
+     *   organization selection); a save-time re-fetch cannot know that
+     *   selection and would wipe it. Server-side resolution is a follow-up.
+     * - Editable mode: respect a non-empty posted value (the member typed it
+     *   deliberately), fetch when blank.
+     * - static/readonly/hidden: re-fetch so the entry holds the truth at
+     *   submission time; on API failure fall back to the configured fallback
+     *   value, never throw.
+     */
+    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
+    {
+        if (\GFCommon::is_entry_detail()) {
+            return rgar($lead, (string) $this->id, $value);
+        }
+
+        if ($this->is_orgss_bound()) {
+            return $value;
+        }
+
+        if (($this->apiDisplayMode ?? 'hidden') === 'editable' && !empty($value)) {
+            return $value;
+        }
+
+        $fetched = $this->fetch_value_from_api();
+
+        return $fetched !== '' ? $fetched : $this->get_fallback_value();
+    }
+
+    /**
+     * static/readonly/hidden have no reliable posted input, so GF's default
+     * "empty" check would flag them and block any submission once an admin
+     * marks the field required. Only editable mode carries a user-typed value.
+     */
+    public function is_value_submission_empty($field_values)
+    {
+        if (($this->apiDisplayMode ?? 'hidden') !== 'editable') {
+            return false;
+        }
+
+        return empty(rgpost('input_' . $this->id));
+    }
+
+    /**
      * Build data attributes for frontend JavaScript binding.
      *
      * @param array $form The form object
@@ -349,8 +409,41 @@ class ApiDataBind extends \GF_Field
 
     /**
      * Fetch value from Wicket API based on field configuration.
+     *
+     * Memoized per request on the field configuration + current person, so
+     * the render path, the save path, and sibling fields with identical
+     * configuration share one MDP call.
      */
     private function fetch_value_from_api(): string
+    {
+        $memo_key = $this->api_value_memo_key();
+
+        if (array_key_exists($memo_key, self::$api_value_memo)) {
+            return self::$api_value_memo[$memo_key];
+        }
+
+        $value = $this->do_fetch_value_from_api();
+        self::$api_value_memo[$memo_key] = $value;
+
+        return $value;
+    }
+
+    private function api_value_memo_key(): string
+    {
+        $person_uuid = function_exists('wicket_current_person_uuid')
+            ? (string) wicket_current_person_uuid()
+            : '';
+
+        return md5(serialize([
+            $this->apiDataSource ?? '',
+            $this->apiFieldPath ?? '',
+            $this->apiOrganizationUuid ?? '',
+            $this->apiServiceUuid ?? '',
+            $person_uuid,
+        ]));
+    }
+
+    private function do_fetch_value_from_api(): string
     {
         // Service identity defaults its field path to external_id, so an empty path is valid there.
         if (empty($this->apiDataSource) || (empty($this->apiFieldPath) && $this->apiDataSource !== 'service_identity')) {
