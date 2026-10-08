@@ -307,6 +307,99 @@ class ApiDataBind extends \GF_Field
     }
 
     /**
+     * Per-request memo for API fetches. The render path and the save path
+     * (and multiple same-config fields) each call fetch_value_from_api();
+     * without the memo one submission doubles or triples MDP calls.
+     *
+     * Keyed on the field config plus the current person, and scoped to the
+     * PHP request: FPM resets statics between requests, so there is no
+     * cross-user bleed. Long-running CLI loops keep one string per distinct
+     * person/config and serve values captured at loop start; acceptable for
+     * a display field.
+     */
+    private static array $api_value_memo = [];
+
+    /**
+     * WWID-2748: capture the value server-side at save time.
+     *
+     * The field is display-only at render: static mode emits a <div> (nothing
+     * is POSTed) and hidden/readonly posts a render-time snapshot that page
+     * cache can make stale or wrong-user. Without this override GF stored ''
+     * and every notification merge tag read blank.
+     *
+     * This is the GF 3.x save seam. Core saves through get_value_save_input(),
+     * which reflects on get_value_save_entry(): a child override of the legacy
+     * entry method that calls parent:: would loop forever, because the parent
+     * shim delegates back to get_value_save_input(), whose reflection re-calls
+     * the child. Overriding get_value_save_input() and calling parent:: is the
+     * core-sanctioned pattern (GF_Field_Post_Category) and routes the returned
+     * value through GF's sanitize_entry_value(). Requires GF 3.0+ (the stack
+     * ships 3.1.2).
+     *
+     * Value policy:
+     * - Admin entry edit: keep the stored value. Nothing is posted for static
+     *   mode and a re-fetch would store the editing admin's person data.
+     * - ORGSS-bound fields: keep the posted value. Front-end JS owns it (live
+     *   organization selection); a save-time re-fetch cannot know that
+     *   selection and would wipe it. Server-side resolution is a follow-up.
+     * - Hidden mode without a configured source: keep the posted value. Such
+     *   fields are populated by gform_field_value, query strings or other JS;
+     *   re-fetching would wipe their value with the fallback.
+     * - Editable mode: respect a non-empty posted value (the member typed it
+     *   deliberately), fetch when blank.
+     * - static/readonly/hidden with a source: re-fetch so the entry holds the
+     *   truth at submission time; on API failure fall back to the configured
+     *   fallback value, never throw.
+     *
+     * Every branch returns through parent::get_value_save_input so values are
+     * stored exactly as GF core stores them (default allow_html === false:
+     * strings pass through unchanged; GF encodes entry values on output).
+     */
+    public function get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index = '')
+    {
+        if (\GFCommon::is_entry_detail()) {
+            return parent::get_value_save_input(rgar($entry, (string) $this->id, $value), $form, $input_name, $entry_id, $entry, $repeater_index);
+        }
+
+        if ($this->is_orgss_bound()) {
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
+        }
+
+        $display_mode = $this->apiDisplayMode ?? 'hidden';
+
+        if ($display_mode !== 'editable' && empty($this->apiDataSource)) {
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
+        }
+
+        if ($display_mode === 'editable' && !empty($value)) {
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
+        }
+
+        $fetched = $this->fetch_value_from_api();
+
+        return parent::get_value_save_input($fetched !== '' ? $fetched : $this->get_fallback_value(), $form, $input_name, $entry_id, $entry, $repeater_index);
+    }
+
+    /**
+     * Sourced non-editable fields always carry a system-provided value at save
+     * (fetch_value_from_api(), or the configured fallback on failure), so they
+     * are never truly empty. GF's required gate (GFFormDisplay::validate_field ->
+     * is_empty()) consumes this check before field->validate() ever runs, so
+     * the gate must know the value exists. The source guard keeps GF's default
+     * POST check for hidden value carriers (their posted value can be blank)
+     * and for editable mode, so is_form_empty()'s at-least-one-field rule
+     * stays truthful.
+     */
+    public function is_value_submission_empty($form_id)
+    {
+        if (($this->apiDisplayMode ?? 'hidden') !== 'editable' && !empty($this->apiDataSource)) {
+            return false;
+        }
+
+        return parent::is_value_submission_empty($form_id);
+    }
+
+    /**
      * Build data attributes for frontend JavaScript binding.
      *
      * @param array $form The form object
@@ -349,8 +442,41 @@ class ApiDataBind extends \GF_Field
 
     /**
      * Fetch value from Wicket API based on field configuration.
+     *
+     * Memoized per request on the field configuration + current person, so
+     * the render path, the save path, and sibling fields with identical
+     * configuration share one MDP call.
      */
     private function fetch_value_from_api(): string
+    {
+        $memo_key = $this->api_value_memo_key();
+
+        if (array_key_exists($memo_key, self::$api_value_memo)) {
+            return self::$api_value_memo[$memo_key];
+        }
+
+        $value = $this->do_fetch_value_from_api();
+        self::$api_value_memo[$memo_key] = $value;
+
+        return $value;
+    }
+
+    private function api_value_memo_key(): string
+    {
+        $person_uuid = function_exists('wicket_current_person_uuid')
+            ? (string) wicket_current_person_uuid()
+            : '';
+
+        return md5(serialize([
+            $this->apiDataSource ?? '',
+            $this->apiFieldPath ?? '',
+            $this->apiOrganizationUuid ?? '',
+            $this->apiServiceUuid ?? '',
+            $person_uuid,
+        ]));
+    }
+
+    private function do_fetch_value_from_api(): string
     {
         // Service identity defaults its field path to external_id, so an empty path is valid there.
         if (empty($this->apiDataSource) || (empty($this->apiFieldPath) && $this->apiDataSource !== 'service_identity')) {
@@ -382,7 +508,7 @@ class ApiDataBind extends \GF_Field
                 default:
                     return $this->get_fallback_value();
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->get_fallback_value();
         }
     }
