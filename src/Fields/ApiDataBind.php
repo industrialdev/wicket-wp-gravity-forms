@@ -327,6 +327,15 @@ class ApiDataBind extends \GF_Field
      * cache can make stale or wrong-user. Without this override GF stored ''
      * and every notification merge tag read blank.
      *
+     * This is the GF 3.x save seam. Core saves through get_value_save_input(),
+     * which reflects on get_value_save_entry(): a child override of the legacy
+     * entry method that calls parent:: would loop forever, because the parent
+     * shim delegates back to get_value_save_input(), whose reflection re-calls
+     * the child. Overriding get_value_save_input() and calling parent:: is the
+     * core-sanctioned pattern (GF_Field_Post_Category) and routes the returned
+     * value through GF's sanitize_entry_value(). Requires GF 3.0+ (the stack
+     * ships 3.1.2).
+     *
      * Value policy:
      * - Admin entry edit: keep the stored value. Nothing is posted for static
      *   mode and a re-fetch would store the editing admin's person data.
@@ -342,54 +351,52 @@ class ApiDataBind extends \GF_Field
      *   truth at submission time; on API failure fall back to the configured
      *   fallback value, never throw.
      *
-     * Every branch routes through parent::get_value_save_entry so GF's entry
-     * sanitization still applies to whatever is stored.
+     * Every branch returns through parent::get_value_save_input so values are
+     * stored exactly as GF core stores them (default allow_html === false:
+     * strings pass through unchanged; GF encodes entry values on output).
      */
-    public function get_value_save_entry($value, $form, $input_name, $lead_id, $lead)
+    public function get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index = '')
     {
         if (\GFCommon::is_entry_detail()) {
-            return parent::get_value_save_entry(rgar($lead, (string) $this->id, $value), $form, $input_name, $lead_id, $lead);
+            return parent::get_value_save_input(rgar($entry, (string) $this->id, $value), $form, $input_name, $entry_id, $entry, $repeater_index);
         }
 
         if ($this->is_orgss_bound()) {
-            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
         }
 
         $display_mode = $this->apiDisplayMode ?? 'hidden';
 
         if ($display_mode !== 'editable' && empty($this->apiDataSource)) {
-            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
         }
 
         if ($display_mode === 'editable' && !empty($value)) {
-            return parent::get_value_save_entry($value, $form, $input_name, $lead_id, $lead);
+            return parent::get_value_save_input($value, $form, $input_name, $entry_id, $entry, $repeater_index);
         }
 
         $fetched = $this->fetch_value_from_api();
 
-        return parent::get_value_save_entry($fetched !== '' ? $fetched : $this->get_fallback_value(), $form, $input_name, $lead_id, $lead);
+        return parent::get_value_save_input($fetched !== '' ? $fetched : $this->get_fallback_value(), $form, $input_name, $entry_id, $entry, $repeater_index);
     }
 
     /**
-     * static/readonly/hidden carry a system-provided value with no posted
-     * input, so GF's default required check (which reads the POST) would
-     * block every submission once an admin marks the field required. Only
-     * editable mode carries a user-typed value that can be "missing".
+     * Sourced non-editable fields always carry a system-provided value at save
+     * (fetch_value_from_api(), or the configured fallback on failure), so they
+     * are never truly empty. GF's required gate (GFFormDisplay::validate_field ->
+     * is_empty()) consumes this check before field->validate() ever runs, so
+     * the gate must know the value exists. The source guard keeps GF's default
+     * POST check for hidden value carriers (their posted value can be blank)
+     * and for editable mode, so is_form_empty()'s at-least-one-field rule
+     * stays truthful.
      */
-    public function validate($value, $form)
+    public function is_value_submission_empty($form_id)
     {
-        if (($this->apiDisplayMode ?? 'hidden') !== 'editable') {
-            return true;
-        }
-
-        if ($this->isRequired && empty($value)) {
-            $this->failed_validation = true;
-            $this->validation_message = empty($this->errorMessage) ? __('This field is required.', 'wicket-gf') : $this->errorMessage;
-
+        if (($this->apiDisplayMode ?? 'hidden') !== 'editable' && !empty($this->apiDataSource)) {
             return false;
         }
 
-        return true;
+        return parent::is_value_submission_empty($form_id);
     }
 
     /**
@@ -501,7 +508,7 @@ class ApiDataBind extends \GF_Field
                 default:
                     return $this->get_fallback_value();
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->get_fallback_value();
         }
     }
