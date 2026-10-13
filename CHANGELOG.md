@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.8.0] - 2026-10-13
+
+### Added
+- **orgss:** add org card display toggles to the field (WWID-2710)
+
+### Fixed
+- **orgss:** restore Display Org Type checkbox state on load (WWID-2710)
+
+
 ## [2.7.1] - 2026-10-06
 
 ### Maintenance
