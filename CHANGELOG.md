@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.8.1] - 2026-10-13
+
+### Fixed
+- **apidatabind:** move save capture to get_value_save_input (WWID-2748)
+- **apidatabind:** sanitize save path and rework required handling (WWID-2748)
+- **apidatabind:** capture entry value server-side at save (WWID-2748)
+
+
 ## [2.8.0] - 2026-10-13
 
 ### Added
