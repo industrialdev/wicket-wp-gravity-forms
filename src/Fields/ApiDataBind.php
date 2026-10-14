@@ -1578,7 +1578,17 @@ class ApiDataBind extends \GF_Field
                                 $dropdown.empty().append('<option value=""><?php esc_html_e('No services found.', 'wicket-gf'); ?></option>');
                                 $notice.html('<span style="color: #d63638;"><?php esc_html_e('The MDP has no services configured. Service identity data sources need at least one service.', 'wicket-gf'); ?></span>');
                             } else {
-                                $notice.html('<span style="color: #d63638;"><?php esc_html_e('Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf'); ?></span>');
+                                // Lead with the server's reason; fall back to the
+                                // generic retry hint when none came back.
+                                var reason = (response.data && typeof response.data === 'string') ? response.data : '';
+                                var failFormat = <?php
+                                    // translators: %s: reason the server returned for the failure.
+                                    echo wp_json_encode( __( 'Failed to load services: %s', 'wicket-gf' ) );
+                                ?>;
+                                var message = reason
+                                    ? failFormat.replace('%s', function () { return reason; })
+                                    : <?php echo wp_json_encode( __( 'Failed to load services. Save the form and reload the editor to retry.', 'wicket-gf' ) ); ?>;
+                                $notice.html($('<span style="color: #d63638;"></span>').text(message));
                             }
                         },
                         error: function() {
@@ -1774,8 +1784,18 @@ class ApiDataBind extends \GF_Field
                             if (response.success && response.data) {
                                 populateFieldDropdown(response.data);
                             } else {
+                                // Lead with the server's reason; fall back to the
+                                // generic custom-path hint when none came back.
                                 showCustomFieldPath();
-                                $('.wicket-field-examples').html('<span style="color: #d63638;"><?php esc_html_e('Failed to load fields. Please use custom field path.', 'wicket-gf'); ?></span>');
+                                var reason = (response.data && typeof response.data === 'string') ? response.data : '';
+                                var failFormat = <?php
+                                    // translators: %s: reason the server returned for the failure.
+                                    echo wp_json_encode( __( 'Failed to load fields: %s', 'wicket-gf' ) );
+                                ?>;
+                                var message = reason
+                                    ? failFormat.replace('%s', function () { return reason; })
+                                    : <?php echo wp_json_encode( __( 'Failed to load fields. Please use custom field path.', 'wicket-gf' ) ); ?>;
+                                $('.wicket-field-examples').html($('<span style="color: #d63638;"></span>').text(message));
                             }
                         },
                         error: function() {
@@ -2109,7 +2129,9 @@ class ApiDataBind extends \GF_Field
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
 
-        if (!current_user_can('gravityforms_edit_forms')) {
+        // GF core grants admins only the dynamic gform_full_access on stock
+        // installs, so the raw primitive would deny every admin (WWID-2732).
+        if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions');
 
             return;
@@ -2141,7 +2163,7 @@ class ApiDataBind extends \GF_Field
     {
         check_ajax_referer('gf_wicket_api_data_nonce', 'nonce');
 
-        if (!current_user_can('gravityforms_edit_forms')) {
+        if (!\GFCommon::current_user_can_any('gravityforms_edit_forms')) {
             wp_send_json_error('Insufficient permissions');
 
             return;

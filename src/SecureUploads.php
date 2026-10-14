@@ -19,8 +19,11 @@ namespace WicketGF;
  *   2. Default: <above-docroot>/gf-uploads-secure (derived from WP_CONTENT_DIR).
  *   3. The `wicket_gf_secure_uploads_base_dir` filter (applied last).
  *
- * The download capability defaults to `gravityforms_view_entries` and can be
- * changed with the `wicket_gf_secure_upload_capability` filter.
+ * The download capability defaults to `gravityforms_view_entries` (with the
+ * plugin's dynamic gform_full_access fallback whenever the effective
+ * capability is that default). A `wicket_gf_secure_upload_capability` filter
+ * value replaces the capability outright and is checked as-is, so returning
+ * an empty value denies everyone.
  */
 class SecureUploads
 {
@@ -395,8 +398,21 @@ class SecureUploads
      */
     public static function handle_download(): void
     {
-        $capability = (string) apply_filters('wicket_gf_secure_upload_capability', 'gravityforms_view_entries');
-        if (!is_user_logged_in() || !current_user_can($capability)) {
+        // A filtered capability is honored as-is and stays fail-closed: a
+        // filter returning '' or false denies. The fallback applies whenever
+        // the effective capability is the default: GF core grants admins only
+        // the dynamic gform_full_access on stock installs, where the raw
+        // primitive is absent from roles (WWID-2732).
+        $default_capability = 'gravityforms_view_entries';
+        $capability = (string) apply_filters('wicket_gf_secure_upload_capability', $default_capability);
+
+        if ($capability === $default_capability && class_exists('GFCommon')) {
+            $allowed = \GFCommon::current_user_can_any($default_capability);
+        } else {
+            $allowed = current_user_can($capability);
+        }
+
+        if (!is_user_logged_in() || !$allowed) {
             wp_die(esc_html__('You are not allowed to access this file.', 'wicket-gf'), '', ['response' => 403]);
         }
 
