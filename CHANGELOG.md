@@ -5,6 +5,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.8.2] - 2026-10-14
+
+### Fixed
+- **uploads:** keep the capability filter fail-closed and fix message i18n (WWID-2732)
+- **fields:** surface server error reasons in the editor loaders (WWID-2732)
+- **uploads:** cover secure downloads in the capability fallback (WWID-2732)
+- **fields:** gate editor capability checks through current_user_can_any (WWID-2732)
+
+### Maintenance
+- **fields:** harden %s substitution and tighten the filter docs (WWID-2732)
+
+
 ## [2.8.1] - 2026-10-13
 
 ### Fixed
