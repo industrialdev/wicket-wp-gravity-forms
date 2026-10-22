@@ -309,6 +309,10 @@ Full documentation lives under [`docs/`](docs/index.md):
 
 GPL v2 or later
 
+## Documentation
+
+End-user guides live in the [docs](docs/) folder. Start with [Add a Wicket Widget Field to a Form](docs/add-widget-to-form.md).
+
 ## Credits
 
 Developed by [Wicket](https://wicket.io)
