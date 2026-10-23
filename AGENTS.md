@@ -11,6 +11,10 @@ This plugin adds Wicket functions to Gravity Forms.
 
 For the package map (field architecture, field slugs, hooks, the MDP JSON sync design, field types and MDP field mapping): `@see atlas://packages/wicket-wp-gravity-forms.md`. Follow PHP doc conventions per `@see atlas://conventions/php-doc-comment-style.md`.
 
+## Documentation
+
+The Atlas knowledge base holds the full engineering and product documentation for the whole Wicket stack. Start at `@see atlas://packages/wicket-wp-gravity-forms.md` for this package. The repo docs/ folder, when present, holds only public end-consumer guides; engineering material never lives beside the code.
+
 ## Build, Verify, and Development Commands
 
 Use Composer scripts as the source of truth (`composer.json`):
