@@ -133,7 +133,8 @@ class WidgetPrefs extends \GF_Field
         parent::sanitize_settings();
 
         $raw = is_string($this->wwidget_prefs_mdp_json_config) ? $this->wwidget_prefs_mdp_json_config : '';
-        if (trim($raw) !== '' && self::decode_config($raw) === [] && trim($raw) !== '{}') {
+        // The form editor JSON guard blocks a non-object, so this only catches other save paths.
+        if (trim($raw) !== '' && !(json_decode($raw) instanceof \stdClass)) {
             \Wicket()->log()->debug(
                 'Person Preferences Widget: invalid MDP Widget Config JSON saved',
                 ['source' => 'gravityforms-state-debug', 'value' => $raw, 'error' => json_last_error_msg()]
@@ -348,7 +349,14 @@ class WidgetPrefs extends \GF_Field
             if (field.type !== 'wicket_widget_prefs') {
                 return;
             }
-            $('#wwidget_prefs_hide_comm').prop('checked', field.wwidget_prefs_hide_comm || false);
+            var checked = field.wwidget_prefs_hide_comm;
+            if (checked === undefined) {
+                // Never saved: show what the JSON config renders with.
+                try {
+                    checked = JSON.parse(field.wwidget_prefs_mdp_json_config || '{}').hideCommunicationPreferences;
+                } catch (e) {}
+            }
+            $('#wwidget_prefs_hide_comm').prop('checked', !!checked);
         });
     });
 </script>

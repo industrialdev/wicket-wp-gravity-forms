@@ -12,7 +12,8 @@
  * of that same gate. Wrapping once on load is enough: ValidateForm is a
  * page-load global that GF does not redefine during an AJAX save.
  *
- * Scope: JSON SYNTAX only. A valid JSON string does not mean the keys and
+ * Scope: JSON SYNTAX only, plus an object shape for Person Preferences MDP
+ * Widget Config (OBJECT_PROPS). A valid JSON string does not mean the keys and
  * values are valid for a given MDP instance (resource types, field keys).
  * The field help text states that distinction; this guard cannot enforce it.
  */
@@ -49,7 +50,12 @@
         ]
     };
 
-    function isValidJson(value) {
+    // Settings that must hold a JSON object; the server clears any other JSON on save.
+    var OBJECT_PROPS = {
+        wwidget_prefs_mdp_json_config: true
+    };
+
+    function isValidJson(value, prop) {
         if (value === null || value === undefined) {
             return true;
         }
@@ -58,7 +64,10 @@
             return true; // empty is allowed: falls back to defaults / legacy
         }
         try {
-            JSON.parse(value);
+            var parsed = JSON.parse(value);
+            if (OBJECT_PROPS[prop]) {
+                return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+            }
             return true;
         } catch (e) {
             return false;
@@ -83,11 +92,11 @@
                 return;
             }
             props.forEach(function (prop) {
-                if (!isValidJson(field[prop])) {
+                if (!isValidJson(field[prop], prop)) {
                     offenders.push({
                         fieldId: field.id,
                         fieldLabel: fieldLabel(field),
-                        box: BOX_LABELS[prop] || prop
+                        box: (BOX_LABELS[prop] || prop) + (OBJECT_PROPS[prop] ? ', must be a JSON object' : '')
                     });
                 }
             });
