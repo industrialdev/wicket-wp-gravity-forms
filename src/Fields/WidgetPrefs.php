@@ -68,6 +68,7 @@ class WidgetPrefs extends \GF_Field
             "function SetDefaultValues_%s(field) {
                 field.label = '%s';
                 field.wwidget_prefs_mdp_json_config = '';
+                field.wwidget_prefs_hide_comm = false;
             }",
             $this->type,
             esc_js($this->get_form_editor_field_title())
@@ -150,7 +151,22 @@ class WidgetPrefs extends \GF_Field
     public static function custom_settings($position, $form_id): void
     {
         if ($position == 25) {
-            ob_start(); ?>
+            ob_start();
+            if (self::base_supports_config()) {
+                self::render_config_setting();
+            } else {
+                self::render_legacy_setting();
+            }
+            echo ob_get_clean();
+        }
+    }
+
+    /**
+     * MDP Widget Config (JSON) setting, shown when the base plugin can apply it.
+     */
+    private static function render_config_setting(): void
+    {
+        ?>
 
 <li class="wicket_widget_person_prefs_setting field_setting" style="display:none;margin-bottom: 10px;">
     <div>
@@ -159,9 +175,6 @@ class WidgetPrefs extends \GF_Field
         <p class="wwidget_prefs_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
         <p style="margin-top: 2px;"><em>This expects JSON data for configuring the widget, supporting all options documented for the MDP JS Widget (<code>hidePrimaryLanguage</code>, <code>hideCommunicationPreferences</code>, <code>primaryLanguageLabel</code>, and more). Please do not modify unless you know what you are doing.</em></p>
         <p style="margin-top: 2px;"><em>Note: <code>rootEl</code>, <code>apiRoot</code>, <code>accessToken</code>, <code>personId</code>, and <code>lang</code> are always set automatically and any value provided for them here is ignored.</em></p>
-        <?php if (!self::base_supports_config()) : ?>
-        <p style="margin-top: 2px;"><strong><?php echo esc_html__('Update the Wicket Base Plugin to use this setting. Until then, only "hideCommunicationPreferences" applies.', 'wicket-gf'); ?></strong></p>
-        <?php endif; ?>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editpersonpreferences" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
     </div>
 </li>
@@ -207,8 +220,6 @@ class WidgetPrefs extends \GF_Field
 </script>
 
 <?php
-            echo ob_get_clean();
-        }
     }
 
     public static function editor_script(): void
@@ -252,12 +263,17 @@ class WidgetPrefs extends \GF_Field
 
     /**
      * Widget options for this field: the JSON config, or the legacy setting
-     * when the config is empty, invalid or list-shaped.
+     * when the config is empty, invalid or list-shaped. With an older base
+     * plugin the checkbox is the editor setting, so a saved checkbox wins.
      *
      * @return array<string, mixed>
      */
     public function resolve_config(): array
     {
+        if (!self::base_supports_config() && isset($this->wwidget_prefs_hide_comm)) {
+            return self::legacy_to_config($this->wwidget_prefs_hide_comm);
+        }
+
         $config = self::decode_config($this->wwidget_prefs_mdp_json_config ?? '');
 
         return $config !== [] ? $config : self::legacy_to_config($this->wwidget_prefs_hide_comm ?? false);
@@ -304,11 +320,41 @@ class WidgetPrefs extends \GF_Field
     // Legacy support
     //
     // Forms saved before the JSON config have a wwidget_prefs_hide_comm
-    // checkbox. Every form load moves it into the JSON config in memory, so
-    // the form editor shows it there and the next form save (editor, form
-    // duplication, or import) stores the JSON and drops the old value.
-    // Unsaved forms keep rendering from it through resolve_config().
+    // checkbox. With a base plugin that supports widget_config, every form
+    // load moves it into the JSON config in memory, so the form editor shows
+    // it there and the next form save (editor, form duplication, or import)
+    // stores the JSON and drops the old value. With an older base plugin, the
+    // checkbox stays the editor setting and nothing migrates. Remove this
+    // section once every site runs a base release with widget_config.
     // -------------------------------------------------------------------------
+
+    /**
+     * Original "Disable communication preferences?" setting, shown while the
+     * base plugin cannot apply the JSON config.
+     */
+    private static function render_legacy_setting(): void
+    {
+        ?>
+
+<li class="wicket_widget_person_prefs_setting field_setting" style="display:none;margin-bottom: 10px;">
+    <input onchange="SetFieldProperty('wwidget_prefs_hide_comm', this.checked)"
+        type="checkbox" id="wwidget_prefs_hide_comm" class="wwidget_prefs_hide_comm">
+    <label for="wwidget_prefs_hide_comm" class="inline">Disable communication preferences?</label>
+</li>
+
+<script type='text/javascript'>
+    jQuery(document).ready(function($) {
+        $(document).on('gform_load_field_settings', function(event, field) {
+            if (field.type !== 'wicket_widget_prefs') {
+                return;
+            }
+            $('#wwidget_prefs_hide_comm').prop('checked', field.wwidget_prefs_hide_comm || false);
+        });
+    });
+</script>
+
+<?php
+    }
 
     /**
      * Map the legacy wwidget_prefs_hide_comm value to widget options.
@@ -322,7 +368,8 @@ class WidgetPrefs extends \GF_Field
     }
 
     /**
-     * Move the legacy checkbox into the JSON config on every form load.
+     * Move the legacy checkbox into the JSON config on every form load, when
+     * the base plugin can apply the JSON.
      *
      * A valid JSON config wins and the checkbox is dropped. An empty, invalid
      * or list-shaped config is replaced by the migrated checkbox, if it was on.
@@ -332,7 +379,7 @@ class WidgetPrefs extends \GF_Field
      */
     public static function migrate_legacy_settings($form)
     {
-        if (!is_array($form) || empty($form['fields']) || !is_array($form['fields'])) {
+        if (!is_array($form) || empty($form['fields']) || !is_array($form['fields']) || !self::base_supports_config()) {
             return $form;
         }
 
