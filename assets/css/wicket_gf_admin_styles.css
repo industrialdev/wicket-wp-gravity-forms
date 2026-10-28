@@ -42,3 +42,8 @@
 .gfield-field-action[data-type^="wicket_"]:hover {
     background-color: #d1ecf4;
 }
+
+/* WP ships no style for CodeMirror placeholders; fade it so it never reads as content. */
+.field_setting .CodeMirror pre.CodeMirror-placeholder {
+    color: #a7aaad;
+}

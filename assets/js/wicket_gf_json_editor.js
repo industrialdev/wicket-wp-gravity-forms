@@ -20,6 +20,7 @@
     var JSON_TEXTAREA_IDS = [
         'wwidget_profile_mdp_json_config_input',
         'wwidget_org_profile_mdp_json_config_input',
+        'wwidget_prefs_mdp_json_config_input',
     ];
 
     var attachedEditors = {};
@@ -60,6 +61,15 @@
             gutters: (WicketGfJsonEditorSettings.codemirror.gutters || []).concat(['CodeMirror-foldgutter']),
         });
 
+        // An empty field is valid (no config); jsonlint alone flags it as "got 'EOF'".
+        if (editorSettings.codemirror.lint && wp.CodeMirror && wp.CodeMirror.lint && wp.CodeMirror.lint.json) {
+            editorSettings.codemirror.lint = {
+                getAnnotations: function(text, options, cm) {
+                    return text.trim() === '' ? [] : wp.CodeMirror.lint.json(text, options, cm);
+                },
+            };
+        }
+
         var instance = wp.codeEditor.initialize($textarea, editorSettings);
         attachedEditors[id] = instance;
         syncTextareaEvents($textarea.get(0), instance.codemirror);
@@ -72,12 +82,17 @@
     function attachAllVisible() {
         JSON_TEXTAREA_IDS.forEach(function(id) {
             var $textarea = $('#' + id);
-            if ($textarea.length && $textarea.is(':visible')) {
+            // CodeMirror hides the textarea once attached, so check its setting row.
+            if ($textarea.length && $textarea.closest('li').is(':visible')) {
                 if (attachedEditors[id]) {
                     // Field settings panel re-rendered for a different field of the
                     // same type: refresh value + view instead of re-initializing.
-                    attachedEditors[id].codemirror.setValue($textarea.val() || '');
-                    attachedEditors[id].codemirror.refresh();
+                    var cm = attachedEditors[id].codemirror;
+                    var value = $textarea.val() || '';
+                    if (cm.getValue() !== value) {
+                        cm.setValue(value);
+                    }
+                    cm.refresh();
                 } else {
                     attachEditor(id);
                 }

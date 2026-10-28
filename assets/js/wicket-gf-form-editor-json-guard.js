@@ -1,9 +1,9 @@
 /**
  * Wicket GF Form Editor JSON Guard
  *
- * Blocks the Gravity Forms form-editor save when any Wicket profile widget
- * field (Org or Individual) has invalid JSON in a JSON-expecting setting:
- * Required Resources, MDP JSON Fields, or MDP Widget Config.
+ * Blocks the Gravity Forms form-editor save when any Wicket widget field
+ * (Org or Individual Profile, Person Preferences) has invalid JSON in a
+ * JSON-expecting setting: Required Resources, MDP JSON Fields, or MDP Widget Config.
  *
  * How it hooks in: GF's form-editor save() runs window.UpdateFormObject()
  * (which syncs the editor into window.form.fields) and then calls
@@ -29,7 +29,8 @@
         wwidget_org_profile_mdp_json_config: 'MDP Widget Config',
         wwidget_profile_required_resources: 'Required Resources',
         wwidget_profile_mdp_json_fields: 'MDP JSON Fields',
-        wwidget_profile_mdp_json_config: 'MDP Widget Config'
+        wwidget_profile_mdp_json_config: 'MDP Widget Config',
+        wwidget_prefs_mdp_json_config: 'MDP Widget Config'
     };
 
     var FIELD_TYPE_PROPS = {
@@ -42,6 +43,9 @@
             'wwidget_profile_required_resources',
             'wwidget_profile_mdp_json_fields',
             'wwidget_profile_mdp_json_config'
+        ],
+        wicket_widget_prefs: [
+            'wwidget_prefs_mdp_json_config'
         ]
     };
 
