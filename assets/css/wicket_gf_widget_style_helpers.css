@@ -1,11 +1,11 @@
 /* GF's gravity-theme element rule (.gform_wrapper.gravity-theme input[type=...] is 0,3,1) out-specifies the MDP widgets' floating-label rule .wicket .Input>.form-control (0,3,0), collapsing its 30px label zone and shrinking its 18px font so values render under the labels. The :is([type=...]) list mirrors GF's own input-type enumeration so every type GF corrupts is re-asserted at (0,6,1); mirror the geometry from the widget dist CSS (/dist/widgets/*.css on the tenant admin host) and change those first. */
-.gform_wrapper.gravity-theme  .wicket .Input>input:is([type="color"],[type="date"],[type="datetime-local"],[type="datetime"],[type="email"],[type="month"],[type="number"],[type="password"],[type="search"],[type="tel"],[type="text"],[type="time"],[type="url"],[type="week"]).form-control {
+.gform_wrapper.gravity-theme .wicket .Input>input:is([type="color"],[type="date"],[type="datetime-local"],[type="datetime"],[type="email"],[type="month"],[type="number"],[type="password"],[type="search"],[type="tel"],[type="text"],[type="time"],[type="url"],[type="week"]).form-control {
   padding: 10px 14px;
   padding-top: 30px;
   font-size: 18px;
 }
 
-.gform_wrapper.gravity-theme  .wicket .Input>select.form-control {
+.gform_wrapper.gravity-theme .wicket .Input>select.form-control {
   padding: 30px 35px 10px 14px;
   font-size: 18px;
 }
