@@ -173,7 +173,7 @@ class WidgetPrefs extends \GF_Field
     <div>
         <label>MDP Widget Config (JSON):</label>
         <textarea id="wwidget_prefs_mdp_json_config_input" onkeyup="SetFieldProperty('wwidget_prefs_mdp_json_config', this.value)" placeholder="{&#10;  &quot;hidePrimaryLanguage&quot;: true&#10;}"></textarea>
-        <p class="wwidget_prefs_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Correct the syntax before saving.</em></p>
+        <p class="wwidget_prefs_mdp_json_config_error" style="display:none; margin-top: 2px; color: #d63638;"><em>Invalid JSON. Enter a JSON object, e.g. <code>{ "hidePrimaryLanguage": true }</code>.</em></p>
         <p style="margin-top: 2px;"><em>This expects JSON data for configuring the widget, supporting all options documented for the MDP JS Widget (<code>hidePrimaryLanguage</code>, <code>hideCommunicationPreferences</code>, <code>primaryLanguageLabel</code>, and more). Please do not modify unless you know what you are doing.</em></p>
         <p style="margin-top: 2px;"><em>Note: <code>rootEl</code>, <code>apiRoot</code>, <code>accessToken</code>, <code>personId</code>, and <code>lang</code> are always set automatically and any value provided for them here is ignored.</em></p>
         <p style="margin-top: 2px;"><em>See <a href="https://wicket-core.s3.ca-central-1.amazonaws.com/wicket-widgets-readme-staging.html#editpersonpreferences" target="_blank">full documentation for MDP JS Widgets</a>.</em></p>
@@ -191,9 +191,11 @@ class WidgetPrefs extends \GF_Field
                 return;
             }
             try {
-                JSON.parse(value);
-                $err.hide();
-                $ta.removeClass('wicket-mdp-json-invalid');
+                // Same object-only rule as the form editor JSON guard.
+                var parsed = JSON.parse(value);
+                var isObject = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+                $err.toggle(!isObject);
+                $ta.toggleClass('wicket-mdp-json-invalid', !isObject);
             } catch (e) {
                 $err.show();
                 $ta.addClass('wicket-mdp-json-invalid');
