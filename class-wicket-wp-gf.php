@@ -74,6 +74,7 @@ use WicketGF\MdpTypeCompatibility;
 use WicketGF\NonceHandler;
 use WicketGF\ObjectTypeWicket;
 use WicketGF\SecureUploads;
+use WicketGF\SubmitRoleChanges;
 use WicketGF\Validation;
 
 /**
@@ -259,6 +260,9 @@ class Wicket_Gf_Main
 
         // MDP Sync Engine: push mapped field values after submission
         $this->get_mdp_sync()->register();
+
+        // Submission roles: remove/add the submitter's WP roles per form opt-in
+        (new SubmitRoleChanges())->register();
 
         // NOTE: DB-backed MdpSyncLogger and MdpSyncLogsPage are disabled.
         // Sync logging now uses Wicket()->log() (see MdpSyncEngine::write_log()).
@@ -895,6 +899,8 @@ class Wicket_Gf_Main
             update_option('wicket_gf_slug_mapping', json_encode($mappings));
             wicket_gf_flush_slug_cache();
             $current_slug = $new_slug;
+
+            $form = SubmitRoleChanges::save_settings($form, wp_unslash($_POST));
         }
 
         // Build the mapped fields list
@@ -1040,6 +1046,8 @@ class Wicket_Gf_Main
                         <?php endif; ?>
                     </div>
                 </fieldset>
+
+                <?php SubmitRoleChanges::render_settings($form); ?>
 
                 <div class="gform-settings-save-container">
                     <button type="submit" name="wicket_save_slug" value="save" class="primary button large"><?php esc_html_e('Save Settings', 'wicket-gf'); ?> &nbsp;→</button>
