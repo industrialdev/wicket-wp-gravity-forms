@@ -5,6 +5,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.8.3] - 2026-10-30
+
+### Fixed
+- **css:** restore MDP widget floating labels under GF gravity-theme
+
+### Documentation
+- adopt the stack PR template format #norelease
+- point AGENTS.md at the atlas knowledge base rule
+- streamline AGENTS.md and link atlas conventions
+- flatten end-user docs and link from README
+
+### Maintenance
+- **css:** drop stray double space in widget selectors
+- **docs:** move engineering docs to atlas (A0012)
+
+
 ## [2.8.2] - 2026-10-14
 
 ### Fixed
