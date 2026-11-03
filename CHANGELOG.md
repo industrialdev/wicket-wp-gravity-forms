@@ -5,6 +5,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.9.0] - 2026-11-03
+
+### Added
+- **fields:** keep the legacy checkbox on an older base plugin
+- **fields:** JSON widget config for the Person Preferences field
+
+### Fixed
+- **fields:** match the inline widget config error to the save guard
+- **fields:** align the widget config save check with sanitizing
+
+
 ## [2.8.3] - 2026-10-30
 
 ### Fixed
