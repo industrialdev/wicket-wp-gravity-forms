@@ -122,23 +122,42 @@ class MdpSyncEngine
             return;
         }
 
-        $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
-        if (empty($uuid)) {
-            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field', $log_ctx);
+        // Per-field UUID sources (WWID-2968): group mapped values by the UUID
+        // each field resolved to. All-or-nothing: any unresolvable source
+        // fails the entry before a partial write can reach the API.
+        $groups = $this->group_by_uuid($mapped_values);
+        $unresolved = $groups[''] ?? [];
+
+        if (!empty($unresolved)) {
+            $source_ids = implode(', ', array_values(array_unique(array_filter(array_column($unresolved, 'uuid_source_field')))));
+            $this->record_status(
+                $entry_id,
+                self::STATUS_FAILED,
+                sprintf('Could not resolve entity UUID from source field %s', $source_ids !== '' ? $source_ids : '(unconfigured)'),
+                $log_ctx
+            );
 
             return;
         }
 
-        $log_ctx['uuid'] = $uuid;
+        unset($groups['']);
+
+        $payload_groups = [];
+        foreach ($groups as $uuid => $items) {
+            $payload_groups[] = [
+                'uuid' => (string) $uuid,
+                'grouped' => $this->group_by_target_object($items),
+            ];
+        }
+
+        $log_ctx['uuid'] = count($payload_groups) === 1 ? $payload_groups[0]['uuid'] : '';
 
         // Prepare minimal payload for the cron job
-        $grouped = $this->group_by_target_object($mapped_values);
         $payload = [
             'entry_id'    => $entry_id,
             'form_id'     => $form_id,
             'entity_type' => $form_config['entity_type'],
-            'uuid'        => $uuid,
-            'grouped'     => $grouped,
+            'groups'      => $payload_groups,
         ];
 
         // Synchronous push is the default: submission requests complete with
@@ -159,23 +178,67 @@ class MdpSyncEngine
         // Started/terminal log pair: a "starting" line with no terminal after
         // it means the request died mid-push.
         if ($async) {
-            $this->log_line('warning', 'Async scheduling failed; falling back to synchronous push.', [
-                'form_id' => $form_id,
-                'entry_id' => $entry_id,
-                'entity_type' => $payload['entity_type'],
-                'uuid' => $uuid,
-            ]);
+            $this->log_line('warning', 'Async scheduling failed; falling back to synchronous push.', $log_ctx + ['entry_id' => $entry_id]);
         }
 
-        $this->log_line('debug', 'MDP sync push starting (synchronous).', [
-            'form_id' => $form_id,
-            'entry_id' => $entry_id,
-            'entity_type' => $payload['entity_type'],
-            'uuid' => $uuid,
-        ]);
+        $this->log_line('debug', 'MDP sync push starting (synchronous).', $log_ctx);
 
-        $results = $this->push_to_mdp($payload['entity_type'], $payload['uuid'], $payload['grouped']);
+        $results = $this->push_groups($form_config['entity_type'], $payload_groups);
         $this->record_sync_results($entry_id, $results, $log_ctx);
+    }
+
+    /**
+     * Normalize a cron payload into the per-UUID groups shape.
+     *
+     * Events scheduled before the per-field UUID change carry the single-UUID
+     * shape (uuid + grouped); they are converted so a deploy mid-flight never
+     * turns a pending sync into a failed one.
+     *
+     * @return array<int, array{uuid: string, grouped: array}>
+     */
+    private function normalize_payload_groups(array $payload): array
+    {
+        if (!empty($payload['groups']) && is_array($payload['groups'])) {
+            return $payload['groups'];
+        }
+
+        $uuid = (string) ($payload['uuid'] ?? '');
+        $grouped = $payload['grouped'] ?? [];
+
+        if ($uuid === '' || !is_array($grouped) || $grouped === []) {
+            return [];
+        }
+
+        return [['uuid' => $uuid, 'grouped' => $grouped]];
+    }
+
+    /**
+     * Push every UUID group to the MDP API and aggregate the results.
+     *
+     * @param string $entity_type 'person' or 'organization'.
+     * @param array  $groups      List of {uuid, grouped} patches.
+     * @return array{success: bool, message: string, objects: array<string, bool>}
+     */
+    private function push_groups(string $entity_type, array $groups): array
+    {
+        $objects = [];
+        $success = true;
+        $message = 'MDP sync successful';
+
+        foreach ($groups as $group) {
+            $result = $this->push_to_mdp($entity_type, (string) ($group['uuid'] ?? ''), (array) ($group['grouped'] ?? []));
+
+            foreach ((array) ($result['objects'] ?? []) as $obj => $ok) {
+                $objects[$obj] = ($objects[$obj] ?? true) && $ok;
+            }
+
+            if (empty($result['success'])) {
+                $success = false;
+                $message = (string) ($result['message'] ?? 'MDP sync failed');
+            }
+        }
+
+        return ['success' => $success, 'message' => $message, 'objects' => $objects];
     }
 
     /**
@@ -188,22 +251,23 @@ class MdpSyncEngine
         $entry_id = (int) ($payload['entry_id'] ?? 0);
         $form_id = (int) ($payload['form_id'] ?? 0);
         $entity_type = (string) ($payload['entity_type'] ?? '');
-        $uuid = (string) ($payload['uuid'] ?? '');
-        $grouped = (array) ($payload['grouped'] ?? []);
+        $groups = $this->normalize_payload_groups($payload);
 
-        $log_ctx = ['form_id' => $form_id, 'entity_type' => $entity_type, 'uuid' => $uuid];
+        $log_ctx = ['form_id' => $form_id, 'entity_type' => $entity_type];
 
-        if ($entry_id <= 0 || $uuid === '' || empty($grouped)) {
+        if ($entry_id <= 0 || empty($groups)) {
             $this->record_status($entry_id, self::STATUS_FAILED, 'Invalid scheduled sync payload', $log_ctx);
 
             return;
         }
 
+        $log_ctx['uuid'] = count($groups) === 1 ? $groups[0]['uuid'] : '';
+
         // Started/terminal log pair: a "starting" line with no terminal after
         // it means the cron run died mid-push.
         $this->log_line('debug', 'MDP sync push starting (cron).', $log_ctx);
 
-        $results = $this->push_to_mdp($entity_type, $uuid, $grouped);
+        $results = $this->push_groups($entity_type, $groups);
         $this->record_sync_results($entry_id, $results, $log_ctx);
     }
 
@@ -365,29 +429,48 @@ class MdpSyncEngine
             return;
         }
 
-        $uuid = $this->resolve_uuid($form_config['uuid_source_field'], $entry);
-        if (empty($uuid)) {
-            $this->record_status($entry_id, self::STATUS_FAILED, 'Could not resolve entity UUID from source field');
+        $groups = $this->group_by_uuid($mapped_values);
+        $unresolved = $groups[''] ?? [];
+
+        if (!empty($unresolved)) {
+            $source_ids = implode(', ', array_values(array_unique(array_filter(array_column($unresolved, 'uuid_source_field')))));
+            $this->record_status(
+                $entry_id,
+                self::STATUS_FAILED,
+                sprintf('Could not resolve entity UUID from source field %s', $source_ids !== '' ? $source_ids : '(unconfigured)')
+            );
 
             return;
         }
 
-        $grouped = $this->group_by_target_object($mapped_values);
-        $results = $this->push_to_mdp($form_config['entity_type'], $uuid, $grouped);
+        unset($groups['']);
+
+        $payload_groups = [];
+        foreach ($groups as $uuid => $items) {
+            $payload_groups[] = [
+                'uuid' => (string) $uuid,
+                'grouped' => $this->group_by_target_object($items),
+            ];
+        }
+
+        $results = $this->push_groups($form_config['entity_type'], $payload_groups);
         $this->record_sync_results($entry_id, $results);
     }
 
     /**
      * Extract form-level MDP config.
      *
+     * The UUID source is a per-field setting (WWID-2968); the form-level
+     * wicket_mdp_uuid_source_field value only survives as a legacy fallback
+     * read by resolve_field_uuid_source().
+     *
      * @param array $form GF form object.
-     * @return array{entity_type: string, uuid_source_field: string}
+     * @return array{entity_type: string}
      */
     protected function get_form_config(array $form): array
     {
         return [
             'entity_type' => $form['wicket_mdp_entity_type'] ?? '',
-            'uuid_source_field' => $form['wicket_mdp_uuid_source_field'] ?? '',
         ];
     }
 
@@ -409,10 +492,12 @@ class MdpSyncEngine
 
     /**
      * Check if form is configured for MDP sync.
+     *
+     * UUID sources are validated per field at collection time.
      */
     protected function is_sync_eligible(array $config): bool
     {
-        return $config['entity_type'] !== '' && $config['uuid_source_field'] !== '';
+        return $config['entity_type'] !== '';
     }
 
     /**
@@ -420,12 +505,15 @@ class MdpSyncEngine
      *
      * Returns an array of mapped field data, each with:
      * - target_object: string
-     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom-fields')
+n     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom-fields')
      * - value: mixed
+     * - uuid: string (resolved from the field's own UUID source; '' when the
+     *   source is configured but holds no submitted value)
+     * - uuid_source_field: string (the effective source field id)
      *
      * @param array $form  GF form object.
      * @param array $entry GF entry object.
-     * @return array<int, array{target_object: string, target_field: string, value: mixed}>
+     * @return array<int, array{target_object: string, target_field: string, value: mixed, uuid: string, uuid_source_field: string}>
      */
     protected function collect_mapped_values(array $form, array $entry): array
     {
@@ -475,10 +563,31 @@ class MdpSyncEngine
                 continue;
             }
 
+            // Per-field UUID source (WWID-2968). A mapping with no configured
+            // source cannot be routed to any record: drop it with a logged
+            // skip. A configured source with an empty submitted value stays
+            // (uuid '') so the entry fails visibly instead of silently losing
+            // the mapping.
+            $uuid_source_field = $this->resolve_field_uuid_source($field, $form);
+
+            if ($uuid_source_field === '') {
+                $this->write_log(
+                    (int) ($form['id'] ?? 0),
+                    (int) ($entry['id'] ?? 0),
+                    $entity_type,
+                    '',
+                    self::STATUS_SKIPPED,
+                    sprintf('Field %s: no UUID source field configured; mapping skipped', $field->id ?? '')
+                );
+                continue;
+            }
+
             $mapped[] = [
                 'target_object' => $target_object,
                 'target_field' => $target_field,
                 'value' => $value,
+                'uuid' => $this->resolve_uuid($uuid_source_field, $entry),
+                'uuid_source_field' => $uuid_source_field,
             ];
         }
 
@@ -540,6 +649,47 @@ class MdpSyncEngine
         }
 
         return $value !== '' ? (string) $value : null;
+    }
+
+    /**
+     * Resolve a field's effective UUID source field id.
+     *
+     * The field-level selection wins; the form-level value is a legacy
+     * fallback (WWID-2968) so forms configured before the change keep
+     * syncing. Empty when neither is set.
+     *
+     * @param object $field GF field object.
+     * @param array  $form  GF form object.
+     */
+    protected function resolve_field_uuid_source(object $field, array $form): string
+    {
+        $field_source = (string) ($field->wicket_mdp_uuid_source_field ?? '');
+
+        if ($field_source !== '') {
+            return $field_source;
+        }
+
+        return (string) ($form['wicket_mdp_uuid_source_field'] ?? '');
+    }
+
+    /**
+     * Group mapped values by their resolved entity UUID.
+     *
+     * Fields sharing one UUID source (or carrying the same value) merge into
+     * a single group and patch. Unresolvable sources collect under the '' key
+     * so the caller can fail the entry before any partial write.
+     *
+     * @param array $mapped_values Collected mapped values.
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    protected function group_by_uuid(array $mapped_values): array
+    {
+        $grouped = [];
+        foreach ($mapped_values as $item) {
+            $grouped[(string) ($item['uuid'] ?? '')][] = $item;
+        }
+
+        return $grouped;
     }
 
     /**
