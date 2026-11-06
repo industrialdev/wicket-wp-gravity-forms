@@ -123,33 +123,18 @@ class MdpSyncEngine
         }
 
         // Per-field UUID sources (WWID-2968): group mapped values by the UUID
-        // each field resolved to. All-or-nothing: any unresolvable source
-        // fails the entry before a partial write can reach the API.
-        $groups = $this->group_by_uuid($mapped_values);
-        $unresolved = $groups[''] ?? [];
+        // each field resolved to. All-or-nothing: any unresolvable or
+        // unconfigured source fails the entry before a partial write can
+        // reach the API.
+        $built = $this->build_uuid_groups($mapped_values);
 
-        if (!empty($unresolved)) {
-            $source_ids = implode(', ', array_values(array_unique(array_filter(array_column($unresolved, 'uuid_source_field')))));
-            $this->record_status(
-                $entry_id,
-                self::STATUS_FAILED,
-                sprintf('Could not resolve entity UUID from source field %s', $source_ids !== '' ? $source_ids : '(unconfigured)'),
-                $log_ctx
-            );
+        if ($built['error'] !== null) {
+            $this->record_status($entry_id, self::STATUS_FAILED, $built['error'], $log_ctx);
 
             return;
         }
 
-        unset($groups['']);
-
-        $payload_groups = [];
-        foreach ($groups as $uuid => $items) {
-            $payload_groups[] = [
-                'uuid' => (string) $uuid,
-                'grouped' => $this->group_by_target_object($items),
-            ];
-        }
-
+        $payload_groups = $built['groups'];
         $log_ctx['uuid'] = count($payload_groups) === 1 ? $payload_groups[0]['uuid'] : '';
 
         // Prepare minimal payload for the cron job
@@ -223,10 +208,12 @@ class MdpSyncEngine
     {
         $objects = [];
         $success = true;
-        $message = 'MDP sync successful';
+        $failures = [];
+        $endpoint_prefix = $entity_type === 'organization' ? 'organizations' : 'people';
 
         foreach ($groups as $group) {
-            $result = $this->push_to_mdp($entity_type, (string) ($group['uuid'] ?? ''), (array) ($group['grouped'] ?? []));
+            $uuid = (string) ($group['uuid'] ?? '');
+            $result = $this->push_to_mdp($entity_type, $uuid, (array) ($group['grouped'] ?? []));
 
             foreach ((array) ($result['objects'] ?? []) as $obj => $ok) {
                 $objects[$obj] = ($objects[$obj] ?? true) && $ok;
@@ -234,11 +221,14 @@ class MdpSyncEngine
 
             if (empty($result['success'])) {
                 $success = false;
-                $message = (string) ($result['message'] ?? 'MDP sync failed');
+                // Name each failed record: one entry can patch several UUIDs.
+                $failures[] = sprintf('%s/%s: %s', $endpoint_prefix, $uuid, (string) ($result['message'] ?? 'MDP sync failed'));
             }
         }
 
-        return ['success' => $success, 'message' => $message, 'objects' => $objects];
+        $message = $success ? 'MDP sync successful' : implode(' | ', $failures);
+
+        return ['success' => $success, 'message' => mb_substr($message, 0, 2000), 'objects' => $objects];
     }
 
     /**
@@ -429,31 +419,15 @@ class MdpSyncEngine
             return;
         }
 
-        $groups = $this->group_by_uuid($mapped_values);
-        $unresolved = $groups[''] ?? [];
+        $groups = $this->build_uuid_groups($mapped_values);
 
-        if (!empty($unresolved)) {
-            $source_ids = implode(', ', array_values(array_unique(array_filter(array_column($unresolved, 'uuid_source_field')))));
-            $this->record_status(
-                $entry_id,
-                self::STATUS_FAILED,
-                sprintf('Could not resolve entity UUID from source field %s', $source_ids !== '' ? $source_ids : '(unconfigured)')
-            );
+        if ($groups['error'] !== null) {
+            $this->record_status($entry_id, self::STATUS_FAILED, $groups['error']);
 
             return;
         }
 
-        unset($groups['']);
-
-        $payload_groups = [];
-        foreach ($groups as $uuid => $items) {
-            $payload_groups[] = [
-                'uuid' => (string) $uuid,
-                'grouped' => $this->group_by_target_object($items),
-            ];
-        }
-
-        $results = $this->push_groups($form_config['entity_type'], $payload_groups);
+        $results = $this->push_groups($form_config['entity_type'], $groups['groups']);
         $this->record_sync_results($entry_id, $results);
     }
 
@@ -504,16 +478,17 @@ class MdpSyncEngine
      * Collect mapped field values from the submission.
      *
      * Returns an array of mapped field data, each with:
+     * - field_id: string (the GF field id)
      * - target_object: string
-n     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom-fields')
+     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom-fields')
      * - value: mixed
      * - uuid: string (resolved from the field's own UUID source; '' when the
-     *   source is configured but holds no submitted value)
-     * - uuid_source_field: string (the effective source field id)
+     *   source is unconfigured or holds no submitted value)
+     * - uuid_source_field: string (the effective source field id, '' when none)
      *
      * @param array $form  GF form object.
      * @param array $entry GF entry object.
-     * @return array<int, array{target_object: string, target_field: string, value: mixed, uuid: string, uuid_source_field: string}>
+     * @return array<int, array{field_id: string, target_object: string, target_field: string, value: mixed, uuid: string, uuid_source_field: string}>
      */
     protected function collect_mapped_values(array $form, array $entry): array
     {
@@ -564,10 +539,10 @@ n     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom
             }
 
             // Per-field UUID source (WWID-2968). A mapping with no configured
-            // source cannot be routed to any record: drop it with a logged
-            // skip. A configured source with an empty submitted value stays
-            // (uuid '') so the entry fails visibly instead of silently losing
-            // the mapping.
+            // source, or a configured source with an empty submitted value,
+            // resolves to no record: it stays in the collection (uuid '') so
+            // the entry fails visibly instead of silently losing the mapping.
+            // A warning is logged naming the field for diagnostics.
             $uuid_source_field = $this->resolve_field_uuid_source($field, $form);
 
             if ($uuid_source_field === '') {
@@ -579,10 +554,10 @@ n     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom
                     self::STATUS_SKIPPED,
                     sprintf('Field %s: no UUID source field configured; mapping skipped', $field->id ?? '')
                 );
-                continue;
             }
 
             $mapped[] = [
+                'field_id' => (string) ($field->id ?? ''),
                 'target_object' => $target_object,
                 'target_field' => $target_field,
                 'value' => $value,
@@ -690,6 +665,78 @@ n     * - target_field: string (e.g. 'attributes.given_name', 'data_field.custom
         }
 
         return $grouped;
+    }
+
+    /**
+     * Group mapped values per resolved UUID, or fail the entry.
+     *
+     * Fields sharing one UUID source (or carrying the same value) merge into
+     * a single group and patch. All-or-nothing: mappings with an unresolvable
+     * or unconfigured source produce an error message instead of groups, so
+     * no partial write can reach the API.
+     *
+     * @param array $mapped_values Collected mapped values.
+     * @return array{error: string|null, groups: array<int, array{uuid: string, grouped: array}>}
+     */
+    private function build_uuid_groups(array $mapped_values): array
+    {
+        $grouped = $this->group_by_uuid($mapped_values);
+        $unresolved = $grouped[''] ?? [];
+
+        if (!empty($unresolved)) {
+            return ['error' => $this->unresolvable_message($unresolved), 'groups' => []];
+        }
+
+        unset($grouped['']);
+
+        $groups = [];
+        foreach ($grouped as $uuid => $items) {
+            $groups[] = [
+                'uuid' => (string) $uuid,
+                'grouped' => $this->group_by_target_object($items),
+            ];
+        }
+
+        return ['error' => null, 'groups' => $groups];
+    }
+
+    /**
+     * Build the failure message for mappings whose UUID cannot be resolved.
+     *
+     * @param array $unresolved Mapped values grouped under the '' UUID key.
+     */
+    private function unresolvable_message(array $unresolved): string
+    {
+        $empty_sources = [];
+        $unconfigured = [];
+
+        foreach ($unresolved as $item) {
+            $source = (string) ($item['uuid_source_field'] ?? '');
+
+            if ($source === '') {
+                $unconfigured[] = (string) ($item['field_id'] ?? '?');
+            } else {
+                $empty_sources[] = $source;
+            }
+        }
+
+        $parts = [];
+
+        if ($empty_sources !== []) {
+            $parts[] = sprintf(
+                'source field %s was empty',
+                implode(', ', array_values(array_unique($empty_sources)))
+            );
+        }
+
+        if ($unconfigured !== []) {
+            $parts[] = sprintf(
+                'no UUID source field configured for mapped field(s) %s',
+                implode(', ', array_values(array_unique($unconfigured)))
+            );
+        }
+
+        return 'Could not resolve entity UUID: ' . implode('; ', $parts);
     }
 
     /**

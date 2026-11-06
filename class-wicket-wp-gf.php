@@ -2183,10 +2183,22 @@ class Wicket_Gf_Main
 
             /**
              * Effective UUID source for one field: the field-level selection,
-             * else the legacy form-level value (WWID-2968).
+             * else the legacy form-level value (WWID-2968). A legacy value
+             * pointing at a deleted field is ignored.
              */
             function wicketGetFieldUuidSource(field, form) {
-                return rgar(field, 'wicket_mdp_uuid_source_field') || rgar(form, 'wicket_mdp_uuid_source_field') || '';
+                var fieldSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
+                if (fieldSource) {
+                    return fieldSource;
+                }
+
+                var legacy = rgar(form, 'wicket_mdp_uuid_source_field') || '';
+                if (!legacy) {
+                    return '';
+                }
+
+                var fields = (form.fields || []);
+                return fields.some(function(f) { return String(f.id) === String(legacy); }) ? legacy : '';
             }
 
             /**
@@ -2428,8 +2440,18 @@ class Wicket_Gf_Main
                     // Rule 0: MDP enabled but this field has no UUID source field.
                     // Per field since WWID-2968: the effective value is the
                     // field-level selection, else the legacy form-level value.
-                    if (!wicketGetFieldUuidSource(field, form)) {
+                    var fieldUuidSource = wicketGetFieldUuidSource(field, form);
+                    if (!fieldUuidSource) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('Select a UUID field to enable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 0c: a field-level selection pointing at a deleted
+                    // field would be stripped on save, leaving the mapping
+                    // unusable. Block the save until it is re-selected.
+                    var ownSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
+                    if (ownSource && !form.fields.some(function(f) { return String(f.id) === String(ownSource); })) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('The selected UUID Source Field no longer exists. Re-select it or disable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
                     }
 
