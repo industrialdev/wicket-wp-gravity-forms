@@ -837,18 +837,15 @@ class Wicket_Gf_Main
         }
 
         $entity_type = $form['wicket_mdp_entity_type'] ?? '';
-        $uuid_source = $form['wicket_mdp_uuid_source_field'] ?? '';
 
-        // Resolve the UUID source field's label for the read-only summary
-        $uuid_source_label = '';
-        if ($uuid_source !== '') {
-            $form_fields = $form['fields'] ?? [];
-            foreach ($form_fields as $field) {
-                $field_id = is_object($field) ? (string) ($field->id ?? '') : (string) ($field['id'] ?? '');
-                if ($field_id === (string) $uuid_source) {
-                    $uuid_source_label = is_object($field) ? ($field->label ?? '') : ($field['label'] ?? '');
-                    break;
-                }
+        // Field-id → label map for per-field UUID source display (WWID-2968)
+        $form_field_labels = [];
+        foreach ($form['fields'] ?? [] as $field) {
+            $id = is_object($field) ? (string) ($field->id ?? '') : (string) ($field['id'] ?? '');
+            if ($id !== '') {
+                $form_field_labels[$id] = is_object($field)
+                    ? ($field->label ?? $field->adminLabel ?? $id)
+                    : ($field['label'] ?? $field['adminLabel'] ?? $id);
             }
         }
 
@@ -934,6 +931,13 @@ class Wicket_Gf_Main
                     continue;
                 }
 
+                // Effective per-field UUID source, shown per row (WWID-2968)
+                $field_obj = is_array($field) ? (object) $field : $field;
+                $uuid_source = self::get_effective_mdp_uuid_source($field_obj, $form);
+                $uuid_source_display = $uuid_source !== ''
+                    ? sprintf('%s (%s)', $form_field_labels[$uuid_source] ?? $uuid_source, $uuid_source)
+                    : __('Not set', 'wicket-gf');
+
                 // Resolve human-readable labels
                 $object_labels = [
                     'person_profile' => 'Person Profile',
@@ -960,6 +964,7 @@ class Wicket_Gf_Main
                     'field_label' => $field_label ?: sprintf('Field %s', $field_id),
                     'target_object_label' => $target_object_label,
                     'target_field_label' => $target_field_label,
+                    'uuid_source_display' => $uuid_source_display,
                 ];
             }
         }
@@ -986,7 +991,7 @@ class Wicket_Gf_Main
                 </fieldset>
 
                 <!-- MDP Configuration Section -->
-                <?php if ($entity_type || $uuid_source !== ''): ?>
+                <?php if ($entity_type): ?>
                 <fieldset class="gform-settings-panel gform-settings-panel--full gform-settings-panel--with-title">
                     <legend class="gform-settings-panel__title gform-settings-panel__title--header"><?php esc_html_e('MDP Configuration', 'wicket-gf'); ?></legend>
                     <div class="gform-settings-panel__content">
@@ -995,12 +1000,6 @@ class Wicket_Gf_Main
                             <div>
                                 <div class="gform-settings-field__header"><label class="gform-settings-label"><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label></div>
                                 <span style="color:#2271b1;font-weight:500;"><?php echo esc_html($entity_type === 'person' ? 'Person' : ($entity_type === 'organization' ? 'Organization' : $entity_type)); ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <?php if ($uuid_source !== ''): ?>
-                            <div>
-                                <div class="gform-settings-field__header"><label class="gform-settings-label"><?php esc_html_e('UUID Source Field', 'wicket-gf'); ?></label></div>
-                                <span style="color:#2271b1;font-weight:500;"><?php echo esc_html($uuid_source_label !== '' ? sprintf('%s (%s)', $uuid_source_label, $uuid_source) : $uuid_source); ?></span>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -1019,6 +1018,7 @@ class Wicket_Gf_Main
                                 <thead>
                                     <tr>
                                         <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Field', 'wicket-gf'); ?></th>
+                                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('UUID Source', 'wicket-gf'); ?></th>
                                         <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Target Object', 'wicket-gf'); ?></th>
                                         <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #dcdcde;font-weight:600;color:#646970;"><?php esc_html_e('Target Field', 'wicket-gf'); ?></th>
                                     </tr>
@@ -1031,6 +1031,7 @@ class Wicket_Gf_Main
                                                     <?php echo esc_html($mf['field_label']); ?>
                                                 </a>
                                             </td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;"><?php echo esc_html($mf['uuid_source_display']); ?></td>
                                             <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;"><?php echo esc_html($mf['target_object_label']); ?></td>
                                             <td style="padding:8px 12px;border-bottom:1px solid #dcdcde;"><?php echo esc_html($mf['target_field_label']); ?></td>
                                         </tr>
@@ -1092,6 +1093,27 @@ class Wicket_Gf_Main
     }
 
     /**
+     * Effective UUID source for one mapped field: the field-level selection,
+     * else the form-level value as a legacy fallback (WWID-2968). Empty when
+     * neither is set.
+     *
+     * @param object|array $field GF field object.
+     * @param array        $form  GF form object.
+     */
+    public static function get_effective_mdp_uuid_source(object|array $field, array $form): string
+    {
+        $field_source = is_object($field)
+            ? (string) ($field->wicket_mdp_uuid_source_field ?? '')
+            : (string) ($field['wicket_mdp_uuid_source_field'] ?? '');
+
+        if ($field_source !== '') {
+            return $field_source;
+        }
+
+        return (string) ($form['wicket_mdp_uuid_source_field'] ?? '');
+    }
+
+    /**
      * Server-side safety net: sanitize field-level MDP mapping properties
      * before the form is saved to the database.
      *
@@ -1115,23 +1137,24 @@ class Wicket_Gf_Main
             return $meta;
         }
 
-        // Form-level MDP settings: validate entity type + UUID source field so
-        // imports / API saves cannot write an unusable config.
+        // Form-level MDP settings: validate entity type + legacy UUID source
+        // field so imports / API saves cannot write an unusable config.
         $entity_type = isset($meta['wicket_mdp_entity_type']) ? (string) $meta['wicket_mdp_entity_type'] : '';
         if (!in_array($entity_type, ['', 'person', 'organization'], true)) {
             $meta['wicket_mdp_entity_type'] = '';
         }
 
+        $valid_field_ids = [];
+        foreach ($meta['fields'] as $field) {
+            if (is_object($field)) {
+                $valid_field_ids[] = (string) ($field->id ?? '');
+            } elseif (is_array($field)) {
+                $valid_field_ids[] = (string) ($field['id'] ?? '');
+            }
+        }
+
         $uuid_source = isset($meta['wicket_mdp_uuid_source_field']) ? (string) $meta['wicket_mdp_uuid_source_field'] : '';
         if ($uuid_source !== '') {
-            $valid_field_ids = [];
-            foreach ($meta['fields'] as $field) {
-                if (is_object($field)) {
-                    $valid_field_ids[] = (string) ($field->id ?? '');
-                } elseif (is_array($field)) {
-                    $valid_field_ids[] = (string) ($field['id'] ?? '');
-                }
-            }
             if (!in_array($uuid_source, $valid_field_ids, true)) {
                 $meta['wicket_mdp_uuid_source_field'] = '';
             }
@@ -1157,7 +1180,19 @@ class Wicket_Gf_Main
                 // Strip MDP properties from disabled fields
                 $field->wicket_mdp_target_object = '';
                 $field->wicket_mdp_target_field = '';
+                $field->wicket_mdp_uuid_source_field = '';
                 continue;
+            }
+
+            // Per-field UUID source (WWID-2968): strip a selection pointing at
+            // a field the form no longer has. An empty selection stays: the
+            // mapping persists and the editor blocks the save until picked.
+            $field_uuid_source = isset($field->wicket_mdp_uuid_source_field)
+                ? (string) $field->wicket_mdp_uuid_source_field
+                : '';
+
+            if ($field_uuid_source !== '' && !in_array($field_uuid_source, $valid_field_ids, true)) {
+                $field->wicket_mdp_uuid_source_field = '';
             }
 
             $target_object = isset($field->wicket_mdp_target_object)
@@ -1816,7 +1851,7 @@ class Wicket_Gf_Main
                     </div>
                     <div class="wicket-mdp-config-row">
                         <label for="wicket_mdp_uuid_source_field"><?php esc_html_e('UUID Source Field', 'wicket-gf'); ?></label>
-                        <select id="wicket_mdp_uuid_source_field" onchange="wicketSetFormUuidSource(this.value);">
+                        <select id="wicket_mdp_uuid_source_field" onchange="SetFieldProperty('wicket_mdp_uuid_source_field', this.value);">
                             <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
                         </select>
                     </div>
@@ -2142,24 +2177,36 @@ class Wicket_Gf_Main
                 currentForm = wicketGetCurrentFormObject(currentForm);
 
                 return {
-                    entityType: rgar(currentForm, 'wicket_mdp_entity_type') || '',
-                    uuidSource: rgar(currentForm, 'wicket_mdp_uuid_source_field') || ''
+                    entityType: rgar(currentForm, 'wicket_mdp_entity_type') || ''
                 };
             }
 
             /**
-             * Update form-level UUID source field on the form object.
+             * Effective UUID source for one field: the field-level selection,
+             * else the legacy form-level value (WWID-2968). A legacy value
+             * pointing at a deleted field is ignored.
              */
-            function wicketSetFormUuidSource(value) {
-                var form = wicketGetCurrentFormObject();
-                form['wicket_mdp_uuid_source_field'] = value;
+            function wicketGetFieldUuidSource(field, form) {
+                var fieldSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
+                if (fieldSource) {
+                    return fieldSource;
+                }
+
+                var legacy = rgar(form, 'wicket_mdp_uuid_source_field') || '';
+                if (!legacy) {
+                    return '';
+                }
+
+                var fields = (form.fields || []);
+                return fields.some(function(f) { return String(f.id) === String(legacy); }) ? legacy : '';
             }
 
             /**
              * Populate the UUID Source Field dropdown from the current form's fields.
-             * Form-level setting shared by every mapped field.
+             * Selection is per field (WWID-2968); the displayed value is the
+             * effective one (field-level, else the legacy form-level value).
              */
-            function wicketPopulateMdpUuidSource(selectedValue) {
+            function wicketPopulateMdpUuidSource(selectedValue, field) {
                 var $select = jQuery('#wicket_mdp_uuid_source_field');
                 var form = wicketGetCurrentFormObject();
                 var fields = (form.fields || []);
@@ -2178,8 +2225,12 @@ class Wicket_Gf_Main
                 if (selectedValue && fields.some(function(f) { return String(f.id) === String(selectedValue); })) {
                     $select.val(String(selectedValue));
                 } else if (selectedValue) {
-                    // Stored field no longer exists in the form
-                    wicketSetFormUuidSource('');
+                    // Stale selection: only clear the field-level property when
+                    // it is the stale one. A stale legacy form-level value is
+                    // left for the server-side sanitize to strip.
+                    if (String(rgar(field, 'wicket_mdp_uuid_source_field') || '') === String(selectedValue)) {
+                        SetFieldProperty('wicket_mdp_uuid_source_field', '');
+                    }
                     $select.val('');
                 }
             }
@@ -2256,7 +2307,7 @@ class Wicket_Gf_Main
                     if ($etSelect.val() !== formConfig.entityType) {
                         $etSelect.val(formConfig.entityType || '');
                     }
-                    wicketPopulateMdpUuidSource(formConfig.uuidSource);
+                    wicketPopulateMdpUuidSource(wicketGetFieldUuidSource(field, currentForm), field);
                 }
 
                 var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
@@ -2386,9 +2437,21 @@ class Wicket_Gf_Main
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
                     var targetField  = rgar(field, 'wicket_mdp_target_field') || '';
 
-                    // Rule 0: MDP enabled but the form has no UUID source field (spec: US3)
-                    if (!formConfig.uuidSource) {
+                    // Rule 0: MDP enabled but this field has no UUID source field.
+                    // Per field since WWID-2968: the effective value is the
+                    // field-level selection, else the legacy form-level value.
+                    var fieldUuidSource = wicketGetFieldUuidSource(field, form);
+                    if (!fieldUuidSource) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('Select a UUID field to enable MDP mapping.', 'wicket-gf'); ?>');
+                        continue;
+                    }
+
+                    // Rule 0c: a field-level selection pointing at a deleted
+                    // field would be stripped on save, leaving the mapping
+                    // unusable. Block the save until it is re-selected.
+                    var ownSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
+                    if (ownSource && !form.fields.some(function(f) { return String(f.id) === String(ownSource); })) {
+                        mdpErrors.push(displayName + ': <?php esc_html_e('The selected UUID Source Field no longer exists. Re-select it or disable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
                     }
 
@@ -2469,10 +2532,18 @@ class Wicket_Gf_Main
                         // Strip MDP properties from disabled fields
                         field.wicket_mdp_target_object = '';
                         field.wicket_mdp_target_field  = '';
+                        field.wicket_mdp_uuid_source_field = '';
                         continue;
                     }
 
-                    // No UUID source stripping — UUID handled at sync time
+                    // Per-field UUID source (WWID-2968): strip a selection that
+                    // references a field the form no longer has
+                    var fieldUuidSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
+                    if (fieldUuidSource && !form.fields.some(function(f) { return String(f.id) === String(fieldUuidSource); })) {
+                        field.wicket_mdp_uuid_source_field = '';
+                    }
+
+                    // No further UUID source stripping — effective value handled at sync time
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
                     var availableFields = wicketMdpTargetFields[targetObject] || [];
 
