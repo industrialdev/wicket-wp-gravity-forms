@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.9.1] - 2026-11-09
+
+### Fixed
+- **mdp:** fail visibly on unresolvable UUID sources
+- **mdp:** scope the UUID source field per mapped field
+
+
 ## [2.9.0] - 2026-11-03
 
 ### Added
