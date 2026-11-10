@@ -41,9 +41,54 @@ class MdpSyncEngine
      * A mapping whose target object is not in the entity's list would write
      * person attributes to an organization record (or vice versa).
      */
-    private const OBJECTS_BY_ENTITY = [
-        'person' => ['person_profile', 'additional_info', 'preferences'],
-        'organization' => ['org_profile', 'org_additional_info'],
+    public const OBJECTS_BY_ENTITY = [
+        'person' => ['person_profile', 'additional_info', 'preferences', 'addresses', 'phones', 'emails', 'web_addresses'],
+        'organization' => ['org_profile', 'org_additional_info', 'addresses', 'phones', 'emails', 'web_addresses'],
+    ];
+
+    /**
+     * Contact resource target objects (WWID-2981).
+     *
+     * These are MDP related resources, not PATCHable attributes: they are
+     * written through their own endpoints (see push_contacts_to_mdp()) and
+     * never ride the profile PATCH body.
+     */
+    private const CONTACT_OBJECTS = ['addresses', 'phones', 'emails', 'web_addresses'];
+
+    /**
+     * GF address sub-input position => MDP address attribute.
+     *
+     * GF fixes these input ids across address layouts: .1 street, .2 street 2,
+     * .3 city, .4 state, .5 zip, .6 country.
+     */
+    private const ADDRESS_INPUT_MAP = [1 => 'address1', 2 => 'address2', 3 => 'city', 4 => 'state_name', 5 => 'zip_code', 6 => 'country_code'];
+
+    /**
+     * GF Canadian province names (no code helper exists in GF) to Carmen
+     * subregion codes, which the MDP requires for CA/US state values. English
+     * and French labels both map: GF translates province names, and Canadian
+     * tenants submit FR labels.
+     */
+    private const CA_PROVINCE_CODES = [
+        'alberta' => 'AB',
+        'british columbia' => 'BC',
+        'colombie-britannique' => 'BC',
+        'manitoba' => 'MB',
+        'new brunswick' => 'NB',
+        'nouveau-brunswick' => 'NB',
+        'newfoundland and labrador' => 'NL',
+        'terre-neuve-et-labrador' => 'NL',
+        'northwest territories' => 'NT',
+        'territoires du nord-ouest' => 'NT',
+        'nova scotia' => 'NS',
+        'nouvelle-ecosse' => 'NS',
+        'nunavut' => 'NU',
+        'ontario' => 'ON',
+        'prince edward island' => 'PE',
+        'ile-du-prince-edouard' => 'PE',
+        'quebec' => 'QC',
+        'saskatchewan' => 'SK',
+        'yukon' => 'YT',
     ];
 
     /**
@@ -572,7 +617,9 @@ class MdpSyncEngine
     /**
      * Get a field's submitted value from the entry.
      *
-     * Uses GF's rgars() pattern for multi-input fields.
+     * Uses GF's rgars() pattern for multi-input fields. Address targets read
+     * GF address fields structurally (build_address_value()); every other
+     * target gets a string.
      *
      * @param object $field         GF field object.
      * @param array  $entry         GF entry object.
@@ -581,20 +628,26 @@ class MdpSyncEngine
      *                              input value instead of joining inputs: a
      *                              checkbox is a set of discrete choices, not
      *                              parts of one value.
-     * @return string|null
+     * @return string|array|null
      */
-    protected function get_field_value(object $field, array $entry, string $target_object = ''): ?string
+    protected function get_field_value(object $field, array $entry, string $target_object = ''): mixed
     {
         $field_id = (string) ($field->id ?? '');
         if ($field_id === '') {
             return null;
         }
 
-        // Multi-input fields (name, address, checkbox): name/address inputs
-        // are parts of one value and join with a space. A checkbox is a set
-        // of discrete choices, so only the first selected choice is sent
-        // (joined choices would produce a value no MDP property accepts).
+        if ($target_object === 'addresses' && ($field->type ?? '') === 'address') {
+            return $this->build_address_value($field, $entry);
+        }
+
+        // Contact string targets: like checkbox/preference fields, a multi-
+        // input string contact field (GF email confirmation is the common
+        // case) must take its first non-empty input, never a joined string.
         $is_checkbox = ($field->type ?? '') === 'checkbox';
+        $takes_first_input = $target_object === 'preferences'
+            || $is_checkbox
+            || in_array($target_object, ['phones', 'emails', 'web_addresses'], true);
 
         if (!empty($field->inputs) && is_array($field->inputs)) {
             $parts = [];
@@ -605,7 +658,7 @@ class MdpSyncEngine
                 }
                 $val = $entry[$input_id] ?? '';
                 if ($val !== '') {
-                    if ($target_object === 'preferences' || $is_checkbox) {
+                    if ($takes_first_input) {
                         return (string) $val;
                     }
                     $parts[] = $val;
@@ -763,6 +816,128 @@ class MdpSyncEngine
     }
 
     /**
+     * Build a structured MDP address from a GF address field's sub-inputs.
+     *
+     * Maps GF's fixed input positions (.1 street .. .6 country) to MDP address
+     * attributes and converts country names to ISO alpha-2 and state/province
+     * names to codes when the resolved country is US/CA (Carmen validates
+     * state codes only there). Submitted-but-empty parts are kept as '' so a
+     * contact update can clear a part the user emptied; the create path drops
+     * them again. Returns null when nothing at all was submitted.
+     *
+     * @return array<string, string>|null
+     */
+    protected function build_address_value(object $field, array $entry): ?array
+    {
+        $base_id = (string) ($field->id ?? '');
+        $inputs = $field->inputs ?? [];
+        if ($base_id === '' || !is_array($inputs)) {
+            return null;
+        }
+
+        $value = [];
+        foreach ($inputs as $input) {
+            $input_id = (string) ($input['id'] ?? '');
+            $prefix = $base_id . '.';
+            if (!str_starts_with($input_id, $prefix)) {
+                continue;
+            }
+
+            $attr = self::ADDRESS_INPUT_MAP[(int) substr($input_id, strlen($prefix))] ?? null;
+            if ($attr === null) {
+                continue;
+            }
+
+            $value[$attr] = sanitize_text_field(trim((string) ($entry[$input_id] ?? '')));
+        }
+
+        if ($value === [] || trim(implode('', $value)) === '') {
+            return null;
+        }
+
+        $value['country_code'] = $this->to_country_code($value['country_code'] ?? '');
+        $value['state_name'] = $this->to_state_code($value['state_name'] ?? '', $value['country_code']);
+
+        return $value;
+    }
+
+    /**
+     * Convert a GF country value (name or already a code) to ISO alpha-2.
+     *
+     * The MDP validates country_code against Carmen alpha-2 codes. Passthrough
+     * when GF's converter is unavailable (unit context) or rejects the value:
+     * the API surfaces the real validation error on sync instead.
+     */
+    protected function to_country_code(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (!class_exists(\GF_Fields::class)) {
+            return $value;
+        }
+
+        $address_field = \GF_Fields::get('address');
+        if (!$address_field || !method_exists($address_field, 'get_country_code')) {
+            return $value;
+        }
+
+        $code = (string) $address_field->get_country_code($value);
+
+        return $code !== '' ? $code : $value;
+    }
+
+    /**
+     * Convert a GF state/province value to a Carmen subregion code.
+     *
+     * Carmen validates state codes only for US and CA addresses, so any other
+     * country passes through untouched. GF US dropdowns submit codes already;
+     * Canadian provinces submit names (EN or FR) and GF ships no province-code
+     * helper, so those convert here. Anything else passes through for the API
+     * to accept or reject visibly.
+     */
+    protected function to_state_code(string $value, string $country_code): string
+    {
+        if ($value === '' || !in_array($country_code, ['US', 'CA'], true)) {
+            return $value;
+        }
+
+        if (preg_match('/^[A-Z]{2}$/', $value) === 1) {
+            return $value;
+        }
+
+        $folded = strtolower($this->fold_accents($value));
+        if (isset(self::CA_PROVINCE_CODES[$folded])) {
+            return self::CA_PROVINCE_CODES[$folded];
+        }
+
+        if ($country_code !== 'US' || !class_exists(\GF_Fields::class)) {
+            return $value;
+        }
+
+        $address_field = \GF_Fields::get('address');
+        if (!$address_field || !method_exists($address_field, 'get_us_state_code')) {
+            return $value;
+        }
+
+        $code = (string) $address_field->get_us_state_code($value);
+
+        return $code !== '' ? $code : $value;
+    }
+
+    /**
+     * Fold accented letters to their ASCII base (Québec → Quebec) so the
+     * province map matches accented submissions without a locale dependency.
+     */
+    private function fold_accents(string $value): string
+    {
+        $folded = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+
+        return $folded === false ? $value : strtolower($folded);
+    }
+
+    /**
      * Resolve the entity UUID from the source field's submitted value.
      *
      * @param string $source_field_id The GF field ID containing the UUID.
@@ -800,15 +975,17 @@ class MdpSyncEngine
             return ['success' => false, 'message' => 'API client init failed: ' . $e->getMessage(), 'objects' => []];
         }
 
+        $objects = [];
+
         try {
             // Guarded with the request below: this runs on every mapped
             // submission now, and a TypeError here must degrade to a failed
             // sync status, never a 500 after the entry was saved.
-            $payload = $this->build_patch_payload($entity_type, $uuid, $grouped);
+            $contact_groups = array_intersect_key($grouped, array_flip(self::CONTACT_OBJECTS));
+            $profile_groups = array_diff_key($grouped, $contact_groups);
+            $payload = $this->build_patch_payload($entity_type, $uuid, $profile_groups);
 
-            if (empty($payload['data']['attributes'])) {
-                return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
-            }
+            $failures = [];
 
             // MDP contract: data_fields PATCHes must carry the complete value
             // structure per schema (GET + merge + PATCH, with version).
@@ -820,44 +997,354 @@ class MdpSyncEngine
                 );
 
                 if ($merged === null) {
-                    return [
-                        'success' => false,
-                        'message' => 'Could not fetch current record to merge additional info data_fields',
-                        'objects' => array_fill_keys(array_keys($grouped), false),
-                    ];
+                    $failures[] = 'Could not fetch current record to merge additional info data_fields';
+                    foreach (array_keys($profile_groups) as $obj) {
+                        $objects[$obj] = false;
+                    }
+                } else {
+                    $payload['data']['attributes']['data_fields'] = $merged;
                 }
-
-                $payload['data']['attributes']['data_fields'] = $merged;
             }
 
-            if (empty($payload['data']['attributes'])) {
+            if (empty($failures) && !empty($payload['data']['attributes'])) {
+                $endpoint = $entity_type === 'organization' ? "organizations/$uuid" : "people/$uuid";
+
+                try {
+                    $client->patch($endpoint, ['json' => $payload]);
+
+                    foreach (array_keys($profile_groups) as $obj) {
+                        $objects[$obj] = true;
+                    }
+                } catch (RequestException $e) {
+                    $body = $e->hasResponse() ? (string) $e->getResponse()->getBody() : '';
+
+                    $failures[] = $this->summarize_api_error((int) $e->getCode(), $body);
+                    foreach (array_keys($profile_groups) as $obj) {
+                        $objects[$obj] = false;
+                    }
+                }
+            }
+
+            if (empty($failures) && empty($payload['data']['attributes'])) {
+                // Nothing to write on the profile (e.g. only contact mappings
+                // resolved): report those groups as satisfied, no PATCH sent.
+                foreach (array_keys($profile_groups) as $obj) {
+                    $objects[$obj] = true;
+                }
+            }
+
+            if (!empty($contact_groups)) {
+                $contact_result = $this->push_contacts_to_mdp($client, $entity_type, $uuid, $contact_groups);
+                $objects = $objects + $contact_result['objects'];
+
+                if (!$contact_result['success']) {
+                    $failures[] = $contact_result['message'];
+                }
+            }
+
+            if (empty($failures) && empty($objects)) {
                 return ['success' => true, 'message' => 'No attributes to update', 'objects' => []];
             }
 
-            $endpoint = $entity_type === 'organization' ? "organizations/$uuid" : "people/$uuid";
-
-            try {
-                $client->patch($endpoint, ['json' => $payload]);
-
-                $objects = array_fill_keys(array_keys($grouped), true);
-
+            if (empty($failures)) {
                 return ['success' => true, 'message' => 'MDP sync successful', 'objects' => $objects];
-            } catch (RequestException $e) {
-                $body = $e->hasResponse() ? (string) $e->getResponse()->getBody() : '';
-
-                return [
-                    'success' => false,
-                    'message' => $this->summarize_api_error((int) $e->getCode(), $body),
-                    'objects' => array_fill_keys(array_keys($grouped), false),
-                ];
             }
+
+            $message = mb_substr(implode(' | ', $failures), 0, 2000);
+
+            return ['success' => false, 'message' => $message, 'objects' => $objects];
         } catch (\Throwable $e) {
             return [
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage(),
+                // Union keeps results already recorded (e.g. a profile PATCH
+                // that succeeded before the throw) intact; unknown keys fail.
+                'objects' => array_fill_keys(array_keys($grouped), false) + $objects,
+            ];
+        }
+    }
+
+    /**
+     * Write contact-resource mappings (addresses, phones, emails, web
+     * addresses) for one entity.
+     *
+     * Contact resources are separate MDP endpoints, not PATCHable attributes.
+     * For each resource: update the entity's existing contact whose type
+     * matches the target value (partial PATCH, so untouched attributes such as
+     * primary flags survive); create one when absent. The MDP keeps a single
+     * primary per resource itself (ResourceCollectionFlagUpdator demotes
+     * siblings on a primary save), so creates claim primary and no client-side
+     * demotion runs.
+     *
+     * @param object $client      Wicket API client.
+     * @param string $entity_type 'person' or 'organization'.
+     * @param string $uuid        Entity UUID.
+     * @param array  $grouped     Contact target object => {target_field, value} rows.
+     * @return array{success: bool, message: string, objects: array<string, bool>}
+     */
+    protected function push_contacts_to_mdp(object $client, string $entity_type, string $uuid, array $grouped): array
+    {
+        $prefix = $entity_type === 'organization' ? 'organizations' : 'people';
+
+        $error = '';
+        $current = $this->fetch_entity_contacts($client, $prefix, $uuid, $error);
+        if ($current === null) {
+            return [
+                'success' => false,
+                'message' => sprintf('Could not fetch current %s record to sync contacts: %s', $prefix, $error),
                 'objects' => array_fill_keys(array_keys($grouped), false),
             ];
         }
+
+        $objects = [];
+        $failures = [];
+
+        foreach ($grouped as $resource => $fields) {
+            // Two mappings on one form can aim at the same contact target
+            // (e.g. two phone fields mapped to phones.work). Last one wins:
+            // scalars overwrite, address parts merge per attribute.
+            $deduped = [];
+            foreach ($fields as $field) {
+                $key = (string) ($field['target_field'] ?? '');
+                if (isset($deduped[$key]) && is_array($field['value'])) {
+                    $deduped[$key]['value'] = array_merge((array) $deduped[$key]['value'], (array) $field['value']);
+                } else {
+                    $deduped[$key] = $field;
+                }
+            }
+
+            $ok = true;
+            $resource_failures = [];
+
+            foreach ($deduped as $field) {
+                try {
+                    $this->push_contact_resource(
+                        $client,
+                        $prefix,
+                        $uuid,
+                        (string) $resource,
+                        (string) $field['target_field'],
+                        $field['value'],
+                        $current
+                    );
+                } catch (RequestException $e) {
+                    $body = $e->hasResponse() ? (string) $e->getResponse()->getBody() : '';
+                    $ok = false;
+                    $resource_failures[] = $this->summarize_api_error((int) $e->getCode(), $body);
+                } catch (\Throwable $e) {
+                    $ok = false;
+                    $resource_failures[] = $e->getMessage();
+                }
+            }
+
+            $objects[$resource] = $ok;
+            if (!$ok) {
+                $failures[] = sprintf('%s: %s', $resource, implode('; ', $resource_failures));
+            }
+        }
+
+        return [
+            'success' => $failures === [],
+            'message' => mb_substr(implode(' | ', $failures), 0, 2000),
+            'objects' => $objects,
+        ];
+    }
+
+    /**
+     * Fetch the entity's current contact resources, grouped by type.
+     *
+     * One raw GET per entity: people and organizations single-record responses
+     * include all four contact resources by default. Raw GET, not the SDK
+     * fetch helper, because the SDK model throws on some payloads and only
+     * id/attributes pairs are needed here.
+     *
+     * @param object $client Wicket API client.
+     * @param string $prefix 'people' or 'organizations'.
+     * @param string $uuid   Entity UUID.
+     * @param string $error  Set to the failure reason when null is returned.
+     * @return array<string, array<int, array{id: string, attributes: array<string, mixed>}>}|null Null when the fetch fails.
+     */
+    protected function fetch_entity_contacts(object $client, string $prefix, string $uuid, string &$error = ''): ?array
+    {
+        try {
+            $response = $client->get("$prefix/$uuid");
+            $body = is_array($response) ? $response : wicket_convert_obj_to_array($response);
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+
+            return null;
+        }
+
+        $current = [];
+        foreach ((array) ($body['included'] ?? []) as $item) {
+            $type = is_string($item['type'] ?? null) ? $item['type'] : '';
+            if (!in_array($type, self::CONTACT_OBJECTS, true)) {
+                continue;
+            }
+
+            $id = is_string($item['id'] ?? null) ? $item['id'] : '';
+            if ($id === '') {
+                continue;
+            }
+
+            $current[$type][] = [
+                'id' => $id,
+                'attributes' => is_array($item['attributes'] ?? null) ? $item['attributes'] : [],
+            ];
+        }
+
+        return $current;
+    }
+
+    /**
+     * Write one contact mapping: update the existing contact of the target
+     * type, or create it (with primary semantics) when absent.
+     *
+     * @param object $client      Wicket API client.
+     * @param string $prefix      'people' or 'organizations'.
+     * @param string $uuid        Entity UUID.
+     * @param string $resource    Contact resource key.
+     * @param string $target_field Target field value (e.g. 'phones.work').
+     * @param mixed  $value       Mapped value (string, or address array).
+     * @param array  $current     Entity contacts from fetch_entity_contacts().
+     * @throws \Throwable On invalid target or failed API write.
+     */
+    protected function push_contact_resource(object $client, string $prefix, string $uuid, string $resource, string $target_field, mixed $value, array $current): void
+    {
+        $parsed = $this->parse_contact_target($target_field);
+        if ($parsed === null || $parsed['resource'] !== $resource) {
+            throw new \RuntimeException(sprintf('Invalid contact target %s', $target_field));
+        }
+
+        $existing = $current[$resource] ?? [];
+
+        $match = null;
+        foreach ($existing as $item) {
+            if (($item['attributes']['type'] ?? '') === $parsed['type']) {
+                $match = $item;
+                break;
+            }
+        }
+
+        if ($match !== null) {
+            $id = (string) ($match['id'] ?? '');
+            if ($id === '') {
+                throw new \RuntimeException(sprintf('Existing %s of type %s has no id', $resource, $parsed['type']));
+            }
+
+            // Partial PATCH with explicit values for every mapped address part
+            // (a cleared input must clear the attribute) but no country_code
+            // when empty: its inclusion validation has no allow_nil.
+            $attrs = $this->contact_attributes($resource, $value, true);
+            $client->patch("$resource/$id", ['json' => [
+                'data' => ['type' => $resource, 'id' => $id, 'attributes' => $attrs],
+            ]]);
+
+            return;
+        }
+
+        $attrs = $this->contact_attributes($resource, $value, false);
+
+        if ($resource === 'web_addresses') {
+            // Its controller parses jsonapi-style params; the type rides in
+            // attributes and there is no primary flag to claim.
+            $attrs['type'] = $parsed['type'];
+            $client->post("$prefix/$uuid/$resource", ['json' => [
+                'data' => ['attributes' => $attrs],
+            ]]);
+
+            return;
+        }
+
+        // A created contact always claims the primary flag: form-fed contact
+        // data is the entity's current contact point. The MDP demotes sibling
+        // primaries itself on a primary save, so no client-side demotion runs.
+        $attrs['type'] = $parsed['type'];
+        $attrs['primary'] = true;
+
+        $client->post("$prefix/$uuid/$resource", ['json' => [
+            'data' => ['type' => $resource, 'attributes' => $attrs],
+        ]]);
+    }
+
+    /**
+     * Map a contact value to the resource's writable attributes.
+     *
+     * @param string $resource  Contact resource key.
+     * @param mixed  $value     Mapped value (string, or address parts array).
+     * @param bool   $is_update True when patching an existing record: address
+     *                          text parts are always sent so cleared inputs
+     *                          clear the attribute; country_code is omitted
+     *                          when empty (no allow_nil on its inclusion rule).
+     * @return array<string, mixed>
+     * @throws \RuntimeException When the value shape cannot populate the resource.
+     */
+    protected function contact_attributes(string $resource, mixed $value, bool $is_update): array
+    {
+        if ($resource === 'addresses') {
+            $parts = is_array($value)
+                ? $value
+                : ['address1' => (string) $value];
+
+            $text_parts = ['company_name', 'address1', 'address2', 'city', 'state_name', 'zip_code'];
+            $attrs = [];
+            foreach ($text_parts as $key) {
+                $part = trim((string) ($parts[$key] ?? ''));
+                if ($part !== '' || $is_update) {
+                    $attrs[$key] = $part;
+                }
+            }
+
+            $country = trim((string) ($parts['country_code'] ?? ''));
+            if ($country !== '') {
+                $attrs['country_code'] = $country;
+            }
+
+            if (trim(implode('', $attrs)) === '') {
+                throw new \RuntimeException('Mapped address value is empty');
+            }
+
+            return $attrs;
+        }
+
+        $attr = match ($resource) {
+            'phones' => 'number',
+            'emails' => 'address',
+            'web_addresses' => 'address',
+            default => throw new \RuntimeException(sprintf('Unknown contact resource %s', $resource)),
+        };
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            throw new \RuntimeException(sprintf('Mapped %s value is empty', $resource));
+        }
+
+        return [$attr => $resource === 'web_addresses' ? esc_url_raw($value) : sanitize_text_field($value)];
+    }
+
+    /**
+     * Parse a contact target value into resource + contact type.
+     *
+     * 'phones.work' => ['resource' => 'phones', 'type' => 'work']
+     *
+     * @return array{resource: string, type: string}|null
+     */
+    protected function parse_contact_target(string $target_field): ?array
+    {
+        $dot = strpos($target_field, '.');
+        if ($dot === false || $dot === 0 || $dot === strlen($target_field) - 1) {
+            return null;
+        }
+
+        $resource = substr($target_field, 0, $dot);
+        if (!in_array($resource, self::CONTACT_OBJECTS, true)) {
+            return null;
+        }
+
+        return [
+            'resource' => $resource,
+            'type' => substr($target_field, $dot + 1),
+        ];
     }
 
     /**

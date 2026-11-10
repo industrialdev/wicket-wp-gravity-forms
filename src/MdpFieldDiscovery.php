@@ -66,7 +66,17 @@ class MdpFieldDiscovery
      */
     public function getAllTargetFields(): array
     {
-        $objects = ['person_profile', 'org_profile', 'additional_info', 'org_additional_info', 'preferences'];
+        $objects = [
+            'person_profile',
+            'org_profile',
+            'additional_info',
+            'org_additional_info',
+            'preferences',
+            'addresses',
+            'phones',
+            'emails',
+            'web_addresses',
+        ];
         $result = [];
         foreach ($objects as $object) {
             $result[$object] = $this->getTargetFields($object);
@@ -89,6 +99,7 @@ class MdpFieldDiscovery
             'additional_info'     => $this->getAdditionalInfoFields(),
             'org_additional_info' => $this->getAdditionalInfoFields(),
             'preferences'         => $this->getPreferencesFields(),
+            'addresses', 'phones', 'emails', 'web_addresses' => $this->getContactFields($target_object),
             default               => [],
         };
     }
@@ -153,6 +164,42 @@ class MdpFieldDiscovery
         ];
 
         return apply_filters('wicket_gf_mdp_org_profile_fields', $fields);
+    }
+
+    /**
+     * Contact resource fields (static, filterable).
+     *
+     * Addresses, phones, emails, and web addresses are fixed MDP related
+     * resources (not tenant-configurable schema data), so their targets are
+     * static and never blank on a discovery failure. Each target names the
+     * contact type it writes: the sync engine updates the entity's existing
+     * contact of that type, or creates one when absent. The slugs are the
+     * standard Wicket tenant resource types (default_resource_types.yml);
+     * a tenant missing one fails visibly at the API.
+     *
+     * @param string $target_object Contact resource key.
+     * @return array<array{value: string, label: string}>
+     */
+    public function getContactFields(string $target_object): array
+    {
+        $fields_by_object = [
+            'addresses' => [
+                ['value' => 'addresses.home', 'label' => __('Address (Home)', 'wicket-gf')],
+            ],
+            'phones' => [
+                ['value' => 'phones.work', 'label' => __('Phone (Work)', 'wicket-gf')],
+            ],
+            'emails' => [
+                ['value' => 'emails.work', 'label' => __('Email (Work)', 'wicket-gf')],
+            ],
+            'web_addresses' => [
+                ['value' => 'web_addresses.website', 'label' => __('Website', 'wicket-gf')],
+            ],
+        ];
+
+        $fields = $fields_by_object[$target_object] ?? [];
+
+        return apply_filters('wicket_gf_mdp_contact_fields', $fields, $target_object);
     }
 
     /**
