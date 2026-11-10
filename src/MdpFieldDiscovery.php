@@ -24,11 +24,15 @@ class MdpFieldDiscovery
     /**
      * Transient key for caching json_schemas discovery results.
      *
+     * Bumped to v4 in WWID-2980: the payload gained array-typed targets, and
+     * a stale v3 cache would hide them for 12h and let the form-save
+     * sanitizer strip newly mapped array fields.
+     *
      * v3: payload is ['properties' => rows, 'ids' => [slug => uuid]]
      * (see discoverSchemaFields()). Versioned so stale v1/v2 transients
      * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v3';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v4';
 
     /**
      * Transient marking a recent discovery failure (short TTL).

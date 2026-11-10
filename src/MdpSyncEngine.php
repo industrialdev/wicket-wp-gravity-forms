@@ -704,6 +704,12 @@ class MdpSyncEngine
             return false;
         }
 
+        // Parity with merge_data_fields: a missing discovery (constructed
+        // outside the normal path) must not be dereferenced.
+        if (!isset($this->discovery)) {
+            return false;
+        }
+
         return ($this->discovery->getPropertyTypeMap()[$target_field] ?? '') === 'array';
     }
 
@@ -728,16 +734,16 @@ class MdpSyncEngine
                 }
                 $val = $entry[$input_id] ?? '';
                 if ($val !== '') {
-                    $values[] = (string) $val;
+                    $values[] = $val;
                 }
             }
 
-            return $values !== [] ? $values : null;
+            return $this->string_list($values);
         }
 
         $raw = $entry[$field_id] ?? '';
         if (is_array($raw)) {
-            return $this->string_list(array_map('strval', $raw));
+            return $this->string_list($raw);
         }
 
         $raw = (string) $raw;
@@ -747,19 +753,28 @@ class MdpSyncEngine
 
         $decoded = json_decode($raw, true);
         if (is_array($decoded)) {
-            return $this->string_list(array_map('strval', $decoded));
+            return $this->string_list($decoded);
         }
 
         return $this->string_list(explode(',', $raw));
     }
 
     /**
-     * @param list<string> $values
+     * Normalize collected values into a clean string list: non-strings drop
+     * (programmatic entries can carry nested structures), values trim, and
+     * empties vanish. Null when nothing survives.
+     *
      * @return list<string>|null
      */
     private function string_list(array $values): ?array
     {
-        $values = array_values(array_filter(array_map('trim', $values), static fn (string $v): bool => $v !== ''));
+        $values = array_values(array_filter(
+            array_map(
+                static fn (mixed $v): string => is_string($v) ? trim($v) : '',
+                $values
+            ),
+            static fn (string $v): bool => $v !== ''
+        ));
 
         return $values !== [] ? $values : null;
     }
