@@ -1102,12 +1102,27 @@ class MdpSyncEngine
         foreach ($grouped as $resource => $fields) {
             // Two mappings on one form can aim at the same contact target
             // (e.g. two phone fields mapped to phones.work). Last one wins:
-            // scalars overwrite, address parts merge per attribute.
+            // scalars overwrite, address parts merge per attribute. A string
+            // colliding with an array normalizes through the string-as-address1
+            // contract so neither side silently drops.
             $deduped = [];
             foreach ($fields as $field) {
                 $key = (string) ($field['target_field'] ?? '');
-                if (isset($deduped[$key]) && is_array($field['value'])) {
-                    $deduped[$key]['value'] = array_merge((array) $deduped[$key]['value'], (array) $field['value']);
+                if (!isset($deduped[$key])) {
+                    $deduped[$key] = $field;
+                    continue;
+                }
+
+                $existing = $deduped[$key]['value'];
+                $incoming = $field['value'];
+                if (is_array($existing) || is_array($incoming)) {
+                    $base = is_array($existing)
+                        ? $existing
+                        : (is_string($existing) && $existing !== '' ? ['address1' => $existing] : []);
+                    $add = is_array($incoming)
+                        ? $incoming
+                        : (is_string($incoming) && $incoming !== '' ? ['address1' => $incoming] : []);
+                    $deduped[$key]['value'] = array_merge($base, $add);
                 } else {
                     $deduped[$key] = $field;
                 }
@@ -1167,10 +1182,24 @@ class MdpSyncEngine
     protected function fetch_entity_contacts(object $client, string $prefix, string $uuid, string &$error = ''): ?array
     {
         try {
-            $response = $client->get("$prefix/$uuid");
+            // Explicit includes pin the contract: the seeded DEFAULT_INCLUDES_SINGLE
+            // on both controllers already carries the contact resources, but a
+            // default-only GET would silently create duplicates if that ever
+            // drifted. All four names sit in both controllers' whitelists.
+            $response = $client->get("$prefix/$uuid?include=" . implode(',', self::CONTACT_OBJECTS));
             $body = is_array($response) ? $response : wicket_convert_obj_to_array($response);
         } catch (\Throwable $e) {
             $error = $e->getMessage();
+
+            return null;
+        }
+
+        // A JSON:API single response with explicit includes always carries the
+        // key (empty when the entity has no contacts). Missing key = payload we
+        // cannot interpret: fail closed rather than treat it as zero contacts
+        // and create duplicates.
+        if (!is_array($body) || !array_key_exists('included', $body)) {
+            $error = 'MDP response has no included contacts payload; refusing to write contacts';
 
             return null;
         }
