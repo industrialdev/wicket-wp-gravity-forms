@@ -578,7 +578,7 @@ class MdpSyncEngine
             }
 
             // Get submitted value for this field
-            $value = $this->get_field_value($field, $entry, $target_object);
+            $value = $this->get_field_value($field, $entry, $target_object, $target_field);
             if ($value === '' || $value === null) {
                 continue;
             }
@@ -628,9 +628,12 @@ class MdpSyncEngine
      *                              input value instead of joining inputs: a
      *                              checkbox is a set of discrete choices, not
      *                              parts of one value.
+     * @param string $target_field MDP target field value. Array-typed
+     *                             data_field targets collect every submitted
+     *                             value as a list instead of a join.
      * @return string|array|null
      */
-    protected function get_field_value(object $field, array $entry, string $target_object = ''): mixed
+    protected function get_field_value(object $field, array $entry, string $target_object = '', string $target_field = ''): mixed
     {
         $field_id = (string) ($field->id ?? '');
         if ($field_id === '') {
@@ -639,6 +642,12 @@ class MdpSyncEngine
 
         if ($target_object === 'addresses' && ($field->type ?? '') === 'address') {
             return $this->build_address_value($field, $entry);
+        }
+
+        // Array data-field targets (WWID-2980): multi-select style schema
+        // properties take every submitted value as a list, never a join.
+        if ($this->data_field_target_is_array($target_object, $target_field)) {
+            return $this->build_list_value($field, $entry, $field_id);
         }
 
         // Contact string targets: like checkbox/preference fields, a multi-
@@ -677,6 +686,82 @@ class MdpSyncEngine
         }
 
         return $value !== '' ? (string) $value : null;
+    }
+
+    /**
+     * Whether the mapping aims at an array-typed data_field property.
+     *
+     * The discovery type map carries the schema property types, so an
+     * array-of-scalar property (WWID-2980) reads as 'array'.
+     */
+    protected function data_field_target_is_array(string $target_object, string $target_field): bool
+    {
+        if (!in_array($target_object, ['additional_info', 'org_additional_info'], true)) {
+            return false;
+        }
+
+        if (!str_starts_with($target_field, 'data_field.')) {
+            return false;
+        }
+
+        return ($this->discovery->getPropertyTypeMap()[$target_field] ?? '') === 'array';
+    }
+
+    /**
+     * Collect every submitted value of a field as a list for an array
+     * data_field target.
+     *
+     * Checkbox fields submit one entry key per choice; single-input fields
+     * hold GF's joined storage (comma-joined by GF_Field_Multiselect, or JSON
+     * when storageType is json).
+     *
+     * @return list<string>|null Null when nothing was submitted.
+     */
+    protected function build_list_value(object $field, array $entry, string $field_id): ?array
+    {
+        if (!empty($field->inputs) && is_array($field->inputs)) {
+            $values = [];
+            foreach ($field->inputs as $input) {
+                $input_id = (string) ($input['id'] ?? '');
+                if ($input_id === '') {
+                    continue;
+                }
+                $val = $entry[$input_id] ?? '';
+                if ($val !== '') {
+                    $values[] = (string) $val;
+                }
+            }
+
+            return $values !== [] ? $values : null;
+        }
+
+        $raw = $entry[$field_id] ?? '';
+        if (is_array($raw)) {
+            return $this->string_list(array_map('strval', $raw));
+        }
+
+        $raw = (string) $raw;
+        if ($raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return $this->string_list(array_map('strval', $decoded));
+        }
+
+        return $this->string_list(explode(',', $raw));
+    }
+
+    /**
+     * @param list<string> $values
+     * @return list<string>|null
+     */
+    private function string_list(array $values): ?array
+    {
+        $values = array_values(array_filter(array_map('trim', $values), static fn (string $v): bool => $v !== ''));
+
+        return $values !== [] ? $values : null;
     }
 
     /**

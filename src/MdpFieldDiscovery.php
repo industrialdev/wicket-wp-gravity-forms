@@ -466,7 +466,20 @@ class MdpFieldDiscovery
                         $type = 'string';
                     }
 
-                    if (!in_array($type, ['string', 'number', 'integer', 'boolean'], true)) {
+                    // Array-of-scalar properties (multi-select style, e.g. a
+                    // breed specialties checkbox list) are mappable: GF submits
+                    // the checked set and MDP validates it against the schema.
+                    // Array-of-object repeaters stay out of scope (WWID-812).
+                    if ($type === 'array') {
+                        $items_type = $definition['items']['type'] ?? null;
+                        if (is_string($items_type) && in_array($items_type, ['string', 'number', 'integer', 'boolean'], true)) {
+                            $type = 'array';
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (!in_array($type, ['string', 'number', 'integer', 'boolean', 'array'], true)) {
                         continue;
                     }
 
