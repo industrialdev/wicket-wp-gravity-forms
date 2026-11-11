@@ -721,9 +721,12 @@ class MdpSyncEngine
      * hold GF's joined storage (comma-joined by GF_Field_Multiselect, or JSON
      * when storageType is json).
      *
-     * @return list<string>|null Null when nothing was submitted.
+     * An empty list is meaningful: it clears the mapped MDP property on sync
+     * (WWID-2980 review).
+     *
+     * @return list<string>
      */
-    protected function build_list_value(object $field, array $entry, string $field_id): ?array
+    protected function build_list_value(object $field, array $entry, string $field_id): array
     {
         if (!empty($field->inputs) && is_array($field->inputs)) {
             $values = [];
@@ -748,7 +751,7 @@ class MdpSyncEngine
 
         $raw = (string) $raw;
         if ($raw === '') {
-            return null;
+            return [];
         }
 
         $decoded = json_decode($raw, true);
@@ -762,21 +765,19 @@ class MdpSyncEngine
     /**
      * Normalize collected values into a clean string list: non-strings drop
      * (programmatic entries can carry nested structures), values trim, and
-     * empties vanish. Null when nothing survives.
+     * empties vanish.
      *
-     * @return list<string>|null
+     * @return list<string>
      */
-    private function string_list(array $values): ?array
+    private function string_list(array $values): array
     {
-        $values = array_values(array_filter(
+        return array_values(array_filter(
             array_map(
                 static fn (mixed $v): string => is_string($v) ? trim($v) : '',
                 $values
             ),
             static fn (string $v): bool => $v !== ''
         ));
-
-        return $values !== [] ? $values : null;
     }
 
     /**
@@ -1500,7 +1501,18 @@ class MdpSyncEngine
             return [$attr => $address];
         }
 
-        return [$attr => $resource === 'web_addresses' ? esc_url_raw($value) : sanitize_text_field($value)];
+        if ($resource === 'web_addresses') {
+            $address = esc_url_raw($value);
+            if ($address === '') {
+                // esc_url_raw empties invalid URLs; '' on a partial PATCH
+                // would wipe the stored address, so fail before writing.
+                throw new \RuntimeException('Mapped web_addresses value is not a valid URL');
+            }
+
+            return [$attr => $address];
+        }
+
+        return [$attr => sanitize_text_field($value)];
     }
 
     /**
@@ -1730,6 +1742,19 @@ class MdpSyncEngine
                 $current = [];
             }
         } catch (\Throwable $e) {
+            // Raw response bodies echo record values; summarize like the PATCH path.
+            $reason = $e instanceof RequestException && $e->hasResponse()
+                ? $this->summarize_api_error((int) $e->getCode(), (string) $e->getResponse()->getBody())
+                : $e->getMessage();
+            $this->write_log(
+                0,
+                0,
+                $entity_type,
+                $uuid,
+                self::STATUS_FAILED,
+                'data_fields merge fetch failed; profile update aborted: ' . $reason
+            );
+
             return null;
         }
 
