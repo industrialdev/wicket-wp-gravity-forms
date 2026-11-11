@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.10.0] - 2026-11-11
+
+### Added
+- add or remove WP roles on form submission
+
+
 ## [2.9.1] - 2026-11-09
 
 ### Fixed
