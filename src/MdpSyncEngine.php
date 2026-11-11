@@ -855,6 +855,10 @@ class MdpSyncEngine
             return null;
         }
 
+        if (($value['country_code'] ?? '') === '') {
+            $value['country_code'] = $this->default_country_code($field, (int) ($entry['form_id'] ?? 0));
+        }
+
         $value['country_code'] = $this->to_country_code($value['country_code'] ?? '');
         $value['state_name'] = $this->to_state_code($value['state_name'] ?? '', $value['country_code']);
 
@@ -886,6 +890,33 @@ class MdpSyncEngine
         $code = (string) $address_field->get_country_code($value);
 
         return $code !== '' ? $code : $value;
+    }
+
+    /**
+     * Resolve a country code from the address field's own configuration.
+     *
+     * GF renders no country input for single-country address types (us,
+     * canadian, or a custom gform_address_types entry carrying a 'country'
+     * key), so those entries carry no country value at all and the type's
+     * own country fills the gap. International layouts use the defaultCountry
+     * preselect, which only matters when the input is hidden another way.
+     */
+    private function default_country_code(object $field, int $form_id): string
+    {
+        $country_name = '';
+        $type = (string) ($field->addressType ?? '');
+        if ($type !== '' && $type !== 'international' && class_exists(\GF_Fields::class)) {
+            $address_field = \GF_Fields::get('address');
+            if ($address_field && method_exists($address_field, 'get_address_types')) {
+                $country_name = (string) ($address_field->get_address_types($form_id)[$type]['country'] ?? '');
+            }
+        }
+
+        if ($country_name === '') {
+            $country_name = trim((string) ($field->defaultCountry ?? ''));
+        }
+
+        return $country_name === '' ? '' : $this->to_country_code($country_name);
     }
 
     /**
@@ -1247,13 +1278,23 @@ class MdpSyncEngine
 
         $existing = $current[$resource] ?? [];
 
+        // Several contacts can share a type; the primary one owns form updates
+        // so the entity's canonical record is the one rewritten. First of the
+        // type wins when none carries the primary flag.
         $match = null;
+        $first_of_type = null;
         foreach ($existing as $item) {
-            if (($item['attributes']['type'] ?? '') === $parsed['type']) {
+            if (($item['attributes']['type'] ?? '') !== $parsed['type']) {
+                continue;
+            }
+
+            $first_of_type ??= $item;
+            if (($item['attributes']['primary'] ?? false) === true) {
                 $match = $item;
                 break;
             }
         }
+        $match ??= $first_of_type;
 
         if ($match !== null) {
             $id = (string) ($match['id'] ?? '');
@@ -1346,6 +1387,17 @@ class MdpSyncEngine
         $value = trim((string) $value);
         if ($value === '') {
             throw new \RuntimeException(sprintf('Mapped %s value is empty', $resource));
+        }
+
+        if ($resource === 'emails') {
+            $address = sanitize_email($value);
+            if ($address === '') {
+                // sanitize_email empties invalid input; sending '' would wipe
+                // the stored email on a partial PATCH, so fail before writing.
+                throw new \RuntimeException('Mapped emails value is not a valid email address');
+            }
+
+            return [$attr => $address];
         }
 
         return [$attr => $resource === 'web_addresses' ? esc_url_raw($value) : sanitize_text_field($value)];

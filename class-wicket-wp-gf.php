@@ -1377,10 +1377,10 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Return all target field definitions grouped by target object.
-     * Used as single source of truth for JS injection.
+     * Return all target field definitions grouped by entity type, then target
+     * object. Used as single source of truth for JS injection.
      *
-     * @return array<string, array<array{value: string, label: string}>>
+     * @return array<string, array<string, array<array{value: string, label: string}>>>
      */
     protected function get_all_mdp_target_fields()
     {
@@ -2261,10 +2261,10 @@ class Wicket_Gf_Main
                 };
             }
 
-            function wicketPopulateMdpTargetFields(targetObject, selectedValue) {
+            function wicketPopulateMdpTargetFields(targetObject, selectedValue, entityType) {
                 var $select = jQuery('#wicket_mdp_target_field');
                 var $row    = jQuery('#wicket_mdp_target_field_row');
-                var fields  = wicketMdpTargetFields[targetObject] || [];
+                var fields  = (wicketMdpTargetFields[entityType] || {})[targetObject] || [];
                 var hasSelectedValue = false;
 
                 $select.empty().append('<option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>');
@@ -2331,7 +2331,7 @@ class Wicket_Gf_Main
                     return;
                 }
 
-                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField);
+                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField, formConfig.entityType);
                 if (!targetFieldState.hasSelectedValue && targetField) {
                     jQuery('#wicket_mdp_target_field').val('');
                     SetFieldProperty('wicket_mdp_target_field', '');
@@ -2480,7 +2480,7 @@ class Wicket_Gf_Main
                     }
 
                     // Rule 3: Target Object has no available fields (unsupported, or MDP API unreachable)
-                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+                    var availableFields = (wicketMdpTargetFields[formConfig.entityType] || {})[targetObject] || [];
                     if (availableFields.length === 0) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('The selected Target Object is not available right now (unsupported, or the MDP API is unreachable). Disable MDP mapping or choose a different Target Object.', 'wicket-gf'); ?>');
                         continue;
@@ -2547,7 +2547,7 @@ class Wicket_Gf_Main
 
                     // No further UUID source stripping — effective value handled at sync time
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
-                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+                    var availableFields = (wicketMdpTargetFields[formConfig.entityType] || {})[targetObject] || [];
 
                     // If target object is unsupported (no fields), strip
                     if (targetObject && availableFields.length === 0) {
