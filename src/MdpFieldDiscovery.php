@@ -24,11 +24,15 @@ class MdpFieldDiscovery
     /**
      * Transient key for caching json_schemas discovery results.
      *
+     * Bumped to v4 in WWID-2980: the payload gained array-typed targets, and
+     * a stale v3 cache would hide them for 12h and let the form-save
+     * sanitizer strip newly mapped array fields.
+     *
      * v3: payload is ['properties' => rows, 'ids' => [slug => uuid]]
      * (see discoverSchemaFields()). Versioned so stale v1/v2 transients
      * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v3';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v4';
 
     /**
      * Transient marking a recent discovery failure (short TTL).
@@ -60,16 +64,31 @@ class MdpFieldDiscovery
     private const CACHE_TTL_DEFAULT = 43200;
 
     /**
-     * Get all target fields grouped by target object.
+     * Get all target fields grouped by entity type, then target object.
      *
-     * @return array<string, array<array{value: string, label: string}>>
+     * The form editor consumes the per-entity shape; contact lists differ
+     * per entity only in default order.
+     *
+     * @return array<string, array<string, array<array{value: string, label: string}>>>
      */
     public function getAllTargetFields(): array
     {
-        $objects = ['person_profile', 'org_profile', 'additional_info', 'org_additional_info', 'preferences'];
+        $objects = [
+            'person_profile',
+            'org_profile',
+            'additional_info',
+            'org_additional_info',
+            'preferences',
+            'addresses',
+            'phones',
+            'emails',
+            'web_addresses',
+        ];
         $result = [];
-        foreach ($objects as $object) {
-            $result[$object] = $this->getTargetFields($object);
+        foreach (['person', 'organization'] as $entity_type) {
+            foreach ($objects as $object) {
+                $result[$entity_type][$object] = $this->getTargetFields($object, $entity_type);
+            }
         }
 
         return $result;
@@ -79,9 +98,10 @@ class MdpFieldDiscovery
      * Get target fields for a specific target object.
      *
      * @param string $target_object The target object key.
+     * @param string $entity_type   'person' or 'organization'; '' gives entity-neutral contact lists.
      * @return array<array{value: string, label: string}>
      */
-    public function getTargetFields(string $target_object): array
+    public function getTargetFields(string $target_object, string $entity_type = ''): array
     {
         return match ($target_object) {
             'person_profile'      => $this->getPersonProfileFields(),
@@ -89,6 +109,7 @@ class MdpFieldDiscovery
             'additional_info'     => $this->getAdditionalInfoFields(),
             'org_additional_info' => $this->getAdditionalInfoFields(),
             'preferences'         => $this->getPreferencesFields(),
+            'addresses', 'phones', 'emails', 'web_addresses' => $this->getContactFields($target_object, $entity_type),
             default               => [],
         };
     }
@@ -97,11 +118,12 @@ class MdpFieldDiscovery
      * Get valid field value strings for a specific target object.
      *
      * @param string $target_object The target object key.
+     * @param string $entity_type   'person' or 'organization'; '' gives entity-neutral contact lists.
      * @return string[]
      */
-    public function getTargetFieldValues(string $target_object): array
+    public function getTargetFieldValues(string $target_object, string $entity_type = ''): array
     {
-        $fields = $this->getTargetFields($target_object);
+        $fields = $this->getTargetFields($target_object, $entity_type);
 
         return array_map(
             static fn (array $f): string => $f['value'],
@@ -153,6 +175,53 @@ class MdpFieldDiscovery
         ];
 
         return apply_filters('wicket_gf_mdp_org_profile_fields', $fields);
+    }
+
+    /**
+     * Contact resource fields (static, filterable).
+     *
+     * Addresses, phones, emails, and web addresses are fixed MDP related
+     * resources (not tenant-configurable schema data), so their targets are
+     * static and never blank on a discovery failure. Each target names the
+     * contact type it writes: the sync engine updates the entity's existing
+     * contact of that type, or creates one when absent. The slugs are the
+     * standard Wicket tenant resource types (default_resource_types.yml);
+     * a tenant missing one fails visibly at the API.
+     *
+     * Address types are entity-shared in the MDP; only the default order
+     * differs per entity: people lead with home, organizations with work.
+     * Both stay listed so a legacy mapping of the other type keeps passing
+     * validation.
+     *
+     * @param string $target_object Contact resource key.
+     * @param string $entity_type   'person' or 'organization'; '' keeps the person order.
+     * @return array<array{value: string, label: string}>
+     */
+    public function getContactFields(string $target_object, string $entity_type = ''): array
+    {
+        $fields_by_object = [
+            'addresses' => [
+                ['value' => 'addresses.home', 'label' => __('Address (Home)', 'wicket-gf')],
+                ['value' => 'addresses.work', 'label' => __('Address (Work)', 'wicket-gf')],
+            ],
+            'phones' => [
+                ['value' => 'phones.work', 'label' => __('Phone (Work)', 'wicket-gf')],
+            ],
+            'emails' => [
+                ['value' => 'emails.work', 'label' => __('Email (Work)', 'wicket-gf')],
+            ],
+            'web_addresses' => [
+                ['value' => 'web_addresses.website', 'label' => __('Website', 'wicket-gf')],
+            ],
+        ];
+
+        $fields = $fields_by_object[$target_object] ?? [];
+
+        if ($target_object === 'addresses' && $entity_type === 'organization') {
+            $fields = array_reverse($fields);
+        }
+
+        return apply_filters('wicket_gf_mdp_contact_fields', $fields, $target_object, $entity_type);
     }
 
     /**
@@ -401,7 +470,20 @@ class MdpFieldDiscovery
                         $type = 'string';
                     }
 
-                    if (!in_array($type, ['string', 'number', 'integer', 'boolean'], true)) {
+                    // Array-of-scalar properties (multi-select style, e.g. a
+                    // breed specialties checkbox list) are mappable: GF submits
+                    // the checked set and MDP validates it against the schema.
+                    // Array-of-object repeaters stay out of scope (WWID-812).
+                    if ($type === 'array') {
+                        $items_type = $definition['items']['type'] ?? null;
+                        if (is_string($items_type) && in_array($items_type, ['string', 'number', 'integer', 'boolean'], true)) {
+                            $type = 'array';
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (!in_array($type, ['string', 'number', 'integer', 'boolean', 'array'], true)) {
                         continue;
                     }
 

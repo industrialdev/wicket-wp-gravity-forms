@@ -951,6 +951,10 @@ class Wicket_Gf_Main
                     'preferences' => 'Preferences',
                     'org_profile' => 'Org Profile',
                     'org_additional_info' => 'Org Additional Info',
+                    'addresses' => 'Address',
+                    'phones' => 'Phone',
+                    'emails' => 'Email Address',
+                    'web_addresses' => 'Website',
                 ];
 
                 $target_object_label = $object_labels[$target_object] ?? $target_object;
@@ -1213,11 +1217,11 @@ class Wicket_Gf_Main
             // Deterministic invalidity only: a target object that does not
             // belong to the form's entity type would write person attributes
             // to an organization record (or vice versa). Always stripped.
+            // The allowed list is the engine's own OBJECTS_BY_ENTITY map, so
+            // UI validation and sync-time validation can never drift apart.
             $entity = $entity_type !== '' ? $entity_type : '';
             $allowed_objects = $entity !== ''
-                ? ($entity === 'person'
-                    ? ['person_profile', 'additional_info', 'preferences']
-                    : ['org_profile', 'org_additional_info'])
+                ? (MdpSyncEngine::OBJECTS_BY_ENTITY[$entity] ?? null)
                 : null;
 
             if ($entity_type !== '' && $allowed_objects !== null && !in_array($target_object, $allowed_objects, true)) {
@@ -1381,10 +1385,10 @@ class Wicket_Gf_Main
     }
 
     /**
-     * Return all target field definitions grouped by target object.
-     * Used as single source of truth for JS injection.
+     * Return all target field definitions grouped by entity type, then target
+     * object. Used as single source of truth for JS injection.
      *
-     * @return array<string, array<array{value: string, label: string}>>
+     * @return array<string, array<string, array<array{value: string, label: string}>>>
      */
     protected function get_all_mdp_target_fields()
     {
@@ -1393,32 +1397,30 @@ class Wicket_Gf_Main
 
     protected function get_mdp_target_object_choices($entity_type = '')
     {
-        $choices = [
-            'person' => [
-                [
-                    'label' => esc_html__('Person Profile', 'wicket-gf'),
-                    'value' => 'person_profile',
-                ],
-                [
-                    'label' => esc_html__('Additional Info', 'wicket-gf'),
-                    'value' => 'additional_info',
-                ],
-                [
-                    'label' => esc_html__('Preferences', 'wicket-gf'),
-                    'value' => 'preferences',
-                ],
-            ],
-            'organization' => [
-                [
-                    'label' => esc_html__('Org Profile', 'wicket-gf'),
-                    'value' => 'org_profile',
-                ],
-                [
-                    'label' => esc_html__('Org Additional Info', 'wicket-gf'),
-                    'value' => 'org_additional_info',
-                ],
-            ],
+        // Object values come from the engine's entity map (single source of
+        // truth, shared with the sanitizer); only display labels live here.
+        $labels = [
+            'person_profile' => __('Person Profile', 'wicket-gf'),
+            'additional_info' => __('Additional Info', 'wicket-gf'),
+            'preferences' => __('Preferences', 'wicket-gf'),
+            'org_profile' => __('Org Profile', 'wicket-gf'),
+            'org_additional_info' => __('Org Additional Info', 'wicket-gf'),
+            'addresses' => __('Address', 'wicket-gf'),
+            'phones' => __('Phone', 'wicket-gf'),
+            'emails' => __('Email Address', 'wicket-gf'),
+            'web_addresses' => __('Website', 'wicket-gf'),
         ];
+
+        $choices = [];
+        foreach (MdpSyncEngine::OBJECTS_BY_ENTITY as $entity => $objects) {
+            $choices[$entity] = array_map(
+                static fn (string $object): array => [
+                    'label' => esc_html($labels[$object] ?? $object),
+                    'value' => $object,
+                ],
+                $objects
+            );
+        }
 
         if ($entity_type === '') {
             return $choices;
@@ -2267,10 +2269,10 @@ class Wicket_Gf_Main
                 };
             }
 
-            function wicketPopulateMdpTargetFields(targetObject, selectedValue) {
+            function wicketPopulateMdpTargetFields(targetObject, selectedValue, entityType) {
                 var $select = jQuery('#wicket_mdp_target_field');
                 var $row    = jQuery('#wicket_mdp_target_field_row');
-                var fields  = wicketMdpTargetFields[targetObject] || [];
+                var fields  = (wicketMdpTargetFields[entityType] || {})[targetObject] || [];
                 var hasSelectedValue = false;
 
                 $select.empty().append('<option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>');
@@ -2337,7 +2339,7 @@ class Wicket_Gf_Main
                     return;
                 }
 
-                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField);
+                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField, formConfig.entityType);
                 if (!targetFieldState.hasSelectedValue && targetField) {
                     jQuery('#wicket_mdp_target_field').val('');
                     SetFieldProperty('wicket_mdp_target_field', '');
@@ -2486,7 +2488,7 @@ class Wicket_Gf_Main
                     }
 
                     // Rule 3: Target Object has no available fields (unsupported, or MDP API unreachable)
-                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+                    var availableFields = (wicketMdpTargetFields[formConfig.entityType] || {})[targetObject] || [];
                     if (availableFields.length === 0) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('The selected Target Object is not available right now (unsupported, or the MDP API is unreachable). Disable MDP mapping or choose a different Target Object.', 'wicket-gf'); ?>');
                         continue;
@@ -2553,7 +2555,7 @@ class Wicket_Gf_Main
 
                     // No further UUID source stripping — effective value handled at sync time
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
-                    var availableFields = wicketMdpTargetFields[targetObject] || [];
+                    var availableFields = (wicketMdpTargetFields[formConfig.entityType] || {})[targetObject] || [];
 
                     // If target object is unsupported (no fields), strip
                     if (targetObject && availableFields.length === 0) {
