@@ -5,6 +5,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.11.0] - 2026-11-12
+
+### Added
+- **gf:** map array additional-info fields to MDP data_fields (WWID-2980)
+- **gf:** map address and contact fields to MDP contacts (WWID-2981)
+
+### Fixed
+- **gf:** address WWID-2980 review notes on array sync
+- **gf:** harden array target discovery and collection (WWID-2980)
+- **gf:** address WWID-2981 review notes on contact mapping
+- **gf:** harden contact dedupe and fetch guards (WWID-2981)
+
+
 ## [2.10.0] - 2026-11-11
 
 ### Added
