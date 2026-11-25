@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- new releases inserted below this line -->
 
+## [2.12.0] - 2026-11-25
+
+### Fixed
+- **mdp:** address WWID-3027 review notes on legacy source handling
+- **mdp:** require explicit per-field UUID source in the editor (WWID-3027)
+
+
 ## [2.11.0] - 2026-11-12
 
 ### Added
