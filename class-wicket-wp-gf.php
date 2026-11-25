@@ -1863,6 +1863,11 @@ class Wicket_Gf_Main
                         font-size: 12px;
                         margin: 6px 0 0;
                     }
+                    .wicket-mdp-form-note {
+                        color: #646970;
+                        font-size: 11px;
+                        margin: 4px 0 0;
+                    }
                 </style>
                 <input type="checkbox" id="wicket_enable_mdp_mapping"
                     onclick="SetFieldProperty('wicket_enable_mdp_mapping', this.checked);"
@@ -1871,13 +1876,14 @@ class Wicket_Gf_Main
 
                 <div class="wicket-mdp-config-section" id="wicket_mdp_config_section" style="display:none;">
                     <div class="wicket-mdp-config-row">
-                        <label for="wicket_mdp_entity_type"><?php esc_html_e('Entity Type', 'wicket-gf'); ?></label>
+                        <label for="wicket_mdp_entity_type"><?php esc_html_e('Form Entity Type', 'wicket-gf'); ?></label>
                         <select id="wicket_mdp_entity_type">
                             <option value=""><?php esc_html_e('- Select -', 'wicket-gf'); ?></option>
                             <option value="person"><?php esc_html_e('Person', 'wicket-gf'); ?></option>
                             <option value="organization"><?php esc_html_e('Organization', 'wicket-gf'); ?></option>
                         </select>
                     </div>
+                    <p class="wicket-mdp-form-note"><?php esc_html_e('One entity per form: this applies to every mapped field.', 'wicket-gf'); ?></p>
                     <div class="wicket-mdp-config-row">
                         <label for="wicket_mdp_uuid_source_field"><?php esc_html_e('UUID Source Field', 'wicket-gf'); ?></label>
                         <select id="wicket_mdp_uuid_source_field" onchange="SetFieldProperty('wicket_mdp_uuid_source_field', this.value);">
@@ -1912,6 +1918,22 @@ class Wicket_Gf_Main
         ?>
         <script type='text/javascript'>
             var wicketMdpTargetObjects = <?php echo json_encode($this->get_mdp_target_object_choices()); ?>;
+
+            // String literals for plain-text sinks (.text(), window.confirm):
+            // raw __() + JSON encoding keeps quotes and ampersands readable.
+            var wicketMdpI18n = <?php echo wp_json_encode([
+                /* translators: 1: entity label, 2: number of affected fields, 3: comma-separated field names */
+                'entityChange' => __('Changing the Form Entity Type to "%1$s" affects %2$d mapped field(s): %3$s. Their saved Target Object does not belong to that entity. The mapping is kept but must be re-selected or disabled before saving. Continue?', 'wicket-gf'),
+                /* translators: %s: Target Object label */
+                'staleObject' => __('Saved Target Object "%s" does not belong to the form Entity Type. Re-select the Target Object or disable MDP mapping.', 'wicket-gf'),
+                /* translators: %s: Target Field value */
+                'staleField' => __('Saved Target Field "%s" is not available for this Target Object right now. Re-select the Target Field or disable MDP mapping.', 'wicket-gf'),
+                /* translators: %d: number of field names not listed */
+                'more' => __('%d more', 'wicket-gf'),
+                'person' => __('Person', 'wicket-gf'),
+                'organization' => __('Organization', 'wicket-gf'),
+                'none' => __('None', 'wicket-gf'),
+            ], JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 
             // Field definitions sourced from PHP single source of truth (get_mdp_target_fields).
             // Task 2.1 will replace additional_info/preferences with dynamic discovery.
@@ -2295,6 +2317,77 @@ class Wicket_Gf_Main
                 form['wicket_mdp_entity_type'] = value;
             }
 
+            function wicketMdpEntityTypeLabel(value) {
+                if (value === 'person') { return wicketMdpI18n.person; }
+                if (value === 'organization') { return wicketMdpI18n.organization; }
+                return wicketMdpI18n.none;
+            }
+
+            /**
+             * sprintf-style replacement with a function replacer: a string
+             * replacer would treat $& and $' inside values as patterns.
+             */
+            function wicketMdpFormat(template, values) {
+                return String(template).replace(/%(\d)\$[sd]|%[sd]/g, function(match, n) {
+                    return String(values[n ? n - 1 : 0]);
+                });
+            }
+
+            function wicketMdpObjectLabel(value) {
+                var label = '';
+
+                jQuery.each(wicketMdpTargetObjects, function(entity, choices) {
+                    if (label) { return; }
+                    jQuery.each(choices || [], function(i, choice) {
+                        if (choice.value === value) { label = choice.label; }
+                    });
+                });
+
+                return label || value;
+            }
+
+            function wicketMdpShowWarning(message) {
+                var $warningRow = jQuery('#wicket_mdp_type_warning_row');
+
+                $warningRow.find('.wicket-mdp-type-warning').text(message);
+                wicketMdpToggle($warningRow, true);
+            }
+
+            /**
+             * Mapped fields whose saved Target Object does not belong to the
+             * given entity type. Clearing the entity type affects every mapping.
+             */
+            function wicketMdpFieldsInvalidatedByEntity(form, entityType) {
+                var allowedObjects = wicketMdpTargetObjects[entityType] || [];
+                var affected = [];
+
+                jQuery.each((form && form.fields) || [], function(i, field) {
+                    if (!rgar(field, 'wicket_enable_mdp_mapping')) { return; }
+
+                    var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
+                    if (!targetObject) { return; }
+
+                    var objectAllowed = allowedObjects.some(function(choice) { return choice.value === targetObject; });
+                    if (!objectAllowed) {
+                        affected.push(rgar(field, 'adminLabel') || rgar(field, 'label') || rgar(field, 'id'));
+                    }
+                });
+
+                return affected;
+            }
+
+            function wicketMdpEntityTypeChangeMessage(entityType, affected) {
+                var maxListed = 6;
+                var names = affected.slice(0, maxListed).join(', ');
+                var moreCount = affected.length - maxListed;
+
+                if (moreCount > 0) {
+                    names += ' ' + wicketMdpFormat(wicketMdpI18n.more, [moreCount]);
+                }
+
+                return wicketMdpFormat(wicketMdpI18n.entityChange, [wicketMdpEntityTypeLabel(entityType), affected.length, names]);
+            }
+
             function wicketRefreshMdpFieldSettings(field, currentForm) {
                 var $configSection = jQuery('#wicket_mdp_config_section');
                 var $targetFieldRow  = jQuery('#wicket_mdp_target_field_row');
@@ -2318,8 +2411,8 @@ class Wicket_Gf_Main
                 var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
                 // Target Object row is always visible inside the section when enabled
 
-                if (!mdpEnabled || !targetObjectState.hasSelectedValue) {
-                    if (targetObject && !targetObjectState.hasSelectedValue) {
+                if (!mdpEnabled) {
+                    if (targetObject) {
                         jQuery('#wicket_mdp_target_object').val('');
                         SetFieldProperty('wicket_mdp_target_object', '');
                     }
@@ -2334,11 +2427,27 @@ class Wicket_Gf_Main
                     return;
                 }
 
-                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField, formConfig.entityType);
-                if (!targetFieldState.hasSelectedValue && targetField) {
+                if (targetObject && !targetObjectState.hasSelectedValue) {
+                    // Keep the saved config (flipping back restores it) and flag
+                    // it; validation Rule 0b blocks the save.
+                    wicketMdpShowWarning(wicketMdpFormat(wicketMdpI18n.staleObject, [wicketMdpObjectLabel(targetObject)]));
+                    wicketMdpToggle($targetFieldRow, false);
+                    return;
+                }
+
+                if (!targetObject && targetField) {
+                    // Orphan: object gone but a target field survived. Dead config.
                     jQuery('#wicket_mdp_target_field').val('');
                     SetFieldProperty('wicket_mdp_target_field', '');
                     targetField = '';
+                }
+
+                var targetFieldState = wicketPopulateMdpTargetFields(targetObject, targetField, formConfig.entityType);
+                if (targetField && !targetFieldState.hasSelectedValue) {
+                    // Keep and flag; validation Rule 5 blocks the save instead
+                    // of silently dropping the mapping.
+                    wicketMdpShowWarning(wicketMdpFormat(wicketMdpI18n.staleField, [targetField]));
+                    return;
                 }
 
                 // Task 5.1: Type compatibility warning
@@ -2392,10 +2501,20 @@ class Wicket_Gf_Main
             });
 
             /**
-             * Entity Type change — updates form-level meta.
+             * Entity Type change — updates form-level meta. Ask first when
+             * mapped fields would stop belonging to the new entity.
              */
             jQuery(document).on('change', '#wicket_mdp_entity_type', function(){
+                var form = wicketGetCurrentFormObject();
+                var previous = wicketGetMdpFormConfig(form).entityType || '';
                 var val = jQuery(this).val();
+                var affected = wicketMdpFieldsInvalidatedByEntity(form, val);
+
+                if (affected.length > 0 && !window.confirm(wicketMdpEntityTypeChangeMessage(val, affected))) {
+                    jQuery(this).val(previous);
+                    return;
+                }
+
                 wicketSetFormEntityType(val);
 
                 var field = GetSelectedField();
@@ -2527,7 +2646,12 @@ class Wicket_Gf_Main
                     return form;
                 }
 
-                var formConfig = wicketGetMdpFormConfig(form);
+                // GF runs this filter (UpdateFormObject) before ValidateForm, so
+                // clearing a stale mapping here destroys it even though the save
+                // is then blocked and flip-back could still restore it. Only
+                // disabled fields and orphans are cleaned here; validation
+                // blocks the rest and the server-side sanitizer is the final
+                // guard on a real save.
 
                 for (var i = 0; i < form.fields.length; i++) {
                     var field = form.fields[i];
@@ -2550,28 +2674,14 @@ class Wicket_Gf_Main
 
                     // No further UUID source stripping — effective value handled at sync time
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
-                    var availableFields = (wicketMdpTargetFields[formConfig.entityType] || {})[targetObject] || [];
-
-                    // If target object is unsupported (no fields), strip
-                    if (targetObject && availableFields.length === 0) {
-                        field.wicket_mdp_target_object = '';
-                        field.wicket_mdp_target_field  = '';
-                        continue;
-                    }
-
-                    // If target field is invalid for the object, strip it
                     var targetField = rgar(field, 'wicket_mdp_target_field') || '';
-                    if (targetField && availableFields.length > 0) {
-                        var fieldFound = false;
-                        for (var j = 0; j < availableFields.length; j++) {
-                            if (availableFields[j].value === targetField) {
-                                fieldFound = true;
-                                break;
-                            }
-                        }
-                        if (!fieldFound) {
-                            field.wicket_mdp_target_field = '';
-                        }
+
+                    // Stale object/field for the current entity are kept:
+                    // Rule 0b blocks the save and flip-back restores them.
+
+                    // Orphan: a target field without its target object
+                    if (!targetObject && targetField) {
+                        field.wicket_mdp_target_field = '';
                     }
                 }
 
