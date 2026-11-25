@@ -939,10 +939,29 @@ class Wicket_Gf_Main
 
                 // Effective per-field UUID source, shown per row (WWID-2968)
                 $field_obj = is_array($field) ? (object) $field : $field;
+                $field_source = (string) ($field_obj->wicket_mdp_uuid_source_field ?? '');
                 $uuid_source = self::get_effective_mdp_uuid_source($field_obj, $form);
                 $uuid_source_display = $uuid_source !== ''
                     ? sprintf('%s (%s)', $form_field_labels[$uuid_source] ?? $uuid_source, $uuid_source)
                     : __('Not set', 'wicket-gf');
+
+                // Runtime still honors the legacy form-level fallback, but the
+                // editor no longer accepts it as configured (WWID-3027), so
+                // inherited rows block the next editor save until re-selected.
+                // A legacy value pointing at a deleted field resolves to
+                // nothing at sync time; it is not an inherited default.
+                $field_exists = in_array(
+                    (string) $uuid_source,
+                    array_map('strval', wp_list_pluck($form['fields'] ?? [], 'id')),
+                    true
+                );
+                if ($field_source === '' && $uuid_source !== '' && $field_exists) {
+                    $uuid_source_display = sprintf(
+                        '%s — %s',
+                        $uuid_source_display,
+                        __('inherited form-level default', 'wicket-gf')
+                    );
+                }
 
                 // Resolve human-readable labels
                 $object_labels = [
@@ -2192,31 +2211,10 @@ class Wicket_Gf_Main
             }
 
             /**
-             * Effective UUID source for one field: the field-level selection,
-             * else the legacy form-level value (WWID-2968). A legacy value
-             * pointing at a deleted field is ignored.
-             */
-            function wicketGetFieldUuidSource(field, form) {
-                var fieldSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
-                if (fieldSource) {
-                    return fieldSource;
-                }
-
-                var legacy = rgar(form, 'wicket_mdp_uuid_source_field') || '';
-                if (!legacy) {
-                    return '';
-                }
-
-                var fields = (form.fields || []);
-                return fields.some(function(f) { return String(f.id) === String(legacy); }) ? legacy : '';
-            }
-
-            /**
              * Populate the UUID Source Field dropdown from the current form's fields.
-             * Selection is per field (WWID-2968); the displayed value is the
-             * effective one (field-level, else the legacy form-level value).
+             * Selection is per field (WWID-2968).
              */
-            function wicketPopulateMdpUuidSource(selectedValue, field) {
+            function wicketPopulateMdpUuidSource(selectedValue) {
                 var $select = jQuery('#wicket_mdp_uuid_source_field');
                 var form = wicketGetCurrentFormObject();
                 var fields = (form.fields || []);
@@ -2235,12 +2233,9 @@ class Wicket_Gf_Main
                 if (selectedValue && fields.some(function(f) { return String(f.id) === String(selectedValue); })) {
                     $select.val(String(selectedValue));
                 } else if (selectedValue) {
-                    // Stale selection: only clear the field-level property when
-                    // it is the stale one. A stale legacy form-level value is
-                    // left for the server-side sanitize to strip.
-                    if (String(rgar(field, 'wicket_mdp_uuid_source_field') || '') === String(selectedValue)) {
-                        SetFieldProperty('wicket_mdp_uuid_source_field', '');
-                    }
+                    // Stale selection: clear the field-level property so the
+                    // save guard re-runs against reality.
+                    SetFieldProperty('wicket_mdp_uuid_source_field', '');
                     $select.val('');
                 }
             }
@@ -2317,7 +2312,7 @@ class Wicket_Gf_Main
                     if ($etSelect.val() !== formConfig.entityType) {
                         $etSelect.val(formConfig.entityType || '');
                     }
-                    wicketPopulateMdpUuidSource(wicketGetFieldUuidSource(field, currentForm), field);
+                    wicketPopulateMdpUuidSource(rgar(field, 'wicket_mdp_uuid_source_field') || '');
                 }
 
                 var targetObjectState = wicketPopulateMdpTargetObjects(formConfig.entityType, targetObject);
@@ -2447,10 +2442,11 @@ class Wicket_Gf_Main
                     var targetObject = rgar(field, 'wicket_mdp_target_object') || '';
                     var targetField  = rgar(field, 'wicket_mdp_target_field') || '';
 
-                    // Rule 0: MDP enabled but this field has no UUID source field.
-                    // Per field since WWID-2968: the effective value is the
-                    // field-level selection, else the legacy form-level value.
-                    var fieldUuidSource = wicketGetFieldUuidSource(field, form);
+                    // Rule 0: MDP enabled but this field has no explicit UUID
+                    // source field. The legacy form-level fallback does not
+                    // count: it silently satisfied the guard on pre-2.9.1
+                    // forms (WWID-3027).
+                    var fieldUuidSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
                     if (!fieldUuidSource) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('Select a UUID field to enable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
@@ -2459,8 +2455,7 @@ class Wicket_Gf_Main
                     // Rule 0c: a field-level selection pointing at a deleted
                     // field would be stripped on save, leaving the mapping
                     // unusable. Block the save until it is re-selected.
-                    var ownSource = rgar(field, 'wicket_mdp_uuid_source_field') || '';
-                    if (ownSource && !form.fields.some(function(f) { return String(f.id) === String(ownSource); })) {
+                    if (!form.fields.some(function(f) { return String(f.id) === String(fieldUuidSource); })) {
                         mdpErrors.push(displayName + ': <?php esc_html_e('The selected UUID Source Field no longer exists. Re-select it or disable MDP mapping.', 'wicket-gf'); ?>');
                         continue;
                     }
@@ -2577,6 +2572,26 @@ class Wicket_Gf_Main
                         if (!fieldFound) {
                             field.wicket_mdp_target_field = '';
                         }
+                    }
+                }
+
+                // Legacy form-level UUID source: once no mapped field still
+                // needs it, the fallback is dead weight. Drop it so a field
+                // mapped later cannot silently inherit it (WWID-3027).
+                var legacySource = rgar(form, 'wicket_mdp_uuid_source_field') || '';
+                if (legacySource) {
+                    var keepLegacy = false;
+                    for (var m = 0; m < form.fields.length; m++) {
+                        if (!rgar(form.fields[m], 'wicket_enable_mdp_mapping')) {
+                            continue;
+                        }
+                        if (!rgar(form.fields[m], 'wicket_mdp_uuid_source_field')) {
+                            keepLegacy = true;
+                            break;
+                        }
+                    }
+                    if (!keepLegacy) {
+                        form['wicket_mdp_uuid_source_field'] = '';
                     }
                 }
 
