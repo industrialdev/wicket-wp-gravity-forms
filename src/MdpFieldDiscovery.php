@@ -35,6 +35,24 @@ class MdpFieldDiscovery
     private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v4';
 
     /**
+     * Transient key for caching org type choices.
+     *
+     * Payload: rows of ['value' => resource-type slug, 'label' => name_en].
+     * Versioned like CACHE_KEY_SCHEMAS so stale shapes are never read; v2
+     * skips non-organization rows, which v1 could have cached on dev stacks.
+     */
+    private const CACHE_KEY_ORG_TYPES = 'wicket_gf_mdp_org_types_v2';
+
+    /**
+     * Transient marking a recent org type discovery failure (short TTL).
+     *
+     * Separate from CACHE_KEY_API_FAIL on purpose: an org type outage (or a
+     * fake/local MDP without the route) must not blank schema and preference
+     * discovery, and vice versa.
+     */
+    private const CACHE_KEY_ORG_TYPES_FAIL = 'wicket_gf_mdp_org_types_fail';
+
+    /**
      * Transient marking a recent discovery failure (short TTL).
      *
      * During an MDP API outage, this stops every form save from re-issuing
@@ -171,10 +189,180 @@ class MdpFieldDiscovery
     public function getOrgProfileFields(): array
     {
         $fields = [
-            ['value' => 'attributes.legal_name', 'label' => __('Legal Name', 'wicket-gf')],
+            ['value' => 'attributes.legal_name',        'label' => __('Legal Name', 'wicket-gf')],
+            ['value' => 'attributes.alternate_name',    'label' => __('Alternate Name', 'wicket-gf')],
+            ['value' => 'attributes.type',              'label' => __('Organization Type', 'wicket-gf')],
+            ['value' => 'attributes.description',       'label' => __('Description', 'wicket-gf')],
+            ['value' => 'attributes.identifying_number', 'label' => __('Identifying Number', 'wicket-gf')],
         ];
 
         return apply_filters('wicket_gf_mdp_org_profile_fields', $fields);
+    }
+
+    /**
+     * Organization Type choices discovered from the connected MDP tenant.
+     *
+     * PATCH /organizations/{uuid} accepts attributes.type as a resource-type
+     * slug, so the value is the slug and the label is the tenant's English
+     * name (EN canonical for cache stability, matching schema discovery).
+     *
+     * @return array<array{value: string, label: string}> Empty during failure.
+     */
+    public function getOrgTypeChoices(): array
+    {
+        // Cache first, same rationale as getSchemaDiscoveryPayload(): a
+        // transient fetch failure must not blank a valid cached list.
+        $cached = get_transient(self::CACHE_KEY_ORG_TYPES);
+        if (is_array($cached) && $cached !== []) {
+            return $cached;
+        }
+
+        if (get_transient(self::CACHE_KEY_ORG_TYPES_FAIL)) {
+            return [];
+        }
+
+        $choices = $this->discoverOrgTypes();
+
+        if ($choices === []) {
+            // Empty is ambiguous (no types configured vs no API access).
+            // Organizations require a type on create, so a real tenant never
+            // has zero; treat empty as failure and fail closed. The shared
+            // discovery_failed flag stays untouched: the form-save sanitizer
+            // must judge schema discovery, not org type discovery.
+            set_transient(self::CACHE_KEY_ORG_TYPES_FAIL, 1, self::CACHE_TTL_FAIL);
+
+            return [];
+        }
+
+        $ttl = (int) apply_filters('wicket_gf_mdp_discovery_cache_ttl', self::CACHE_TTL_DEFAULT);
+        set_transient(self::CACHE_KEY_ORG_TYPES, $choices, $ttl);
+
+        return $choices;
+    }
+
+    /**
+     * Fetch the tenant's resource types from the MDP API.
+     *
+     * The top-level index is the only org type source proven across real
+     * tenants, the local fake MDP and account-centre; the MDP admin fills
+     * its own org type dropdown from the same unfiltered list. Render-time
+     * callers depend on this never throwing. Only slug/name shaped rows
+     * are usable; rows lacking both are skipped.
+     *
+     * @return array<array{value: string, label: string}>
+     */
+    protected function discoverOrgTypes(): array
+    {
+        if (!function_exists('wicket_api_client')) {
+            return [];
+        }
+
+        try {
+            $client = wicket_api_client();
+            if (!$client) {
+                return [];
+            }
+
+            $response = $client->get('resource_types');
+            // No page params = the API returns the unpaged full collection
+            // (paginate() runs only when page_params are present).
+            $rows = is_array($response ?? null) ? ($response['data'] ?? []) : [];
+            if (!is_array($rows) || $rows === []) {
+                return [];
+            }
+
+            $types = [];
+            foreach ($rows as $row) {
+                $attrs = is_array($row['attributes'] ?? null) ? $row['attributes'] : [];
+
+                // The index serves every entity kind (emails, phones,
+                // relationships, ...). Real serializers mark each row with a
+                // computed resource_type attribute; keep only organization
+                // rows. Rows lacking the attribute (fake/legacy serializers)
+                // are kept, their name doubles as the slug.
+                $kind = (string) ($attrs['resource_type'] ?? '');
+                if ($kind !== '' && $kind !== 'organizations') {
+                    continue;
+                }
+
+                $slug = sanitize_text_field((string) ($attrs['slug'] ?? ''));
+                $label = sanitize_text_field((string) ($attrs['name_en'] ?? ''));
+
+                // The fake MDP (and older serializers) ship name only; the
+                // name doubles as the slug there, so it keeps both slots.
+                if ($slug === '') {
+                    $slug = sanitize_text_field((string) ($attrs['name'] ?? ''));
+                }
+                if ($label === '') {
+                    $label = sanitize_text_field((string) ($attrs['name'] ?? ''));
+                }
+
+                if ($slug === '' || $label === '') {
+                    continue;
+                }
+                $types[] = ['value' => $slug, 'label' => $label, 'weight' => (int) ($attrs['weight'] ?? 0)];
+            }
+
+            usort($types, static fn (array $a, array $b): int => [$a['weight'], $a['label']] <=> [$b['weight'], $b['label']]);
+
+            return array_map(
+                static fn (array $t): array => ['value' => $t['value'], 'label' => $t['label']],
+                $types
+            );
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Fill empty GF choices on fields mapped to the Organization Type.
+     *
+     * Select/radio fields mapped to org_profile/attributes.type receive the
+     * tenant's types when the admin left the choices empty; set choices are
+     * respected. During a discovery outage nothing is injected or removed:
+     * empty choices stay empty rather than shipping a form that cannot sync.
+     *
+     * @param array<int, \GF_Field> $fields
+     * @return array<int, \GF_Field>
+     */
+    public function populateOrgTypeChoices(array $fields): array
+    {
+        $choices = null;
+
+        foreach ($fields as $field) {
+            if (!is_object($field)) {
+                continue;
+            }
+
+            $field_type = $field->type ?? '';
+            if (!in_array($field_type, ['select', 'radio'], true)) {
+                continue;
+            }
+
+            if (empty($field->wicket_enable_mdp_mapping)
+                || ($field->wicket_mdp_target_object ?? '') !== 'org_profile'
+                || ($field->wicket_mdp_target_field ?? '') !== 'attributes.type') {
+                continue;
+            }
+
+            if (is_array($field->choices ?? null) && ($field->choices ?? []) !== []) {
+                continue;
+            }
+
+            if ($choices === null) {
+                $choices = $this->getOrgTypeChoices();
+                if ($choices === []) {
+                    return $fields;
+                }
+            }
+
+            $field->choices = array_map(
+                static fn (array $c): array => ['text' => $c['label'], 'value' => $c['value']],
+                $choices
+            );
+        }
+
+        return $fields;
     }
 
     /**
@@ -392,6 +580,8 @@ class MdpFieldDiscovery
     {
         delete_transient(self::CACHE_KEY_SCHEMAS);
         delete_transient(self::CACHE_KEY_PREFS);
+        delete_transient(self::CACHE_KEY_ORG_TYPES);
+        delete_transient(self::CACHE_KEY_ORG_TYPES_FAIL);
         delete_transient(self::CACHE_KEY_API_FAIL);
     }
 

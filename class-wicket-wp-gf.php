@@ -333,6 +333,10 @@ class Wicket_Gf_Main
         // Add form pre-render hook for pagination sidebar layout and other dynamic features
         add_filter('gform_pre_render', [$this, 'gf_custom_pre_render'], 50, 1);
 
+        // Fill empty Organization Type choices from the tenant's MDP (validation needs the same choices)
+        add_filter('gform_pre_render', [$this, 'gf_mdp_populate_org_type_choices'], 60, 1);
+        add_filter('gform_pre_validation', [$this, 'gf_mdp_populate_org_type_choices']);
+
         // Inject field slug pills into GF preview mode
         add_filter('gform_field_content', [$this, 'inject_preview_slug_pill'], 10, 2);
 
@@ -589,6 +593,27 @@ class Wicket_Gf_Main
             $field_container,
             1
         );
+    }
+
+    /**
+     * Fill empty GF choices on fields mapped to the Organization Type.
+     *
+     * @param array $form
+     * @return array
+     */
+    public function gf_mdp_populate_org_type_choices($form)
+    {
+        if (!apply_filters('wicket_gf_mdp_auto_org_type_choices', true)) {
+            return $form;
+        }
+
+        if (!isset($form['fields']) || !is_array($form['fields'])) {
+            return $form;
+        }
+
+        $form['fields'] = $this->get_mdp_discovery()->populateOrgTypeChoices($form['fields']);
+
+        return $form;
     }
 
     /**
