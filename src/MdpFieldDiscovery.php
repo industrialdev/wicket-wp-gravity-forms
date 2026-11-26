@@ -24,15 +24,18 @@ class MdpFieldDiscovery
     /**
      * Transient key for caching json_schemas discovery results.
      *
-     * Bumped to v4 in WWID-2980: the payload gained array-typed targets, and
-     * a stale v3 cache would hide them for 12h and let the form-save
-     * sanitizer strip newly mapped array fields.
+     * Bumped to v5 in WWID-3024: rows gained required_when and properties
+     * declared only inside dependencies / root combinators join the target
+     * list. A stale v4 cache would hide the new dropdown targets for 12h
+     * and keep the form-save sanitizer stripping hand-mapped conditional
+     * siblings.
      *
+     * v4: payload gained array-typed targets (WWID-2980).
      * v3: payload is ['properties' => rows, 'ids' => [slug => uuid]]
-     * (see discoverSchemaFields()). Versioned so stale v1/v2 transients
+     * (see discoverSchemaFields()). Versioned so stale transients
      * are never read with the new shape.
      */
-    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v4';
+    private const CACHE_KEY_SCHEMAS = 'wicket_gf_mdp_schemas_v5';
 
     /**
      * Transient marking a recent discovery failure (short TTL).
@@ -239,13 +242,39 @@ class MdpFieldDiscovery
     {
         $fields = [];
         foreach ($this->getScalarSchemaProperties() as $prop) {
+            $label = $prop['label'];
+
+            // Composed at read time, never baked into the cached label:
+            // the cache is locale-independent on purpose (see discovery).
+            $when = is_array($prop['required_when'] ?? null) ? $prop['required_when'] : null;
+            if ($when !== null && isset($when['trigger_label'])) {
+                $label .= ' ' . sprintf(
+                    __('(required when %1$s is %2$s)', 'wicket-gf'),
+                    $when['trigger_label'],
+                    $this->format_required_when_value($when['value'] ?? null)
+                );
+            }
+
             $fields[] = [
                 'value' => $prop['value'],
-                'label' => $prop['label'],
+                'label' => $label,
             ];
         }
 
         return $fields;
+    }
+
+    /**
+     * Render a required_when trigger value for the editor label.
+     * sprintf('%s') would print booleans as 1/0; the schema means true/false.
+     */
+    private function format_required_when_value(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        return (string) $value;
     }
 
     /**
@@ -269,7 +298,7 @@ class MdpFieldDiscovery
     /**
      * Scalar properties across all JSON Schemas (cached raw discovery).
      *
-     * @return array<int, array{value: string, label: string, type: string}>
+     * @return array<int, array{value: string, label: string, type: string, required_when: array{trigger: string, value: mixed, trigger_label: string}|null}>
      */
     protected function getScalarSchemaProperties(): array
     {
@@ -398,13 +427,17 @@ class MdpFieldDiscovery
     /**
      * Discover scalar properties from the JSON Schemas API endpoint.
      *
-     * Fetches GET /json_schemas and walks each schema's `properties`.
+     * Fetches GET /json_schemas and walks each schema's root `properties`
+     * plus conditionally declared siblings (WWID-3024): properties the
+     * schema only defines inside `dependencies` or a root set combinator
+     * stay invisible to a top-level walk, so tenants cannot map the very
+     * fields their own schema makes conditionally required.
      * Only scalar-typed properties are exposed (string, number, integer,
      * boolean, or an enum with a scalar type). Array/object properties
      * (repeaters) need structural values a single GF field cannot supply
      * and are skipped.
      *
-     * @return array{properties: array<int, array{value: string, label: string, type: string}>, ids: array<string, string>, failed: bool}
+     * @return array{properties: array<int, array{value: string, label: string, type: string, required_when: array{trigger: string, value: mixed, trigger_label: string}|null}>, ids: array<string, string>, failed: bool}
      */
     protected function discoverSchemaFields(): array
     {
@@ -460,32 +493,18 @@ class MdpFieldDiscovery
                     continue;
                 }
 
+                $seen = [];
                 foreach ($properties as $prop_name => $definition) {
                     if (!is_array($definition)) {
                         continue;
                     }
 
-                    $type = is_string($definition['type'] ?? null) ? $definition['type'] : '';
-                    if (isset($definition['enum']) && $type === '') {
-                        $type = 'string';
-                    }
-
-                    // Array-of-scalar properties (multi-select style, e.g. a
-                    // breed specialties checkbox list) are mappable: GF submits
-                    // the checked set and MDP validates it against the schema.
-                    // Array-of-object repeaters stay out of scope (WWID-812).
-                    if ($type === 'array') {
-                        $items_type = $definition['items']['type'] ?? null;
-                        if (is_string($items_type) && in_array($items_type, ['string', 'number', 'integer', 'boolean'], true)) {
-                            $type = 'array';
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (!in_array($type, ['string', 'number', 'integer', 'boolean', 'array'], true)) {
+                    $type = $this->resolve_target_type($definition, true);
+                    if ($type === null) {
                         continue;
                     }
+
+                    $seen[(string) $prop_name] = true;
 
                     $propLabel = $definition['title']
                         ?? ucwords(str_replace(['_', '-'], ' ', (string) $prop_name));
@@ -494,6 +513,31 @@ class MdpFieldDiscovery
                         'value' => 'data_field.' . sanitize_text_field($key) . '.' . sanitize_text_field((string) $prop_name),
                         'label' => sanitize_text_field($schemaLabel) . ': ' . sanitize_text_field($propLabel),
                         'type'  => $type,
+                        'required_when' => null,
+                    ];
+                }
+
+                // Root definitions win: a conditional branch definition of an
+                // already-exposed property is skipped, not merged.
+                foreach ($this->conditional_property_definitions($attrs['schema'] ?? [], $uiSchema) as [$prop_name, $definition, $type, $required_when]) {
+                    if (isset($seen[$prop_name])) {
+                        continue;
+                    }
+                    $seen[$prop_name] = true;
+
+                    // Conditional rows may use the ui_schema label: tenants
+                    // name registration-style fields there, not in the branch
+                    // definition, and the root loop's labeling must stay
+                    // unchanged (WWID-3024 review).
+                    $propLabel = $definition['title']
+                        ?? ($uiSchema[$prop_name]['ui:i18n']['label']['en'] ?? null)
+                        ?? ucwords(str_replace(['_', '-'], ' ', $prop_name));
+
+                    $fields[] = [
+                        'value' => 'data_field.' . sanitize_text_field($key) . '.' . sanitize_text_field($prop_name),
+                        'label' => sanitize_text_field($schemaLabel) . ': ' . sanitize_text_field($propLabel),
+                        'type'  => $type,
+                        'required_when' => $required_when,
                     ];
                 }
             }
@@ -502,6 +546,143 @@ class MdpFieldDiscovery
         } catch (\Throwable $e) {
             return ['properties' => [], 'ids' => [], 'failed' => true];
         }
+    }
+
+    /**
+     * Target type for a property definition, or null when unmappable.
+     *
+     * Enum-only definitions infer 'string' only for root declarations:
+     * conditional branches repeat the trigger property as enum-without-type
+     * on purpose, and inferring there would retype the root boolean row as
+     * string and break boolean casting for live syncs.
+     */
+    private function resolve_target_type(array $definition, bool $infer_enum_as_string): ?string
+    {
+        $type = is_string($definition['type'] ?? null) ? $definition['type'] : '';
+        if (isset($definition['enum']) && $type === '') {
+            if (!$infer_enum_as_string) {
+                return null;
+            }
+
+            $type = 'string';
+        }
+
+        // Array-of-scalar properties (multi-select style) are mappable: GF
+        // submits the checked set and MDP validates it against the schema.
+        // Array-of-object repeaters stay out of scope (WWID-812).
+        if ($type === 'array') {
+            $items_type = $definition['items']['type'] ?? null;
+            if (is_string($items_type) && in_array($items_type, ['string', 'number', 'integer', 'boolean'], true)) {
+                return 'array';
+            }
+
+            return null;
+        }
+
+        return in_array($type, ['string', 'number', 'integer', 'boolean'], true) ? $type : null;
+    }
+
+    /**
+     * Property definitions the schema declares only conditionally.
+     *
+     * Walks draft-04 `dependencies` (object form: trigger => schema) and the
+     * schema root's set combinators. Array-form dependencies only name
+     * required siblings and carry no definitions. `if/then` is not walked:
+     * no tenant seed uses it yet (YAGNI).
+     *
+     * @return array<int, array{0: string, 1: array<string, mixed>, 2: string, 3: array{trigger: string, value: mixed, trigger_label: string}|null}>
+     */
+    private function conditional_property_definitions(array $schema, array $uiSchema): array
+    {
+        $out = [];
+        $typed = [];
+
+        // First typed definition of a property wins across branches; the
+        // trigger property itself repeats enum-only per branch and is
+        // skipped, so required_when only lands on genuine siblings.
+        $collect = function (array $source, ?string $trigger) use (&$out, &$typed, $uiSchema): void {
+            $props = is_array($source['properties'] ?? null) ? $source['properties'] : [];
+            $required = is_array($source['required'] ?? null) ? $source['required'] : [];
+
+            foreach ($props as $prop_name => $definition) {
+                if (!is_array($definition) || isset($typed[$prop_name])) {
+                    continue;
+                }
+
+                $type = $this->resolve_target_type($definition, false);
+                if ($type === null) {
+                    continue;
+                }
+                $typed[$prop_name] = true;
+
+                $when = null;
+                if ($trigger !== null && in_array($prop_name, $required, true)) {
+                    $trigger_def = is_array($props[$trigger] ?? null) ? $props[$trigger] : [];
+                    $value = $trigger_def['const']
+                        ?? (is_array($trigger_def['enum'] ?? null) ? ($trigger_def['enum'][0] ?? null) : null);
+                    if ($value !== null) {
+                        $when = [
+                            'trigger' => $trigger,
+                            'value' => $value,
+                            'trigger_label' => $this->conditional_trigger_label($trigger, $trigger_def, $uiSchema),
+                        ];
+                    }
+                }
+
+                $out[] = [$prop_name, $definition, $type, $when];
+            }
+        };
+
+        foreach (is_array($schema['dependencies'] ?? null) ? $schema['dependencies'] : [] as $trigger => $dependency) {
+            $trigger = (string) $trigger;
+            if (!is_array($dependency)) {
+                continue;
+            }
+
+            $collect($dependency, $trigger);
+            foreach (['oneOf', 'anyOf', 'allOf'] as $keyword) {
+                foreach (is_array($dependency[$keyword] ?? null) ? $dependency[$keyword] : [] as $branch) {
+                    if (is_array($branch)) {
+                        $collect($branch, $trigger);
+                    }
+                }
+            }
+        }
+
+        // Root combinator branches have no dependency trigger, so their
+        // properties get no required_when; they stay exposure-only.
+        foreach (['oneOf', 'anyOf', 'allOf'] as $keyword) {
+            foreach (is_array($schema[$keyword] ?? null) ? $schema[$keyword] : [] as $branch) {
+                if (is_array($branch)) {
+                    $collect($branch, null);
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Display label for a dependency trigger property.
+     *
+     * ui_schema first (English canonical), then the branch definition's
+     * title, then the property name itself.
+     */
+    private function conditional_trigger_label(string $trigger, array $trigger_def, array $uiSchema): string
+    {
+        $label = $uiSchema[$trigger]['ui:i18n']['label']['en']
+            ?? $uiSchema[$trigger]['ui:i18n']['title']['en']
+            ?? null;
+        if (is_string($label) && $label !== '') {
+            return $label;
+        }
+
+        $title = is_string($trigger_def['title'] ?? null) ? $trigger_def['title'] : '';
+        if ($title !== '') {
+            return $title;
+        }
+
+        return ucwords(str_replace(['_', '-'], ' ', $trigger));
     }
 
     /**
