@@ -267,6 +267,7 @@ class MdpFieldDiscovery
     /**
      * Render a required_when trigger value for the editor label.
      * sprintf('%s') would print booleans as 1/0; the schema means true/false.
+     * Non-scalar consts (schema nonsense) render as JSON, not a PHP warning.
      */
     private function format_required_when_value(mixed $value): string
     {
@@ -274,7 +275,7 @@ class MdpFieldDiscovery
             return $value ? 'true' : 'false';
         }
 
-        return (string) $value;
+        return is_scalar($value) ? (string) $value : (string) json_encode($value);
     }
 
     /**
@@ -519,7 +520,11 @@ class MdpFieldDiscovery
 
                 // Root definitions win: a conditional branch definition of an
                 // already-exposed property is skipped, not merged.
-                foreach ($this->conditional_property_definitions($attrs['schema'] ?? [], $uiSchema) as [$prop_name, $definition, $type, $required_when]) {
+                foreach ($this->conditional_property_definitions(
+                    is_array($attrs['schema'] ?? null) ? $attrs['schema'] : [],
+                    is_array($uiSchema) ? $uiSchema : []
+                ) as [$prop_name, $definition, $type, $required_when]) {
+                    $prop_name = (string) $prop_name;
                     if (isset($seen[$prop_name])) {
                         continue;
                     }
@@ -602,9 +607,10 @@ class MdpFieldDiscovery
         // skipped, so required_when only lands on genuine siblings.
         $collect = function (array $source, ?string $trigger) use (&$out, &$typed, $uiSchema): void {
             $props = is_array($source['properties'] ?? null) ? $source['properties'] : [];
-            $required = is_array($source['required'] ?? null) ? $source['required'] : [];
+            $required = is_array($source['required'] ?? null) ? array_map('strval', $source['required']) : [];
 
             foreach ($props as $prop_name => $definition) {
+                $prop_name = (string) $prop_name;
                 if (!is_array($definition) || isset($typed[$prop_name])) {
                     continue;
                 }
